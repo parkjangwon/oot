@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
                 val isServiceEnabled by app.preferences.isServiceEnabled.collectAsState()
                 val refreshInterval by app.preferences.refreshIntervalMinutes.collectAsState()
                 val autoUpdateCheck by app.preferences.isAutoUpdateCheckEnabled.collectAsState()
-                val statuses by app.repository.statuses.collectAsState()
+                val vendorUsages by app.repository.vendorUsages.collectAsState(initial = emptyList())
                 val isRefreshing by app.repository.isRefreshing.collectAsState()
 
                 var showAddDialog by remember { mutableStateOf(false) }
@@ -107,9 +107,20 @@ class MainActivity : ComponentActivity() {
                         onOpenSourceCode = { context.openBrowsableUrl(SOURCE_CODE_URL) },
                     )
                 } else {
+                    val selectableAccounts = accounts.filter { it.provider.isSelectable }
+                    val legacyAccounts = accounts.filter { !it.provider.isSelectable }
+                    val displayUsages = selectableAccounts.map { account ->
+                        vendorUsages.find { it.accountId == account.id } ?: org.parkjw.apps.oot.data.model.VendorUsage(
+                            accountId = account.id,
+                            providerType = account.provider,
+                            displayName = account.name,
+                            windows = emptyList()
+                        )
+                    }
+
                     DashboardScreen(
-                        accounts = accounts,
-                        statuses = statuses,
+                        vendorUsages = displayUsages,
+                        legacyAccounts = legacyAccounts,
                         isRefreshing = isRefreshing,
                         isServiceEnabled = isServiceEnabled,
                         refreshIntervalMinutes = refreshInterval,
@@ -147,7 +158,7 @@ class MainActivity : ComponentActivity() {
                                 app.notificationManager.updateNotification(updated)
                             }
                         },
-                        onOpenSettings = { showSettings = true }
+                        onSettingsClick = { showSettings = true },
                     )
                 }
 
