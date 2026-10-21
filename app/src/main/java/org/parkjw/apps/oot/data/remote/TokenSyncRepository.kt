@@ -15,6 +15,8 @@ import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
+import org.parkjw.apps.oot.data.model.VendorUsage
+import org.parkjw.apps.oot.data.model.toVendorUsage
 import org.parkjw.apps.oot.data.oauth.OAuthManager
 import java.util.concurrent.TimeUnit
 
