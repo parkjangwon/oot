@@ -22,6 +22,7 @@ object NotificationContent {
     const val FORCE_TEXT_ONLY = false
 
     data class CollapsedItem(
+        val provider: ProviderType,
         val mark: String,
         val label: String,
         val percent: Int?,
@@ -30,6 +31,7 @@ object NotificationContent {
     )
 
     data class ExpandedItem(
+        val provider: ProviderType,
         val mark: String,
         val name: String,
         val text: String,
@@ -91,14 +93,16 @@ object NotificationContent {
     // Errored vendors first ("확인 필요"), then lowest remaining ascending.
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int): List<CollapsedItem> =
         usages.sortedByRemaining().take(maxItems.coerceAtLeast(0)).map { usage ->
+            val p = usage.providerType
             when (val remaining = usage.representative?.remaining) {
                 null ->
-                    CollapsedItem(mark(usage.providerType), "${shortName(usage.providerType)} 확인 필요", null, true, Level.OK)
+                    CollapsedItem(p, mark(p), "${shortName(p)} 확인 필요", null, true, Level.OK)
                 is Remaining.Balance ->
-                    CollapsedItem(mark(usage.providerType), formatBalance(remaining.amountLeft, remaining.currency), null, false, Level.OK)
+                    CollapsedItem(p, mark(p), formatBalance(remaining.amountLeft, remaining.currency), null, false, Level.OK)
                 is Remaining.Percent ->
                     CollapsedItem(
-                        mark(usage.providerType),
+                        p,
+                        mark(p),
                         "${formatPercent(remaining)} 남음",
                         remaining.percentLeft.roundToInt().coerceIn(0, 100),
                         false,
@@ -110,16 +114,17 @@ object NotificationContent {
     // One line per registered vendor, registration order.
     fun expandedItems(usages: List<VendorUsage>, now: Instant = Instant.now()): List<ExpandedItem> =
         usages.map { usage ->
-            val itemMark = mark(usage.providerType)
-            val name = shortName(usage.providerType)
+            val p = usage.providerType
+            val itemMark = mark(p)
+            val name = shortName(p)
             if (usage.error != null) {
-                return@map ExpandedItem(itemMark, name, "확인 필요", null, true, Level.OK)
+                return@map ExpandedItem(p, itemMark, name, "확인 필요", null, true, Level.OK)
             }
             val representative = usage.representative
-                ?: return@map ExpandedItem(itemMark, name, "확인 필요", null, true, Level.OK)
+                ?: return@map ExpandedItem(p, itemMark, name, "확인 필요", null, true, Level.OK)
             when (val remaining = representative.remaining) {
                 is Remaining.Balance ->
-                    ExpandedItem(itemMark, name, "${formatBalance(remaining.amountLeft, remaining.currency)} 남음", null, false, Level.OK)
+                    ExpandedItem(p, itemMark, name, "${formatBalance(remaining.amountLeft, remaining.currency)} 남음", null, false, Level.OK)
                 is Remaining.Percent -> {
                     // Representative window only: the one with the least remaining, plus its reset.
                     val text = "${windowLabel(representative)}${formatPercent(remaining)} 남음"
@@ -129,6 +134,7 @@ object NotificationContent {
                         ?.let { " · ${it} 리셋" }
                         ?: ""
                     ExpandedItem(
+                        p,
                         itemMark,
                         name,
                         text + reset,

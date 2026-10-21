@@ -13,6 +13,16 @@
         android:paddingTop="3dp"
         android:paddingBottom="3dp">
 
+        <ImageView
+            android:id="@+id/logo0"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="4dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/mark0"
             android:layout_width="wrap_content"
@@ -60,6 +70,16 @@
         android:gravity="center_vertical"
         android:paddingTop="3dp"
         android:paddingBottom="3dp">
+
+        <ImageView
+            android:id="@+id/logo1"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="4dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/mark1"
@@ -109,6 +129,16 @@
         android:paddingTop="3dp"
         android:paddingBottom="3dp">
 
+        <ImageView
+            android:id="@+id/logo2"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="4dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/mark2"
             android:layout_width="wrap_content"
@@ -156,6 +186,16 @@
         android:gravity="center_vertical"
         android:paddingTop="3dp"
         android:paddingBottom="3dp">
+
+        <ImageView
+            android:id="@+id/logo3"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="4dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/mark3"
@@ -205,6 +245,16 @@
         android:paddingTop="3dp"
         android:paddingBottom="3dp">
 
+        <ImageView
+            android:id="@+id/logo4"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="4dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/mark4"
             android:layout_width="wrap_content"
@@ -252,6 +302,16 @@
         android:gravity="center_vertical"
         android:paddingTop="3dp"
         android:paddingBottom="3dp">
+
+        <ImageView
+            android:id="@+id/logo5"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="4dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/mark5"
@@ -301,6 +361,16 @@
         android:paddingTop="3dp"
         android:paddingBottom="3dp">
 
+        <ImageView
+            android:id="@+id/logo6"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="4dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/mark6"
             android:layout_width="wrap_content"
@@ -348,6 +418,16 @@
         android:gravity="center_vertical"
         android:paddingTop="3dp"
         android:paddingBottom="3dp">
+
+        <ImageView
+            android:id="@+id/logo7"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="4dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/mark7"

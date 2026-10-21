@@ -28,6 +28,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,8 +48,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +70,7 @@ import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.level
 import org.parkjw.apps.oot.data.model.toVendorUsage
+import org.parkjw.apps.oot.ui.VendorLogo
 import org.parkjw.apps.oot.ui.theme.ButtonCorner
 import org.parkjw.apps.oot.ui.theme.CardCorner
 import org.parkjw.apps.oot.ui.theme.DialogCorner
@@ -731,34 +736,56 @@ fun VendorMark(
     val border = MaterialTheme.colorScheme.outlineVariant
     val fg = MaterialTheme.colorScheme.onSurface
     val shape = RoundedCornerShape(8.dp)
+    val logo = VendorLogo.of(provider)
 
     Box(
         modifier = modifier
-            .size(28.dp)
+            .size(32.dp)
             .clip(shape)
             .background(bg)
             .border(1.dp, border, shape),
         contentAlignment = Alignment.Center,
     ) {
-        val monogram = when (provider) {
-            ProviderType.CLAUDE -> "C"
-            ProviderType.ZAI -> "G"
-            ProviderType.XAI -> "X"
-            ProviderType.OPENROUTER -> "R"
-            ProviderType.OPENAI -> "O"
-            ProviderType.ANTIGRAVITY -> "A"
-            ProviderType.DEEPSEEK -> "D"
-            ProviderType.OLLAMA_CLOUD -> "OL"
-            ProviderType.OPENCODE_GO -> "OG"
+        if (logo != null) {
+            val logoMod = if (logo.wide) {
+                Modifier.height(14.dp)
+            } else {
+                Modifier.size(20.dp)
+            }
+            Image(
+                painter = painterResource(
+                    if (logo.tintWithOnSurface) logo.mono else logo.color,
+                ),
+                contentDescription = null,
+                modifier = logoMod,
+                contentScale = ContentScale.Fit,
+                colorFilter = if (logo.tintWithOnSurface) {
+                    ColorFilter.tint(fg)
+                } else {
+                    null
+                },
+            )
+        } else {
+            val monogram = when (provider) {
+                ProviderType.CLAUDE -> "C"
+                ProviderType.ZAI -> "G"
+                ProviderType.XAI -> "X"
+                ProviderType.OPENROUTER -> "R"
+                ProviderType.OPENAI -> "O"
+                ProviderType.ANTIGRAVITY -> "A"
+                ProviderType.DEEPSEEK -> "D"
+                ProviderType.OLLAMA_CLOUD -> "OL"
+                ProviderType.OPENCODE_GO -> "OG"
+            }
+            Text(
+                text = monogram,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontFamily = OotMonoFamily,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = fg,
+            )
         }
-        Text(
-            text = monogram,
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontFamily = OotMonoFamily,
-                fontWeight = FontWeight.SemiBold,
-            ),
-            color = fg,
-        )
     }
 }
 

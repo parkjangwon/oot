@@ -98,6 +98,30 @@ class NotificationScreenshotTest {
         captureExpanded(412, "notif-expanded-412-dark.png")
     }
 
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifCollapsed412Light3x() {
+        captureCollapsed(412, "notif-collapsed-412-light-3x.png")
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifExpanded412Light3x() {
+        captureExpanded(412, "notif-expanded-412-light-3x.png")
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
+    fun notifCollapsed412Dark3x() {
+        captureCollapsed(412, "notif-collapsed-412-dark-3x.png")
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
+    fun notifExpanded412Dark3x() {
+        captureExpanded(412, "notif-expanded-412-dark-3x.png")
+    }
+
     // 14% used to pick the amber "warn" entry; that color no longer exists.
     @Test
     fun barHasNoWarningColorAt14Percent() {
