@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -21,8 +22,18 @@ import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.service.TokenMonitorForegroundService
 import org.parkjw.apps.oot.ui.screens.AddAccountDialog
 import org.parkjw.apps.oot.ui.screens.DashboardScreen
+import org.parkjw.apps.oot.ui.screens.SettingsScreen
+import org.parkjw.apps.oot.ui.screens.SOURCE_CODE_URL
 import org.parkjw.apps.oot.ui.theme.OotTheme
+import org.parkjw.apps.oot.update.RELEASES_PAGE_URL
+import org.parkjw.apps.oot.update.UpdateAction
+import org.parkjw.apps.oot.update.UpdateUiState
 import org.parkjw.apps.oot.update.UpdateViewModel
+import org.parkjw.apps.oot.update.installedVersionName
+import org.parkjw.apps.oot.update.launchApkInstaller
+import org.parkjw.apps.oot.update.openBrowsableUrl
+import org.parkjw.apps.oot.update.openInstallPermissionSettings
+import org.parkjw.apps.oot.update.openReleasePage
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
@@ -49,52 +60,96 @@ class MainActivity : ComponentActivity() {
                 val accounts by app.preferences.accounts.collectAsState()
                 val isServiceEnabled by app.preferences.isServiceEnabled.collectAsState()
                 val refreshInterval by app.preferences.refreshIntervalMinutes.collectAsState()
+                val autoUpdateCheck by app.preferences.isAutoUpdateCheckEnabled.collectAsState()
                 val statuses by app.repository.statuses.collectAsState()
                 val isRefreshing by app.repository.isRefreshing.collectAsState()
 
                 var showAddDialog by remember { mutableStateOf(false) }
+                var showSettings by remember { mutableStateOf(false) }
+                val context = LocalContext.current
+                val versionName = remember { context.installedVersionName() }
+                val updateState by updateViewModel.state.collectAsState()
 
-                DashboardScreen(
-                    accounts = accounts,
-                    statuses = statuses,
-                    isRefreshing = isRefreshing,
-                    isServiceEnabled = isServiceEnabled,
-                    refreshIntervalMinutes = refreshInterval,
-                    onRefresh = {
-                        lifecycleScope.launch {
-                            val updated = app.repository.refreshAll()
-                            app.notificationManager.updateNotification(updated)
-                        }
-                    },
-                    onToggleService = { enabled ->
-                        app.preferences.setServiceEnabled(enabled)
-                        if (enabled) {
-                            TokenMonitorForegroundService.startService(this)
-                        } else {
-                            TokenMonitorForegroundService.stopService(this)
-                        }
-                    },
-                    onSetRefreshInterval = { minutes ->
-                        app.preferences.setRefreshInterval(minutes)
-                    },
-                    onAddAccountClick = {
-                        showAddDialog = true
-                    },
-                    onDeleteAccount = { accountId ->
-                        app.preferences.deleteAccount(accountId)
-                        lifecycleScope.launch {
-                            val updated = app.repository.refreshAll()
-                            app.notificationManager.updateNotification(updated)
-                        }
-                    },
-                    onToggleAccount = { accountId, isEnabled ->
-                        app.preferences.toggleAccount(accountId, isEnabled)
-                        lifecycleScope.launch {
-                            val updated = app.repository.refreshAll()
-                            app.notificationManager.updateNotification(updated)
-                        }
-                    }
-                )
+                LaunchedEffect(updateState) {
+                    val ready = updateState as? UpdateUiState.ReadyToInstall ?: return@LaunchedEffect
+                    updateViewModel.installerLaunched(context.launchApkInstaller(ready.apk))
+                }
+
+                if (showSettings) {
+                    SettingsScreen(
+                        isServiceEnabled = isServiceEnabled,
+                        refreshIntervalMinutes = refreshInterval,
+                        autoUpdateCheckEnabled = autoUpdateCheck,
+                        versionName = versionName,
+                        updateState = updateState,
+                        onBack = { showSettings = false },
+                        onToggleService = { enabled ->
+                            app.preferences.setServiceEnabled(enabled)
+                            if (enabled) {
+                                TokenMonitorForegroundService.startService(this@MainActivity)
+                            } else {
+                                TokenMonitorForegroundService.stopService(this@MainActivity)
+                            }
+                        },
+                        onSetRefreshInterval = { minutes -> app.preferences.setRefreshInterval(minutes) },
+                        onAutoUpdateCheckChange = { enabled -> app.preferences.setAutoUpdateCheckEnabled(enabled) },
+                        onUpdateAction = { action ->
+                            when (action) {
+                                UpdateAction.Check -> updateViewModel.manualCheck()
+                                UpdateAction.Download -> updateViewModel.downloadAndInstall()
+                                UpdateAction.Later -> updateViewModel.later()
+                                UpdateAction.OpenSettings -> context.openInstallPermissionSettings()
+                                UpdateAction.OpenReleasePage -> context.openReleasePage(
+                                    (updateState as? UpdateUiState.Failed)?.releasePageUrl ?: RELEASES_PAGE_URL,
+                                )
+                            }
+                        },
+                        onOpenSourceCode = { context.openBrowsableUrl(SOURCE_CODE_URL) },
+                    )
+                } else {
+                    DashboardScreen(
+                        accounts = accounts,
+                        statuses = statuses,
+                        isRefreshing = isRefreshing,
+                        isServiceEnabled = isServiceEnabled,
+                        refreshIntervalMinutes = refreshInterval,
+                        onRefresh = {
+                            lifecycleScope.launch {
+                                val updated = app.repository.refreshAll()
+                                app.notificationManager.updateNotification(updated)
+                            }
+                        },
+                        onToggleService = { enabled ->
+                            app.preferences.setServiceEnabled(enabled)
+                            if (enabled) {
+                                TokenMonitorForegroundService.startService(this)
+                            } else {
+                                TokenMonitorForegroundService.stopService(this)
+                            }
+                        },
+                        onSetRefreshInterval = { minutes ->
+                            app.preferences.setRefreshInterval(minutes)
+                        },
+                        onAddAccountClick = {
+                            showAddDialog = true
+                        },
+                        onDeleteAccount = { accountId ->
+                            app.preferences.deleteAccount(accountId)
+                            lifecycleScope.launch {
+                                val updated = app.repository.refreshAll()
+                                app.notificationManager.updateNotification(updated)
+                            }
+                        },
+                        onToggleAccount = { accountId, isEnabled ->
+                            app.preferences.toggleAccount(accountId, isEnabled)
+                            lifecycleScope.launch {
+                                val updated = app.repository.refreshAll()
+                                app.notificationManager.updateNotification(updated)
+                            }
+                        },
+                        onOpenSettings = { showSettings = true }
+                    )
+                }
 
                 if (showAddDialog) {
                     AddAccountDialog(

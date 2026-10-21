@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,7 +42,8 @@ fun DashboardScreen(
     onSetRefreshInterval: (Int) -> Unit,
     onAddAccountClick: () -> Unit,
     onDeleteAccount: (String) -> Unit,
-    onToggleAccount: (String, Boolean) -> Unit
+    onToggleAccount: (String, Boolean) -> Unit,
+    onOpenSettings: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -61,6 +63,9 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    }
                     IconButton(
                         onClick = onRefresh,
                         enabled = !isRefreshing

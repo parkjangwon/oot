@@ -4,6 +4,15 @@
     <string name="notification_channel_name">AI Token &amp; Quota Monitor</string>
     <string name="notification_channel_desc">Shows ongoing token usage and remaining balance for registered AI providers in the status bar.</string>
     <string name="settings_section_update">업데이트</string>
+    <string name="settings_title">설정</string>
+    <string name="settings_section_notifications">알림</string>
+    <string name="settings_section_info">정보</string>
+    <string name="settings_persistent_notification">상시 알림</string>
+    <string name="settings_persistent_notification_desc">남은 양을 알림창에 계속 보여 줘요</string>
+    <string name="settings_refresh_interval">새로 고침 간격</string>
+    <string name="settings_refresh_interval_minutes">%1$d분</string>
+    <string name="settings_version">버전</string>
+    <string name="settings_source_code">소스 코드</string>
     <string name="update_check">업데이트 확인</string>
     <string name="update_auto">자동으로 업데이트 확인</string>
     <string name="update_auto_desc">앱을 켤 때 하루 한 번 확인해요</string>
