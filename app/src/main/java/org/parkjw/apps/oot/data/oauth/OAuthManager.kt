@@ -1,5 +1,6 @@
 package org.parkjw.apps.oot.data.oauth
 
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -11,11 +12,18 @@ import kotlinx.serialization.json.*
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.parkjw.apps.oot.BuildConfig
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.ServerSocket
+import java.net.Socket
+import java.net.SocketTimeoutException
+import java.net.URLDecoder
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.UUID
@@ -23,13 +31,23 @@ import java.util.UUID
 class OAuthManager(
     private val context: Context,
     private val client: OkHttpClient,
-    private val json: Json
+    private val json: Json,
+    // Antigravity's Google client is an installed-app client: every token call needs its secret (empty = not configured).
+    private val antigravityClientSecret: String = BuildConfig.ANTIGRAVITY_CLIENT_SECRET
 ) {
     // Session state holding pending PKCE verifiers: key = state, value = (provider, verifier)
     private val pendingVerifications = mutableMapOf<String, Pair<ProviderType, String>>()
     private val managerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var xaiPollingJob: Job? = null
     private var loopbackJob: Job? = null
+
+    // Only the newest Antigravity login attempt can be completed (by the loopback listener or a pasted code).
+    private class LoginSession(val state: String, val verifier: String)
+
+    @Volatile private var antigravitySession: LoginSession? = null
+    @Volatile private var loopbackServer: ServerSocket? = null
+
+    val isAntigravityConfigured: Boolean get() = antigravityClientSecret.isNotBlank()
 
     fun startOAuthFlow(provider: ProviderType) {
         val authEndpoint = provider.oauthAuthEndpoint ?: return
@@ -225,12 +243,14 @@ class OAuthManager(
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
     ) {
-        val state = UUID.randomUUID().toString()
-        val codeVerifier = generateCodeVerifier()
-        val codeChallenge = generateCodeChallenge(codeVerifier)
-        pendingVerifications[state] = Pair(ProviderType.ANTIGRAVITY, codeVerifier)
-
-        startLoopbackListener(4000, state, codeVerifier, onTokenReceived, onError)
+        // Without the client secret Google would answer the code exchange with a raw 400, so stop before the browser opens.
+        if (!isAntigravityConfigured) {
+            onError(ANTIGRAVITY_NOT_CONFIGURED)
+            return
+        }
+        val session = LoginSession(UUID.randomUUID().toString(), generateCodeVerifier())
+        val codeChallenge = generateCodeChallenge(session.verifier)
+        antigravitySession = session
 
         val uri = Uri.parse("https://accounts.google.com/o/oauth2/auth").buildUpon()
             .appendQueryParameter("response_type", "code")
@@ -239,92 +259,139 @@ class OAuthManager(
             .appendQueryParameter("scope", ProviderType.ANTIGRAVITY.defaultScopes.joinToString(" "))
             .appendQueryParameter("code_challenge", codeChallenge)
             .appendQueryParameter("code_challenge_method", "S256")
-            .appendQueryParameter("state", state)
+            .appendQueryParameter("state", session.state)
             .appendQueryParameter("access_type", "offline")
             .appendQueryParameter("prompt", "consent")
             .build()
 
-        openExternalBrowser(uri.toString())
+        startLoopbackListener(session, uri.toString(), onTokenReceived, onError)
     }
 
+    // Closing the socket is what ends a blocking accept(); cancelling the job alone cannot.
+    private fun stopLoopbackListener() {
+        loopbackServer?.close()
+        loopbackJob?.cancel()
+    }
+
+    // Binds the loopback port first, then opens the browser, so a busy port is reported instead of a dead redirect.
+    // Both happen on the caller's thread (binding does no network I/O), so a second tap always finds the first socket closed.
     private fun startLoopbackListener(
-        port: Int,
-        expectedState: String,
-        codeVerifier: String,
+        session: LoginSession,
+        authUrl: String,
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
     ) {
-        loopbackJob?.cancel()
+        stopLoopbackListener()
+        val server = ServerSocket()
+        try {
+            server.reuseAddress = true
+            server.bind(InetSocketAddress(InetAddress.getLoopbackAddress(), ANTIGRAVITY_LOOPBACK_PORT))
+            openExternalBrowser(authUrl)
+        } catch (e: IOException) {
+            server.close()
+            onError("로그인 대기 포트($ANTIGRAVITY_LOOPBACK_PORT)를 열 수 없어요. 잠시 후 다시 시도해 주세요.")
+            return
+        } catch (e: ActivityNotFoundException) {
+            server.close()
+            onError("Google 로그인을 열 브라우저가 없어요.")
+            return
+        }
+        loopbackServer = server
         loopbackJob = managerScope.launch(Dispatchers.IO) {
-            var serverSocket: ServerSocket? = null
             try {
-                serverSocket = ServerSocket(port)
-                serverSocket.soTimeout = 180_000 // 3 minutes timeout
-                val socket = serverSocket.accept()
-                val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
-                val firstLine = reader.readLine().orEmpty()
-
-                val uriString = firstLine.split(" ").getOrNull(1).orEmpty()
-                val fullUri = Uri.parse("http://localhost$uriString")
-                val code = fullUri.getQueryParameter("code")
-
-                val htmlResponse = """HTTP/1.1 200 OK
-Content-Type: text/html; charset=utf-8
-Connection: close
-
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Antigravity 인증 완료</title>
-<style>body{font-family:sans-serif;text-align:center;padding:50px;background:#121212;color:#fff;}h1{color:#8ab4f8;}</style>
-</head>
-<body>
-<h1>Antigravity 연동 완료!</h1>
-<p>Google 인증이 성공했습니다. OOT 앱으로 돌아가주세요.</p>
-</body>
-</html>"""
-                socket.getOutputStream().write(htmlResponse.toByteArray(Charsets.UTF_8))
-                socket.getOutputStream().flush()
-                socket.close()
-
-                if (code.isNullOrBlank()) {
-                    withContext(Dispatchers.Main) { onError("Google 인증 코드를 받지 못했습니다.") }
-                    return@launch
-                }
-
-                val tokenResult = exchangeGoogleCode(code, codeVerifier)
-                tokenResult.onSuccess { res ->
-                    withContext(Dispatchers.Main) { onTokenReceived(res) }
-                }.onFailure { err ->
-                    withContext(Dispatchers.Main) { onError(err.message ?: "Google 토큰 교환 실패") }
-                }
-            } catch (e: Exception) {
-                // Timeout or socket closed
+                val code = awaitAuthorizationCode(server, session.state, onError) ?: return@launch
+                exchangeGoogleCode(code, session.verifier)
+                    .onSuccess { res ->
+                        if (antigravitySession === session) antigravitySession = null
+                        withContext(Dispatchers.Main) { onTokenReceived(res) }
+                    }
+                    .onFailure { err ->
+                        withContext(Dispatchers.Main) { onError(err.message ?: "Google 토큰 교환 실패") }
+                    }
             } finally {
-                try { serverSocket?.close() } catch (ignored: Exception) {}
+                server.close()
+                if (loopbackServer === server) loopbackServer = null
             }
         }
     }
 
-    suspend fun exchangeAntigravityCode(rawInput: String): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
-        val trimmed = rawInput.trim()
-        val code = if (trimmed.contains("code=")) {
-            Uri.parse(trimmed).getQueryParameter("code") ?: trimmed
-        } else {
-            trimmed
+    // Serves loopback requests until the real callback arrives; returns null after reporting a failure,
+    // or silently when a newer login attempt closed this listener.
+    private suspend fun awaitAuthorizationCode(
+        server: ServerSocket,
+        expectedState: String,
+        onError: (String) -> Unit
+    ): String? {
+        val deadline = System.currentTimeMillis() + ANTIGRAVITY_LOGIN_TIMEOUT_MS
+        while (true) {
+            val remainingMs = (deadline - System.currentTimeMillis()).toInt()
+            if (remainingMs <= 0) {
+                withContext(Dispatchers.Main) { onError("로그인 시간이 초과되었어요. 다시 시도해 주세요.") }
+                return null
+            }
+            val socket = try {
+                server.soTimeout = remainingMs
+                server.accept()
+            } catch (e: SocketTimeoutException) {
+                continue
+            } catch (e: IOException) {
+                return null
+            }
+            when (val outcome = socket.use { serveLoopbackRequest(it, expectedState) }) {
+                is LoopbackOutcome.Code -> return outcome.code
+                is LoopbackOutcome.Denied -> {
+                    withContext(Dispatchers.Main) { onError(outcome.message) }
+                    return null
+                }
+                LoopbackOutcome.Unexpected -> Unit
+            }
         }
+    }
 
-        val key = pendingVerifications.keys.lastOrNull { pendingVerifications[it]?.first == ProviderType.ANTIGRAVITY }
-        val entry = key?.let { pendingVerifications.remove(it) }
-        val codeVerifier = entry?.second ?: generateCodeVerifier()
+    private fun serveLoopbackRequest(socket: Socket, expectedState: String): LoopbackOutcome {
+        return try {
+            socket.soTimeout = LOOPBACK_READ_TIMEOUT_MS
+            val requestLine = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.ISO_8859_1)).readLine().orEmpty()
+            val outcome = loopbackOutcome(requestLine, expectedState)
+            socket.getOutputStream().apply {
+                write(loopbackResponse(outcome))
+                flush()
+            }
+            outcome
+        } catch (e: IOException) {
+            LoopbackOutcome.Unexpected
+        }
+    }
 
-        exchangeGoogleCode(code, codeVerifier)
+    suspend fun exchangeAntigravityCode(rawInput: String): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
+        val session = antigravitySession
+            ?: return@withContext Result.failure(Exception("Antigravity 로그인 세션을 찾을 수 없어요. 다시 로그인해 주세요."))
+        val trimmed = rawInput.trim()
+        val pasted = if (trimmed.contains("code=")) Uri.parse(trimmed) else null
+        // An address copied from an older attempt carries another state and can never match this verifier.
+        val pastedState = pasted?.getQueryParameter("state")
+        if (pastedState != null && pastedState != session.state) {
+            return@withContext Result.failure(Exception("이전 로그인 요청의 주소예요. 방금 연 로그인 창의 주소를 붙여넣어 주세요."))
+        }
+        val code = pasted?.getQueryParameter("code") ?: trimmed
+
+        exchangeGoogleCode(code, session.verifier).also { result ->
+            if (result.isSuccess && antigravitySession === session) {
+                antigravitySession = null
+                stopLoopbackListener()
+            }
+        }
     }
 
     private suspend fun exchangeGoogleCode(code: String, codeVerifier: String): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
+        if (!isAntigravityConfigured) {
+            return@withContext Result.failure(Exception(ANTIGRAVITY_NOT_CONFIGURED))
+        }
         try {
             val formBody = FormBody.Builder()
                 .add("grant_type", "authorization_code")
                 .add("client_id", ANTIGRAVITY_CLIENT_ID)
+                .add("client_secret", antigravityClientSecret)
                 .add("code", code)
                 .add("redirect_uri", ANTIGRAVITY_REDIRECT_URI)
                 .add("code_verifier", codeVerifier)
@@ -339,7 +406,8 @@ Connection: close
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    return@withContext Result.failure(Exception("Google 토큰 교환 실패 (${response.code}): $body"))
+                    // Only the error code is surfaced, never the raw body.
+                    return@withContext Result.failure(Exception(googleExchangeErrorText(response.code, body)))
                 }
 
                 val root = json.parseToJsonElement(body).jsonObject
@@ -359,6 +427,15 @@ Connection: close
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private fun googleExchangeErrorText(httpCode: Int, body: String): String {
+        val error = try { json.parseToJsonElement(body).jsonObject["error"]?.jsonPrimitive?.content } catch (e: Exception) { null }
+        return when (error) {
+            "invalid_grant" -> "인증 코드가 만료되었거나 이미 사용되었어요. 다시 로그인해 주세요."
+            "invalid_client" -> "Antigravity 로그인 설정(client secret)이 올바르지 않아요."
+            else -> "Google 토큰 교환 실패 ($httpCode)"
         }
     }
 
@@ -501,6 +578,8 @@ Connection: close
         }
 
         val tokenEndpoint = account.provider.oauthTokenEndpoint ?: return@withContext account
+        // A refresh without the client secret can only fail, so don't send it.
+        if (account.provider == ProviderType.ANTIGRAVITY && !isAntigravityConfigured) return@withContext account
 
         try {
             val request = if (account.provider == ProviderType.CLAUDE) {
@@ -516,6 +595,7 @@ Connection: close
                     .add("grant_type", "refresh_token")
                     .add("client_id", getClientIdForProvider(account.provider))
                     .add("refresh_token", account.refreshToken)
+                    .apply { if (account.provider == ProviderType.ANTIGRAVITY) add("client_secret", antigravityClientSecret) }
                     .build()
 
                 Request.Builder()
@@ -575,7 +655,13 @@ Connection: close
     companion object {
         const val REDIRECT_URI = "oot://oauth"
         const val CLAUDE_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback"
-        const val ANTIGRAVITY_REDIRECT_URI = "http://localhost:4000"
+        const val ANTIGRAVITY_LOOPBACK_PORT = 4000
+
+        // The loopback IP literal (RFC 8252 §8.3) is the address the listener binds; CodexBar signs in to this client the same way.
+        const val ANTIGRAVITY_REDIRECT_URI = "http://127.0.0.1:$ANTIGRAVITY_LOOPBACK_PORT"
+        const val ANTIGRAVITY_NOT_CONFIGURED = "이 빌드에는 Antigravity 로그인 설정이 없어요"
+        private const val ANTIGRAVITY_LOGIN_TIMEOUT_MS = 180_000L
+        private const val LOOPBACK_READ_TIMEOUT_MS = 5_000
 
         // Official Client ID UUIDs
         const val CLAUDE_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
@@ -590,3 +676,53 @@ data class OAuthTokenResult(
     val refreshToken: String?,
     val expiresAt: Long
 )
+
+internal sealed interface LoopbackOutcome {
+    data class Code(val code: String) : LoopbackOutcome
+    data class Denied(val message: String) : LoopbackOutcome
+    data object Unexpected : LoopbackOutcome
+}
+
+// What one loopback request means for the login that expects `expectedState`. Anything that is not that login's
+// callback (favicon, probes, a stale tab with another state) is Unexpected: it gets an error page and the listener keeps waiting.
+internal fun loopbackOutcome(requestLine: String, expectedState: String): LoopbackOutcome {
+    val params = try {
+        requestLine.split(' ').getOrNull(1).orEmpty().substringAfter('?', "")
+            .split('&').filter { it.isNotEmpty() }
+            .associate {
+                URLDecoder.decode(it.substringBefore('='), "UTF-8") to URLDecoder.decode(it.substringAfter('=', ""), "UTF-8")
+            }
+    } catch (e: IllegalArgumentException) {
+        return LoopbackOutcome.Unexpected
+    }
+    if (params["state"] != expectedState) return LoopbackOutcome.Unexpected
+    val code = params["code"]?.takeIf { it.isNotBlank() }
+    val error = params["error"]
+    return when {
+        code != null -> LoopbackOutcome.Code(code)
+        error == "access_denied" -> LoopbackOutcome.Denied("Google 로그인이 취소되었어요.")
+        error != null -> LoopbackOutcome.Denied("Google 로그인에 실패했어요 ($error).")
+        else -> LoopbackOutcome.Unexpected
+    }
+}
+
+// Fixed text only: nothing from the request is echoed into the page.
+private fun loopbackResponse(outcome: LoopbackOutcome): ByteArray {
+    val (status, heading, message) = when (outcome) {
+        is LoopbackOutcome.Code -> Triple("200 OK", "Antigravity 연동 완료!", "Google 인증이 성공했습니다. OOT 앱으로 돌아가주세요.")
+        is LoopbackOutcome.Denied -> Triple("200 OK", "로그인이 완료되지 않았어요", "OOT 앱으로 돌아가 다시 시도해 주세요.")
+        LoopbackOutcome.Unexpected -> Triple("400 Bad Request", "이 요청은 처리할 수 없어요", "OOT 앱에서 로그인을 다시 시작해 주세요.")
+    }
+    val body = """<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Antigravity</title>
+<style>body{font-family:sans-serif;text-align:center;padding:50px;background:#121212;color:#fff;}h1{color:#8ab4f8;}</style>
+</head>
+<body>
+<h1>$heading</h1>
+<p>$message</p>
+</body>
+</html>""".toByteArray(Charsets.UTF_8)
+    val head = "HTTP/1.1 $status\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n"
+    return head.toByteArray(Charsets.US_ASCII) + body
+}

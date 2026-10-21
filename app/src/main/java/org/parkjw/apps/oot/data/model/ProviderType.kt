@@ -80,7 +80,6 @@ enum class ProviderType(
             "profile",
             "https://www.googleapis.com/auth/cloud-platform",
             "https://www.googleapis.com/auth/userinfo.email"
-        ),
-        isSelectable = false
+        )
     )
 }

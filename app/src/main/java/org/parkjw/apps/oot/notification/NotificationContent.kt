@@ -7,6 +7,7 @@ import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.level
 import org.parkjw.apps.oot.data.model.sortedByRemaining
+import org.parkjw.apps.oot.data.remote.ANTIGRAVITY_GOOGLE_WINDOW_ID
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
@@ -73,13 +74,22 @@ object NotificationContent {
         return "${totalMinutes}분 후"
     }
 
+    // Labels stay short here: the "Google 모델" window reads "Google".
     private fun windowLabel(window: UsageWindow): String =
-        if (window.label == "primary" || window.label.isBlank()) "" else "${window.label} "
+        if (window.label == "primary" || window.label.isBlank()) "" else "${window.label.removeSuffix(" 모델")} "
+
+    // Antigravity shows only its Google-model window, whatever the other window holds.
+    private fun notificationWindow(usage: VendorUsage): UsageWindow? =
+        if (usage.providerType == ProviderType.ANTIGRAVITY) {
+            usage.windows.firstOrNull { it.id == ANTIGRAVITY_GOOGLE_WINDOW_ID } ?: usage.representative
+        } else {
+            usage.representative
+        }
 
     // Errored vendors first ("확인 필요"), then lowest remaining ascending.
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int): List<CollapsedItem> =
         usages.sortedByRemaining().take(maxItems.coerceAtLeast(0)).map { usage ->
-            when (val remaining = usage.representative?.remaining) {
+            when (val remaining = notificationWindow(usage)?.remaining) {
                 null ->
                     CollapsedItem(mark(usage.providerType), "${shortName(usage.providerType)} 확인 필요", null, true, Level.OK)
                 is Remaining.Balance ->
@@ -103,7 +113,7 @@ object NotificationContent {
             if (usage.error != null) {
                 return@map ExpandedItem(itemMark, name, "확인 필요", null, true, Level.OK)
             }
-            val representative = usage.representative
+            val representative = notificationWindow(usage)
                 ?: return@map ExpandedItem(itemMark, name, "확인 필요", null, true, Level.OK)
             when (val remaining = representative.remaining) {
                 is Remaining.Balance ->
@@ -131,7 +141,7 @@ object NotificationContent {
     // Text-only fallback (option C): "Claude 62% · GLM 98% · OpenRouter $12.40"
     fun textFallback(usages: List<VendorUsage>): String =
         usages.sortedByRemaining().joinToString(" · ") { usage ->
-            val label = when (val remaining = usage.representative?.remaining) {
+            val label = when (val remaining = notificationWindow(usage)?.remaining) {
                 is Remaining.Balance -> formatBalance(remaining.amountLeft)
                 is Remaining.Percent -> formatPercent(remaining)
                 null -> "확인 필요"
