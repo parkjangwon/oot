@@ -118,6 +118,18 @@ class DashboardScreenshotTest {
                 ),
             ),
         ),
+        VendorUsage(
+            accountId = "deepseek-1",
+            providerType = ProviderType.DEEPSEEK,
+            displayName = "DeepSeek",
+            windows = listOf(
+                UsageWindow(
+                    id = "credit",
+                    label = "credit",
+                    remaining = Remaining.Balance(110.00, "CNY"),
+                ),
+            ),
+        ),
     )
 
     @Test
@@ -133,6 +145,7 @@ class DashboardScreenshotTest {
         }
         composeRule.onNodeWithText("Claude").assertExists()
         composeRule.onNodeWithText("$12.40").assertExists()
+        composeRule.onNodeWithText("프로바이더 추가").assertExists()
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
             File(roborazziSystemPropertyOutputDirectory(), "dashboard-light.png"),
         )
@@ -151,8 +164,45 @@ class DashboardScreenshotTest {
         }
         composeRule.onNodeWithText("Claude").assertExists()
         composeRule.onNodeWithText("$12.40").assertExists()
+        composeRule.onNodeWithText("프로바이더 추가").assertExists()
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
             File(roborazziSystemPropertyOutputDirectory(), "dashboard-dark.png"),
+        )
+    }
+
+    @Test
+    fun dashboardDraggingLight() {
+        composeRule.setContent {
+            OotTheme(darkTheme = false) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages,
+                    now = fixedNow,
+                    previewDraggingAccountId = "glm-1",
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("GLM").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-dragging-light.png"),
+        )
+    }
+
+    @Test
+    fun dashboardDraggingDark() {
+        composeRule.setContent {
+            OotTheme(darkTheme = true) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages,
+                    now = fixedNow,
+                    previewDraggingAccountId = "glm-1",
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("GLM").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-dragging-dark.png"),
         )
     }
 }

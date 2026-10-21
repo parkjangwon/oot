@@ -16,7 +16,6 @@ import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.toVendorUsage
 import org.parkjw.apps.oot.data.oauth.OAuthManager
-import java.util.concurrent.TimeUnit
 
 class TokenSyncRepository(
     private val preferences: AccountPreferences,
@@ -30,6 +29,9 @@ class TokenSyncRepository(
     private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.saveAccount(it) }
     private val openAiApi = OpenAiApi(client, json, oauthManager) { preferences.saveAccount(it) }
     private val antigravityApi = AntigravityApi(client, json)
+    private val deepSeekApi = DeepSeekApi(client, json)
+    private val ollamaCloudApi = OllamaCloudApi(client, json)
+    private val openCodeGoApi = OpenCodeGoApi(client, json)
 
     private val _statuses = MutableStateFlow<List<TokenStatus>>(emptyList())
     val statuses: StateFlow<List<TokenStatus>> = _statuses.asStateFlow()
@@ -39,6 +41,18 @@ class TokenSyncRepository(
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    /** Reorder cached usages to match user drag order (no network). */
+    fun applyAccountOrder(accountIds: List<String>) {
+        val usageById = _vendorUsages.value.associateBy { it.accountId }
+        val statusById = _statuses.value.associateBy { it.accountId }
+        val orderedIds = AccountPreferences.mergeAccountOrder(
+            accountIds,
+            _vendorUsages.value.map { it.accountId },
+        )
+        _vendorUsages.value = orderedIds.mapNotNull { usageById[it] }
+        _statuses.value = orderedIds.mapNotNull { statusById[it] }
+    }
 
     suspend fun refreshAll(): List<TokenStatus> = coroutineScope {
         _isRefreshing.value = true
@@ -60,10 +74,13 @@ class TokenSyncRepository(
         }
 
         val results = deferreds.awaitAll()
-        _statuses.value = results
-        _vendorUsages.value = results.map { it.toVendorUsage() }
+        // Preserve preferences.accounts order (user drag order).
+        val byId = results.associateBy { it.accountId }
+        val ordered = activeAccounts.mapNotNull { byId[it.id] }
+        _statuses.value = ordered
+        _vendorUsages.value = ordered.map { it.toVendorUsage() }
         _isRefreshing.value = false
-        results
+        ordered
     }
 
     private suspend fun fetchAccountStatus(account: ProviderAccount): TokenStatus {
@@ -74,6 +91,9 @@ class TokenSyncRepository(
             ProviderType.CLAUDE -> claudeApi.fetchStatus(account)
             ProviderType.OPENAI -> openAiApi.fetchStatus(account)
             ProviderType.ANTIGRAVITY -> antigravityApi.fetchStatus(account)
+            ProviderType.DEEPSEEK -> deepSeekApi.fetchStatus(account)
+            ProviderType.OLLAMA_CLOUD -> ollamaCloudApi.fetchStatus(account)
+            ProviderType.OPENCODE_GO -> openCodeGoApi.fetchStatus(account)
         }
     }
 }

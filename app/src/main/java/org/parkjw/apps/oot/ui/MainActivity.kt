@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
 
     private val app by lazy { applicationContext as OotApp }
     private val updateViewModel: UpdateViewModel by viewModels()
+    internal var exitBackPressPolicy = ExitBackPressPolicy()
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -107,6 +109,18 @@ class MainActivity : ComponentActivity() {
                         onOpenSourceCode = { context.openBrowsableUrl(SOURCE_CODE_URL) },
                     )
                 } else {
+                    BackHandler {
+                        if (exitBackPressPolicy.onBackPressed()) {
+                            finish()
+                        } else {
+                            Toast.makeText(
+                                this@MainActivity,
+                                ExitBackPressPolicy.EXIT_PROMPT_MESSAGE,
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    }
+
                     val selectableAccounts = accounts.filter { it.provider.isSelectable }
                     val legacyAccounts = accounts.filter { !it.provider.isSelectable }
                     val displayUsages = selectableAccounts.map { account ->
@@ -209,7 +223,7 @@ class MainActivity : ComponentActivity() {
                             lifecycleScope.launch {
                                 app.repository.refreshAll()
                                 app.notificationManager.updateNotification(app.repository.vendorUsages.value)
-                                Toast.makeText(this@MainActivity, "${newAccount.name} 계정이 등록되었습니다.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@MainActivity, "${newAccount.name} 프로바이더가 등록되었습니다.", Toast.LENGTH_SHORT).show()
                             }
                         }
                     )

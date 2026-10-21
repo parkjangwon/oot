@@ -4,6 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -32,8 +33,11 @@ class AccountPreferences(context: Context) {
     private fun loadSettings() {
         val accountsJson = secureStorage.getString(KEY_ACCOUNTS, "[]") ?: "[]"
         val decoded = decodeAccounts(json, accountsJson)
-        _accounts.value = decoded.accounts
-        if (decoded.droppedCount > 0) persistAccounts(decoded.accounts)
+        val savedOrder = decodeAccountOrder(secureStorage.getString(KEY_ACCOUNT_ORDER, "[]") ?: "[]")
+        val ordered = applyAccountOrder(decoded.accounts, savedOrder)
+        _accounts.value = ordered
+        persistOrder(ordered.map { it.id })
+        if (decoded.droppedCount > 0) persistAccounts(ordered)
 
         _isServiceEnabled.value = secureStorage.getString(KEY_SERVICE_ENABLED, "true")?.toBooleanStrictOrNull() ?: true
         _refreshIntervalMinutes.value = secureStorage.getString(KEY_REFRESH_INTERVAL, "15")?.toIntOrNull() ?: 15
@@ -50,12 +54,21 @@ class AccountPreferences(context: Context) {
         }
         _accounts.value = current
         persistAccounts(current)
+        persistOrder(current.map { it.id })
     }
 
     fun deleteAccount(accountId: String) {
         val current = _accounts.value.filter { it.id != accountId }
         _accounts.value = current
         persistAccounts(current)
+        persistOrder(current.map { it.id })
+    }
+
+    fun setAccountOrder(accountIds: List<String>) {
+        val ordered = applyAccountOrder(_accounts.value, accountIds)
+        _accounts.value = ordered
+        persistAccounts(ordered)
+        persistOrder(ordered.map { it.id })
     }
 
     fun toggleAccount(accountId: String, isEnabled: Boolean) {
@@ -90,6 +103,20 @@ class AccountPreferences(context: Context) {
         }
     }
 
+    private fun persistOrder(accountIds: List<String>) {
+        try {
+            secureStorage.putString(KEY_ACCOUNT_ORDER, json.encodeToString(accountIds))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun decodeAccountOrder(raw: String): List<String> = try {
+        json.decodeFromString<List<String>>(raw)
+    } catch (e: Exception) {
+        emptyList()
+    }
+
     data class DecodedAccounts(val accounts: List<ProviderAccount>, val droppedCount: Int)
 
     companion object {
@@ -111,7 +138,24 @@ class AccountPreferences(context: Context) {
             return DecodedAccounts(accounts, array.size - accounts.size)
         }
 
+        /** Saved ids first (skipping deleted); accounts missing from saved order append in registration order. */
+        fun mergeAccountOrder(savedOrder: List<String>, registrationIds: List<String>): List<String> {
+            val known = registrationIds.toSet()
+            val ordered = savedOrder.filter { it in known }
+            val orderedSet = ordered.toSet()
+            return ordered + registrationIds.filter { it !in orderedSet }
+        }
+
+        fun applyAccountOrder(
+            accounts: List<ProviderAccount>,
+            savedOrder: List<String>,
+        ): List<ProviderAccount> {
+            val byId = accounts.associateBy { it.id }
+            return mergeAccountOrder(savedOrder, accounts.map { it.id }).mapNotNull { byId[it] }
+        }
+
         private const val KEY_ACCOUNTS = "oot_accounts"
+        private const val KEY_ACCOUNT_ORDER = "oot_account_order"
         private const val KEY_SERVICE_ENABLED = "oot_service_enabled"
         private const val KEY_REFRESH_INTERVAL = "oot_refresh_interval"
         private const val KEY_AUTO_UPDATE_CHECK = "oot_auto_update_check"

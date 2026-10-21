@@ -105,7 +105,7 @@ fun AddAccountDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         title = {
             Text(
-                text = "AI 계정 연동",
+                text = "프로바이더 연결",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -126,7 +126,7 @@ fun AddAccountDialog(
                         value = selectedProvider.displayName,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("제공자 (Provider)") },
+                        label = { Text("프로바이더") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isProviderDropdownExpanded) },
                         modifier = Modifier
                             .menuAnchor()
@@ -166,7 +166,7 @@ fun AddAccountDialog(
                 OutlinedTextField(
                     value = accountName,
                     onValueChange = { accountName = it },
-                    label = { Text("계정 별칭") },
+                    label = { Text("표시 이름") },
                     placeholder = { Text(selectedProvider.displayName) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -189,6 +189,9 @@ fun AddAccountDialog(
                             ProviderType.OPENAI -> "OpenAI Platform 키 발급 열기"
                             ProviderType.XAI -> "xAI Console 키 발급 열기"
                             ProviderType.ANTIGRAVITY -> "Google Antigravity 사이트 열기"
+                            ProviderType.DEEPSEEK -> "DeepSeek 플랫폼 키 발급 열기"
+                            ProviderType.OLLAMA_CLOUD -> "Ollama 키 페이지 열기"
+                            ProviderType.OPENCODE_GO -> "OpenCode 키 페이지 열기"
                         }
                     )
                 }
@@ -637,6 +640,9 @@ fun AddAccountDialog(
                                     ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
                                     ProviderType.XAI -> "xai-... API Key"
                                     ProviderType.ANTIGRAVITY -> "AIza... 또는 Bearer 토큰"
+                                    ProviderType.DEEPSEEK -> "sk-..."
+                                    ProviderType.OLLAMA_CLOUD -> "Ollama Cloud API Key"
+                                    ProviderType.OPENCODE_GO -> "OpenCode Go API Key"
                                 }
                             )
                         },
@@ -671,6 +677,9 @@ fun AddAccountDialog(
                             ProviderType.OPENAI -> "💡 ChatGPT 로그인(5h/주간) 또는 API 키(sk-...)로 레이트 리밋을 조회합니다."
                             ProviderType.XAI -> "💡 xAI Console API 키 또는 Grok OAuth 토큰으로 주간 한도를 모니터링합니다."
                             ProviderType.ANTIGRAVITY -> "💡 Google Antigravity OAuth 토큰 또는 Gemini API Key를 등록하여 에이전트 쿼터를 조회합니다."
+                            ProviderType.DEEPSEEK -> "💡 DeepSeek API 키를 등록하면 남은 API 크레딧 잔액을 확인합니다."
+                            ProviderType.OLLAMA_CLOUD -> "💡 Ollama Cloud API 키를 등록하면 세션/주간 사용량과 구매 크레딧을 확인합니다."
+                            ProviderType.OPENCODE_GO -> "💡 OpenCode Go API 키를 등록하면 5시간/주간/월간 사용량을 확인합니다."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

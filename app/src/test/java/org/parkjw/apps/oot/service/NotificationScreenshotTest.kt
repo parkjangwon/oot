@@ -68,32 +68,33 @@ class NotificationScreenshotTest {
         )
     }
 
+    // Android qualifier order: night mode before dpi (brief's xxhdpi-notnight is reversed).
     @Test
-    @Config(qualifiers = "w360dp-h800dp-notnight")
+    @Config(qualifiers = "w360dp-h800dp-notnight-xxhdpi")
     fun notifCollapsed360Light() {
         captureCollapsed(360, "notif-collapsed-360-light.png")
     }
 
     @Test
-    @Config(qualifiers = "w412dp-h800dp-notnight")
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
     fun notifCollapsed412Light() {
         captureCollapsed(412, "notif-collapsed-412-light.png")
     }
 
     @Test
-    @Config(qualifiers = "w412dp-h800dp-notnight")
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
     fun notifExpanded412Light() {
         captureExpanded(412, "notif-expanded-412-light.png")
     }
 
     @Test
-    @Config(qualifiers = "w412dp-h800dp-night")
+    @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
     fun notifCollapsed412Dark() {
         captureCollapsed(412, "notif-collapsed-412-dark.png")
     }
 
     @Test
-    @Config(qualifiers = "w412dp-h800dp-night")
+    @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
     fun notifExpanded412Dark() {
         captureExpanded(412, "notif-expanded-412-dark.png")
     }
