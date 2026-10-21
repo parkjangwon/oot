@@ -359,6 +359,7 @@ fun ProviderBadge(provider: ProviderType) {
         ProviderType.XAI -> Color(0xFF1D9BF0) to Color.White
         ProviderType.CURSOR -> Color(0xFF000000) to Color.White
         ProviderType.ZAI -> Color(0xFFF97316) to Color.White
+        ProviderType.ANTIGRAVITY -> Color(0xFF4285F4) to Color.White
     }
 
     Box(
@@ -376,6 +377,7 @@ fun ProviderBadge(provider: ProviderType) {
                 ProviderType.XAI -> "𝕏"
                 ProviderType.CURSOR -> "Cu"
                 ProviderType.ZAI -> "Z"
+                ProviderType.ANTIGRAVITY -> "AG"
             },
             color = textColor,
             fontWeight = FontWeight.Bold,

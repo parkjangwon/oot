@@ -25,9 +25,10 @@ class TokenSyncRepository(
     private val openRouterApi = OpenRouterApi(client, json)
     private val xaiApi = XaiApi(client, json)
     private val zaiApi = ZaiApi(client, json)
-    private val claudeApi = ClaudeApi(client)
+    private val claudeApi = ClaudeApi(client, json)
     private val openAiApi = OpenAiApi(client, json)
     private val cursorApi = CursorApi(client, json)
+    private val antigravityApi = AntigravityApi(client, json)
 
     private val _statuses = MutableStateFlow<List<TokenStatus>>(emptyList())
     val statuses: StateFlow<List<TokenStatus>> = _statuses.asStateFlow()
@@ -68,6 +69,7 @@ class TokenSyncRepository(
             ProviderType.CLAUDE -> claudeApi.fetchStatus(account)
             ProviderType.OPENAI -> openAiApi.fetchStatus(account)
             ProviderType.CURSOR -> cursorApi.fetchStatus(account)
+            ProviderType.ANTIGRAVITY -> antigravityApi.fetchStatus(account)
         }
     }
 }

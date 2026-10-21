@@ -13,6 +13,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.ServerSocket
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.UUID
@@ -26,6 +29,7 @@ class OAuthManager(
     private val pendingVerifications = mutableMapOf<String, Pair<ProviderType, String>>()
     private val managerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var xaiPollingJob: Job? = null
+    private var loopbackJob: Job? = null
 
     fun startOAuthFlow(provider: ProviderType) {
         val authEndpoint = provider.oauthAuthEndpoint ?: return
@@ -42,11 +46,19 @@ class OAuthManager(
             .appendQueryParameter("code_challenge_method", "S256")
             .appendQueryParameter("state", state)
 
-        if (provider == ProviderType.CLAUDE) {
-            uriBuilder.appendQueryParameter("code", "true")
-            uriBuilder.appendQueryParameter("redirect_uri", CLAUDE_REDIRECT_URI)
-        } else {
-            uriBuilder.appendQueryParameter("redirect_uri", REDIRECT_URI)
+        when (provider) {
+            ProviderType.CLAUDE -> {
+                uriBuilder.appendQueryParameter("code", "true")
+                uriBuilder.appendQueryParameter("redirect_uri", CLAUDE_REDIRECT_URI)
+            }
+            ProviderType.ANTIGRAVITY -> {
+                uriBuilder.appendQueryParameter("redirect_uri", ANTIGRAVITY_REDIRECT_URI)
+                uriBuilder.appendQueryParameter("access_type", "offline")
+                uriBuilder.appendQueryParameter("prompt", "consent")
+            }
+            else -> {
+                uriBuilder.appendQueryParameter("redirect_uri", REDIRECT_URI)
+            }
         }
 
         if (provider.defaultScopes.isNotEmpty()) {
@@ -194,7 +206,7 @@ class OAuthManager(
                                 return
                             }
                             else -> {
-                                // Continue waiting if transient
+                                // Continue waiting
                             }
                         }
                     }
@@ -204,6 +216,150 @@ class OAuthManager(
             }
         }
         onError("xAI 인증 대기 시간이 초과되었습니다.")
+    }
+
+    /**
+     * Google Antigravity OAuth 2.0 PKCE with local loopback listener
+     */
+    fun startAntigravityOAuthFlow(
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val state = UUID.randomUUID().toString()
+        val codeVerifier = generateCodeVerifier()
+        val codeChallenge = generateCodeChallenge(codeVerifier)
+        pendingVerifications[state] = Pair(ProviderType.ANTIGRAVITY, codeVerifier)
+
+        startLoopbackListener(4000, state, codeVerifier, onTokenReceived, onError)
+
+        val uri = Uri.parse("https://accounts.google.com/o/oauth2/auth").buildUpon()
+            .appendQueryParameter("response_type", "code")
+            .appendQueryParameter("client_id", ANTIGRAVITY_CLIENT_ID)
+            .appendQueryParameter("redirect_uri", ANTIGRAVITY_REDIRECT_URI)
+            .appendQueryParameter("scope", ProviderType.ANTIGRAVITY.defaultScopes.joinToString(" "))
+            .appendQueryParameter("code_challenge", codeChallenge)
+            .appendQueryParameter("code_challenge_method", "S256")
+            .appendQueryParameter("state", state)
+            .appendQueryParameter("access_type", "offline")
+            .appendQueryParameter("prompt", "consent")
+            .build()
+
+        openExternalBrowser(uri.toString())
+    }
+
+    private fun startLoopbackListener(
+        port: Int,
+        expectedState: String,
+        codeVerifier: String,
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        loopbackJob?.cancel()
+        loopbackJob = managerScope.launch(Dispatchers.IO) {
+            var serverSocket: ServerSocket? = null
+            try {
+                serverSocket = ServerSocket(port)
+                serverSocket.soTimeout = 180_000 // 3 minutes timeout
+                val socket = serverSocket.accept()
+                val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+                val firstLine = reader.readLine().orEmpty()
+
+                val uriString = firstLine.split(" ").getOrNull(1).orEmpty()
+                val fullUri = Uri.parse("http://localhost$uriString")
+                val code = fullUri.getQueryParameter("code")
+
+                val htmlResponse = """HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Connection: close
+
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Antigravity 인증 완료</title>
+<style>body{font-family:sans-serif;text-align:center;padding:50px;background:#121212;color:#fff;}h1{color:#8ab4f8;}</style>
+</head>
+<body>
+<h1>Antigravity 연동 완료!</h1>
+<p>Google 인증이 성공했습니다. OOT 앱으로 돌아가주세요.</p>
+</body>
+</html>"""
+                socket.getOutputStream().write(htmlResponse.toByteArray(Charsets.UTF_8))
+                socket.getOutputStream().flush()
+                socket.close()
+
+                if (code.isNullOrBlank()) {
+                    withContext(Dispatchers.Main) { onError("Google 인증 코드를 받지 못했습니다.") }
+                    return@launch
+                }
+
+                val tokenResult = exchangeGoogleCode(code, codeVerifier)
+                tokenResult.onSuccess { res ->
+                    withContext(Dispatchers.Main) { onTokenReceived(res) }
+                }.onFailure { err ->
+                    withContext(Dispatchers.Main) { onError(err.message ?: "Google 토큰 교환 실패") }
+                }
+            } catch (e: Exception) {
+                // Timeout or socket closed
+            } finally {
+                try { serverSocket?.close() } catch (ignored: Exception) {}
+            }
+        }
+    }
+
+    suspend fun exchangeAntigravityCode(rawInput: String): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
+        val trimmed = rawInput.trim()
+        val code = if (trimmed.contains("code=")) {
+            Uri.parse(trimmed).getQueryParameter("code") ?: trimmed
+        } else {
+            trimmed
+        }
+
+        val key = pendingVerifications.keys.lastOrNull { pendingVerifications[it]?.first == ProviderType.ANTIGRAVITY }
+        val entry = key?.let { pendingVerifications.remove(it) }
+        val codeVerifier = entry?.second ?: generateCodeVerifier()
+
+        exchangeGoogleCode(code, codeVerifier)
+    }
+
+    private suspend fun exchangeGoogleCode(code: String, codeVerifier: String): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
+        try {
+            val formBody = FormBody.Builder()
+                .add("grant_type", "authorization_code")
+                .add("client_id", ANTIGRAVITY_CLIENT_ID)
+                .add("code", code)
+                .add("redirect_uri", ANTIGRAVITY_REDIRECT_URI)
+                .add("code_verifier", codeVerifier)
+                .build()
+
+            val request = Request.Builder()
+                .url("https://oauth2.googleapis.com/token")
+                .addHeader("Accept", "application/json")
+                .post(formBody)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("Google 토큰 교환 실패 (${response.code}): $body"))
+                }
+
+                val root = json.parseToJsonElement(body).jsonObject
+                val accessToken = root["access_token"]?.jsonPrimitive?.content
+                    ?: return@withContext Result.failure(Exception("응답에 access_token이 없습니다."))
+                val refreshToken = root["refresh_token"]?.jsonPrimitive?.content
+                val expiresIn = root["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L
+
+                Result.success(
+                    OAuthTokenResult(
+                        provider = ProviderType.ANTIGRAVITY,
+                        accessToken = accessToken,
+                        refreshToken = refreshToken,
+                        expiresAt = System.currentTimeMillis() + (expiresIn * 1000L)
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun handleOAuthCallback(uri: Uri): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
@@ -228,10 +384,13 @@ class OAuthManager(
             ?: return@withContext Result.failure(Exception("토큰 엔드포인트가 정의되지 않았습니다."))
 
         try {
-            val redirectUri = if (provider == ProviderType.CLAUDE) CLAUDE_REDIRECT_URI else REDIRECT_URI
+            val redirectUri = when (provider) {
+                ProviderType.CLAUDE -> CLAUDE_REDIRECT_URI
+                ProviderType.ANTIGRAVITY -> ANTIGRAVITY_REDIRECT_URI
+                else -> REDIRECT_URI
+            }
 
             val request = if (provider == ProviderType.CLAUDE) {
-                // Anthropic requires JSON payload
                 val jsonPayload = """{"grant_type":"authorization_code","client_id":"$CLAUDE_CLIENT_ID","code":"$code","state":"$state","redirect_uri":"$redirectUri","code_verifier":"$codeVerifier"}"""
                 Request.Builder()
                     .url(tokenEndpoint)
@@ -390,6 +549,7 @@ class OAuthManager(
         return when (provider) {
             ProviderType.CLAUDE -> CLAUDE_CLIENT_ID
             ProviderType.XAI -> XAI_CLIENT_ID
+            ProviderType.ANTIGRAVITY -> ANTIGRAVITY_CLIENT_ID
             ProviderType.OPENAI -> "oot-openai-client"
             ProviderType.CURSOR -> "oot-cursor-client"
             else -> "oot-client"
@@ -416,10 +576,12 @@ class OAuthManager(
     companion object {
         const val REDIRECT_URI = "oot://oauth"
         const val CLAUDE_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback"
+        const val ANTIGRAVITY_REDIRECT_URI = "http://localhost:4000"
 
         // Official Client ID UUIDs
         const val CLAUDE_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
         const val XAI_CLIENT_ID = "b1a00492-073a-47ea-816f-4c329264a828"
+        const val ANTIGRAVITY_CLIENT_ID = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
     }
 }
 

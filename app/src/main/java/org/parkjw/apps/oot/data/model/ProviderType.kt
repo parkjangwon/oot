@@ -73,5 +73,22 @@ enum class ProviderType(
         defaultIconName = "zai",
         baseUrl = "https://api.z.ai",
         dashboardUrl = "https://z.ai"
+    ),
+    ANTIGRAVITY(
+        displayName = "Google Antigravity",
+        description = "Google DeepMind Antigravity / Gemini 에이전트 쿼터",
+        primaryAuthType = AuthType.OAUTH,
+        defaultIconName = "gemini",
+        baseUrl = "https://cloudcode.googleapis.com",
+        dashboardUrl = "https://antigravity.google",
+        oauthAuthEndpoint = "https://accounts.google.com/o/oauth2/auth",
+        oauthTokenEndpoint = "https://oauth2.googleapis.com/token",
+        defaultScopes = listOf(
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/userinfo.email"
+        )
     )
 }
