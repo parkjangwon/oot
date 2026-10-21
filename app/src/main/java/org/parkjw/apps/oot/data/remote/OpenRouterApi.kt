@@ -114,39 +114,38 @@ class OpenRouterApi(
             val keyRemaining = if (hasKeyLimit) (keyLimit!! - keyUsage).coerceAtLeast(0.0) else null
             val keyPercent = if (hasKeyLimit) ((keyUsage / keyLimit!!) * 100).toFloat().coerceIn(0f, 100f) else null
 
-            // Format main display text: Show BOTH total remaining and key limit
+            // Format main display text: Show current remaining credits and key limit/usage
             val remainingDisplay = if (hasKeyLimit) {
-                String.format(Locale.US, "총 잔여 $%.2f (키 잔여 $%.2f)", totalRemaining, keyRemaining)
+                String.format(Locale.US, "잔여 크레딧: $%.2f (키 남음: $%.2f)", totalRemaining, keyRemaining)
             } else {
-                String.format(Locale.US, "총 잔여 크레딧 $%.2f", totalRemaining)
+                String.format(Locale.US, "잔여 크레딧: $%.2f", totalRemaining)
             }
 
             val limitDisplay = if (hasKeyLimit) {
                 String.format(
                     Locale.US,
-                    "키 한도: $%.2f (현재 $%.2f 사용) | 총 크레딧: $%.2f",
+                    "키 한도: $%.2f (사용: $%.2f, %.1f%%)",
                     keyLimit,
                     keyUsage,
-                    totalCredits
+                    keyPercent ?: 0f
                 )
             } else {
                 String.format(
                     Locale.US,
-                    "키 한도: 무제한 (현재 $%.2f 사용) | 총 크레딧: $%.2f",
-                    keyUsage,
-                    totalCredits
+                    "키 한도: 무제한 (현재까지 $%.2f 사용)",
+                    keyUsage
                 )
             }
 
             // Summary ticker for status bar collapsed view
             val tickerSummary = if (hasKeyLimit) {
-                String.format(Locale.US, "총 $%.2f / 한도 $%.2f", totalRemaining, keyLimit)
+                String.format(Locale.US, "OR: $%.2f (키 $%.2f)", totalRemaining, keyRemaining)
             } else {
-                String.format(Locale.US, "$%.2f 잔여", totalRemaining)
+                String.format(Locale.US, "OR: $%.2f", totalRemaining)
             }
 
-            val isWarn = (totalRemaining < 2.0 && totalCredits > 0) || (keyPercent != null && keyPercent > 80f)
-            val isCrit = (totalRemaining < 0.5 && totalCredits > 0) || (keyPercent != null && keyPercent > 95f)
+            val isWarn = (totalRemaining < 2.0 && totalRemaining > 0) || (keyPercent != null && keyPercent > 80f)
+            val isCrit = (totalRemaining < 0.5 && totalRemaining > 0) || (keyPercent != null && keyPercent > 95f)
 
             TokenStatus(
                 accountId = account.id,
