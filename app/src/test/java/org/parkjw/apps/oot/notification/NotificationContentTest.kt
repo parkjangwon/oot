@@ -25,7 +25,7 @@ class NotificationContentTest {
         accountId = "id",
         providerType = provider,
         displayName = "acc",
-        windows = listOf(UsageWindow("w", "5시간", Remaining.Percent(percent), resetsAt)) + otherWindows
+        windows = listOf(UsageWindow("five_hour", "5시간", Remaining.Percent(percent), resetsAt)) + otherWindows
     )
 
     private fun balance(amount: Double, provider: ProviderType = ProviderType.OPENROUTER) =
@@ -122,14 +122,57 @@ class NotificationContentTest {
     }
 
     @Test
-    fun `expanded line uses the window with less remaining and its reset`() {
+    fun `expanded line uses the 5-hour window even when weekly has less remaining`() {
+        val weekly = UsageWindow("seven_day", "주간", Remaining.Percent(14.0), now.plusSeconds(3 * 24 * 3600))
+        val usage = vendor(62.0, ProviderType.CLAUDE, now.plusSeconds(100 * 60), weekly)
+        val item = NotificationContent.expandedItems(listOf(usage), now = now).single()
+        assertEquals("5시간 62% 남음 · 1시간 40분 후 리셋", item.text)
+        assertEquals(62, item.percent)
+    }
+
+    @Test
+    fun `collapsed item uses the 5-hour window even when weekly has less remaining`() {
+        val weekly = UsageWindow("seven_day", "주간", Remaining.Percent(14.0), null)
+        val item = NotificationContent.collapsedItems(listOf(vendor(62.0, ProviderType.CLAUDE, null, weekly)), maxItems = 3).single()
+        assertEquals("62% 남음", item.label)
+        assertEquals(62, item.percent)
+    }
+
+    @Test
+    fun `without a 5-hour window the least remaining window is used with its reset`() {
         val weeklyResetsAt = now.plusSeconds(3 * 24 * 3600)
-        val fiveHour = UsageWindow("w1", "5시간", Remaining.Percent(62.0), now.plusSeconds(100 * 60))
-        val weekly = UsageWindow("w2", "주간", Remaining.Percent(14.0), weeklyResetsAt)
-        val usage = VendorUsage("id", ProviderType.CLAUDE, "acc", listOf(fiveHour, weekly))
+        val weekly = UsageWindow("seven_day", "주간", Remaining.Percent(14.0), weeklyResetsAt)
+        val monthly = UsageWindow("monthly", "월간", Remaining.Percent(50.0), now.plusSeconds(20 * 24 * 3600))
+        val usage = VendorUsage("id", ProviderType.OPENAI, "acc", listOf(monthly, weekly))
         val item = NotificationContent.expandedItems(listOf(usage), now = now).single()
         assertEquals("주간 14% 남음 · 3일 후 리셋", item.text)
         assertEquals(14, item.percent)
+    }
+
+    @Test
+    fun `expanded line shows the reset for GLM and xAI too`() {
+        val glm = VendorUsage(
+            "id", ProviderType.ZAI, "acc",
+            listOf(
+                UsageWindow("five_hour", "5시간", Remaining.Percent(98.0), now.plusSeconds((3 * 60 + 27) * 60)),
+                UsageWindow("seven_day", "주간", Remaining.Percent(71.0), now.plusSeconds(4 * 24 * 3600))
+            )
+        )
+        val xai = VendorUsage(
+            "id", ProviderType.XAI, "acc",
+            listOf(UsageWindow("weekly", "주간", Remaining.Percent(14.0), now.plusSeconds(26 * 3600)))
+        )
+        val items = NotificationContent.expandedItems(listOf(glm, xai), now = now)
+        assertEquals("GLM", items[0].name)
+        assertEquals("5시간 98% 남음 · 3시간 27분 후 리셋", items[0].text)
+        assertEquals("xAI", items[1].name)
+        assertEquals("주간 14% 남음 · 1일 후 리셋", items[1].text)
+    }
+
+    @Test
+    fun `expanded line has no reset suffix when the representative has no reset`() {
+        val usage = vendor(62.0, ProviderType.ZAI)
+        assertEquals("5시간 62% 남음", NotificationContent.expandedItems(listOf(usage), now = now).single().text)
     }
 
     @Test

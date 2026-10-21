@@ -41,6 +41,15 @@ class VendorUsageTest {
     }
 
     @Test
+    fun `representative is the 5-hour window even when another has less remaining`() {
+        val v = vendor(
+            UsageWindow("seven_day", "주간", Remaining.Percent(10.0)),
+            UsageWindow("five_hour", "5시간", Remaining.Percent(80.0))
+        )
+        assertEquals("five_hour", v.representative?.id)
+    }
+
+    @Test
     fun `balance-only vendor picks first balance window`() {
         val w1 = UsageWindow("b1", "credit", Remaining.Balance(12.4))
         val w2 = UsageWindow("b2", "credit2", Remaining.Balance(50.0))

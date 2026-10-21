@@ -11,6 +11,7 @@ import org.parkjw.apps.oot.data.model.TokenStatus
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class ZaiApi(
     private val client: OkHttpClient,
@@ -46,77 +47,17 @@ class ZaiApi(
                 val body = response.body?.string().orEmpty()
 
                 if (response.isSuccessful) {
-                    val root = try { json.parseToJsonElement(body).jsonObject } catch (e: Exception) { null }
-                    val data = root?.get("data")?.jsonObject ?: root
-
-                    val limitsArray = data?.get("limits")?.jsonArray
-                        ?: root?.get("limits")?.jsonArray
-
-                    val level = data?.get("level")?.jsonPrimitive?.content ?: "GLM"
-
-                    if (!limitsArray.isNullOrEmpty()) {
-                        // unit: 3 = 5-hour rolling session limit
-                        // unit: 6 = weekly quota limit
-                        val fiveHourLimit = limitsArray.firstOrNull { elem ->
-                            elem.jsonObject["unit"]?.jsonPrimitive?.intOrNull == 3
-                        }?.jsonObject ?: limitsArray.firstOrNull()?.jsonObject
-
-                        val weeklyLimit = limitsArray.firstOrNull { elem ->
-                            elem.jsonObject["unit"]?.jsonPrimitive?.intOrNull == 6
-                        }?.jsonObject ?: limitsArray.getOrNull(1)?.jsonObject
-
-                        val fiveHourPct = fiveHourLimit?.get("percentage")?.jsonPrimitive?.intOrNull ?: 0
-                        val fiveHourResetTime = fiveHourLimit?.get("nextResetTime")?.jsonPrimitive?.longOrNull
-                            ?: fiveHourLimit?.get("expireTime")?.jsonPrimitive?.longOrNull
-
-                        val weeklyPct = weeklyLimit?.get("percentage")?.jsonPrimitive?.intOrNull ?: 0
-                        val weeklyResetTime = weeklyLimit?.get("nextResetTime")?.jsonPrimitive?.longOrNull
-                            ?: weeklyLimit?.get("expireTime")?.jsonPrimitive?.longOrNull
-
-                        val fiveHourRemaining = (100 - fiveHourPct).coerceIn(0, 100)
-                        val weeklyRemaining = (100 - weeklyPct).coerceIn(0, 100)
-
-                        val fiveHourResetFormatted = fiveHourResetTime?.let { formatRelativeTime(it) } ?: ""
-                        val weeklyResetFormatted = weeklyResetTime?.let { formatRelativeTime(it) } ?: ""
-
-                        // Main Text: Show BOTH 5-Hour and Weekly Remaining
-                        val remainingText = "5시간: ${fiveHourRemaining}% 남음 | 주간: ${weeklyRemaining}% 남음"
-
-                        // Subtitle: Usage percentages, reset timers, and plan level
-                        val totalLimitText = buildString {
-                            append("5h 사용: ${fiveHourPct}%")
-                            if (fiveHourResetFormatted.isNotBlank()) append(" ($fiveHourResetFormatted)")
-                            append(" | 주간 사용: ${weeklyPct}%")
-                            if (weeklyResetFormatted.isNotBlank()) append(" ($weeklyResetFormatted)")
-                            append(" [${level.uppercase()}]")
-                        }
-
-                        // Compact ticker for status bar notification
-                        val tickerText = "5h: ${fiveHourRemaining}% | 주: ${weeklyRemaining}%"
-
-                        val isWarn = fiveHourPct > 80 || weeklyPct > 80
-                        val isCrit = fiveHourPct > 95 || weeklyPct > 95
-
-                        return@withContext TokenStatus(
-                            accountId = account.id,
-                            provider = ProviderType.ZAI,
-                            accountName = account.name,
-                            remainingFormatted = remainingText,
-                            totalLimitFormatted = totalLimitText,
-                            usagePercent = fiveHourPct.toFloat(),
-                            resetTimeFormatted = if (fiveHourResetFormatted.isNotBlank()) "5h $fiveHourResetFormatted" else null,
-                            statusSummary = tickerText,
-                            isWarning = isWarn,
-                            isCritical = isCrit
-                        )
+                    val usage = parseZaiUsage(body, json)
+                    if (usage.windows.isNotEmpty()) {
+                        return@withContext successStatus(account, usage)
                     }
 
-                    // Fallback if limits array is empty but 200 OK
+                    // Fallback if no 5-hour/weekly limit is reported but 200 OK
                     return@withContext TokenStatus(
                         accountId = account.id,
                         provider = ProviderType.ZAI,
                         accountName = account.name,
-                        remainingFormatted = "Z.ai 코딩 플랜 ($level) 활성",
+                        remainingFormatted = "Z.ai 코딩 플랜 (${usage.level}) 활성",
                         totalLimitFormatted = "정상 작동 중",
                         statusSummary = "Z.ai 정상",
                         isWarning = false
@@ -156,6 +97,30 @@ class ZaiApi(
                 errorMessage = e.localizedMessage ?: "연결 실패"
             )
         }
+    }
+
+    private fun successStatus(account: ProviderAccount, usage: ZaiUsage): TokenStatus {
+        val windows = usage.windows
+        val first = windows.first()
+        val maxUsed = windows.maxOf { it.percentUsed }
+        val limitText = windows.joinToString(" | ") { w ->
+            val reset = w.resetsAt?.let { formatRelativeTime(it.toEpochMilli()) }
+            "${w.label} 사용: ${w.percentUsed.roundToInt()}%" + (reset?.let { " ($it)" } ?: "")
+        } + " [${usage.level.uppercase()}]"
+
+        return TokenStatus(
+            accountId = account.id,
+            provider = ProviderType.ZAI,
+            accountName = account.name,
+            remainingFormatted = windows.joinToString(" | ") { "${it.label}: ${it.percentLeft.roundToInt()}% 남음" },
+            totalLimitFormatted = limitText,
+            usagePercent = first.percentUsed.toFloat(),
+            resetTimeFormatted = first.resetsAt?.let { "${first.label} ${formatRelativeTime(it.toEpochMilli())}" },
+            statusSummary = windows.joinToString(" | ") { "${it.label} ${it.percentLeft.roundToInt()}%" },
+            isWarning = maxUsed > 80,
+            isCritical = maxUsed > 95,
+            windows = windows.map { it.toUsageWindow() }
+        )
     }
 
     private fun formatRelativeTime(timestampMs: Long): String {

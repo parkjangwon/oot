@@ -32,7 +32,8 @@ class DebugDemoNotificationReceiver : BroadcastReceiver() {
                 providerType = ProviderType.ZAI,
                 displayName = "glm-demo@example.com",
                 windows = listOf(
-                    UsageWindow("monthly", "월간", Remaining.Percent(98.0), null)
+                    UsageWindow("five_hour", "5시간", Remaining.Percent(98.0), now.plusSeconds((3 * 60 + 27) * 60)),
+                    UsageWindow("seven_day", "주간", Remaining.Percent(71.0), now.plusSeconds(4 * 24 * 3600))
                 )
             ),
             VendorUsage(
@@ -40,7 +41,7 @@ class DebugDemoNotificationReceiver : BroadcastReceiver() {
                 providerType = ProviderType.XAI,
                 displayName = "xai-demo@example.com",
                 windows = listOf(
-                    UsageWindow("primary", "primary", Remaining.Percent(14.0), null)
+                    UsageWindow("weekly", "주간", Remaining.Percent(14.0), now.plusSeconds(2 * 24 * 3600))
                 )
             ),
             VendorUsage(

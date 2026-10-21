@@ -37,7 +37,7 @@ Screenshots use sample data only.
   - Low items are highlighted at **20% left** and turn red at **5%**.
 - **Persistent notification**
   - Collapsed: a single line with the 2–3 lowest items, errored vendors first.
-  - Expanded: one line per vendor, showing the lower of its windows and that window's reset time.
+  - Expanded: one line per vendor, showing its 5-hour window when it has one (otherwise its lowest window) and that window's reset time.
   - Every notification also carries a plain-text summary (for example `Claude 62% · OpenRouter $12.40`), so it stays readable on devices that render custom notification layouts poorly.
 - **In-app update**
   - Checks GitHub Releases on launch, at most once a day (toggle in Settings).

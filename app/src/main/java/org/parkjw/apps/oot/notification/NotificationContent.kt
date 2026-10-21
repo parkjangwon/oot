@@ -109,7 +109,7 @@ object NotificationContent {
                 is Remaining.Balance ->
                     ExpandedItem(itemMark, name, "${formatBalance(remaining.amountLeft)} 남음", null, false, Level.OK)
                 is Remaining.Percent -> {
-                    // Representative window only: the one with the least remaining, plus its reset.
+                    // Representative window only (5-hour when present, else least remaining), plus its reset.
                     val text = "${windowLabel(representative)}${formatPercent(remaining)} 남음"
                     val reset = representative.resetsAt
                         ?.let { formatReset(it, now) }
