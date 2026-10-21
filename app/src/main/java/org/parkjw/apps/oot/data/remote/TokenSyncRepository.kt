@@ -16,7 +16,6 @@ import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.toVendorUsage
 import org.parkjw.apps.oot.data.oauth.OAuthManager
-import java.util.concurrent.TimeUnit
 
 class TokenSyncRepository(
     private val preferences: AccountPreferences,
@@ -40,6 +39,18 @@ class TokenSyncRepository(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    /** Reorder cached usages to match user drag order (no network). */
+    fun applyAccountOrder(accountIds: List<String>) {
+        val usageById = _vendorUsages.value.associateBy { it.accountId }
+        val statusById = _statuses.value.associateBy { it.accountId }
+        val orderedIds = AccountPreferences.mergeAccountOrder(
+            accountIds,
+            _vendorUsages.value.map { it.accountId },
+        )
+        _vendorUsages.value = orderedIds.mapNotNull { usageById[it] }
+        _statuses.value = orderedIds.mapNotNull { statusById[it] }
+    }
+
     suspend fun refreshAll(): List<TokenStatus> = coroutineScope {
         _isRefreshing.value = true
         val activeAccounts = preferences.accounts.value.filter { it.isEnabled && it.provider.isSelectable }
@@ -60,10 +71,13 @@ class TokenSyncRepository(
         }
 
         val results = deferreds.awaitAll()
-        _statuses.value = results
-        _vendorUsages.value = results.map { it.toVendorUsage() }
+        // Preserve preferences.accounts order (user drag order).
+        val byId = results.associateBy { it.accountId }
+        val ordered = activeAccounts.mapNotNull { byId[it.id] }
+        _statuses.value = ordered
+        _vendorUsages.value = ordered.map { it.toVendorUsage() }
         _isRefreshing.value = false
-        results
+        ordered
     }
 
     private suspend fun fetchAccountStatus(account: ProviderAccount): TokenStatus {

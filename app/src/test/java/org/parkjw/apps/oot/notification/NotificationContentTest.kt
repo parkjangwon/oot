@@ -35,13 +35,14 @@ class NotificationContentTest {
         VendorUsage("id", provider, "acc", emptyList(), VendorError.Network)
 
     @Test
-    fun `collapsed puts errored vendors first then ascending remaining`() {
+    fun `collapsed follows user order and keeps errors in place`() {
         val high = vendor(90.0)
         val low = vendor(10.0, ProviderType.ZAI)
         val bal = balance(12.4)
         val err = errored()
         val items = NotificationContent.collapsedItems(listOf(high, bal, err, low), maxItems = 3)
-        assertEquals(listOf("X", "G", "Cl"), items.map { it.mark })
+        assertEquals(listOf("Cl", "R", "X"), items.map { it.mark })
+        assertTrue(items[2].isError)
     }
 
     @Test
@@ -100,11 +101,11 @@ class NotificationContentTest {
     }
 
     @Test
-    fun `text fallback joins sorted vendors`() {
+    fun `text fallback joins vendors in user order`() {
         val text = NotificationContent.textFallback(
             listOf(balance(12.4), errored(), vendor(62.0), vendor(98.0, ProviderType.ZAI))
         )
-        assertEquals("xAI 확인 필요 · Claude 62% · GLM 98% · OpenRouter $12.40", text)
+        assertEquals("OpenRouter $12.40 · xAI 확인 필요 · Claude 62% · GLM 98%", text)
     }
 
     @Test
