@@ -321,6 +321,15 @@ fun AccountStatusCard(
                     )
                 }
 
+                if (status.errorMessage != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "⚠️ " + status.errorMessage,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (status.isCritical) StatusRed else StatusYellow
+                    )
+                }
+
                 if (status.usagePercent != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(

@@ -74,15 +74,20 @@ fun TokenStatus.toVendorUsage(): VendorUsage {
             error = VendorError.Unknown(errorMessage)
         )
     }
-    val window = usagePercent?.let { used ->
-        UsageWindow("primary", "primary", Remaining.Percent(100.0 - used))
-    } ?: amountRegex.find(remainingFormatted)?.value?.toDoubleOrNull()?.let { amount ->
-        UsageWindow("primary", remainingFormatted, Remaining.Balance(amount))
-    } ?: UsageWindow("primary", "primary", Remaining.Percent(100.0))
+    // Providers that report real windows (e.g. Claude 5-hour/weekly with resetsAt) carry them directly.
+    val usageWindows = windows.ifEmpty {
+        listOf(
+            usagePercent?.let { used ->
+                UsageWindow("primary", "primary", Remaining.Percent(100.0 - used))
+            } ?: amountRegex.find(remainingFormatted)?.value?.toDoubleOrNull()?.let { amount ->
+                UsageWindow("primary", remainingFormatted, Remaining.Balance(amount))
+            } ?: UsageWindow("primary", "primary", Remaining.Percent(100.0))
+        )
+    }
     return VendorUsage(
         accountId = accountId,
         providerType = provider,
         displayName = accountName,
-        windows = listOf(window)
+        windows = usageWindows
     )
 }
