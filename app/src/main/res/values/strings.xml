@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">OOT</string>
+    <string name="app_full_name">OOT: Out of Tokens</string>
+    <string name="notification_channel_name">AI Token &amp; Quota Monitor</string>
+    <string name="notification_channel_desc">Shows ongoing token usage and remaining balance for registered AI providers in the status bar.</string>
+</resources>
