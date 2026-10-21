@@ -2,6 +2,16 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application>
+        <!-- DEBUG-ONLY: posts the persistent notification with fake data for screenshots -->
+        <receiver
+            android:name=".DebugDemoNotificationReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.parkjw.apps.oot.DEBUG_DEMO_NOTIFICATION" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name="androidx.activity.ComponentActivity"
             android:exported="false"

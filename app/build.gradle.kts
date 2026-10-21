@@ -117,7 +117,7 @@ android {
 }
 
 roborazzi {
-    outputDir.set(rootProject.layout.projectDirectory.dir("docs/screenshots"))
+    outputDir.set(layout.buildDirectory.dir("outputs/roborazzi"))
 }
 
 kotlin {
