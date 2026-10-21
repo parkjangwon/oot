@@ -178,6 +178,9 @@ fun AddAccountDialog(
                             ProviderType.OPENAI -> "OpenAI Platform 키 발급 열기"
                             ProviderType.XAI -> "xAI Console 키 발급 열기"
                             ProviderType.ANTIGRAVITY -> "Google Antigravity 사이트 열기"
+                            ProviderType.DEEPSEEK -> "DeepSeek 플랫폼 키 발급 열기"
+                            ProviderType.OLLAMA_CLOUD -> "Ollama 키 페이지 열기"
+                            ProviderType.OPENCODE_GO -> "OpenCode 키 페이지 열기"
                         }
                     )
                 }
@@ -520,14 +523,17 @@ fun AddAccountDialog(
                         label = { Text("API Key / 토큰") },
                         placeholder = {
                             Text(
-                                when (selectedProvider) {
-                                    ProviderType.ZAI -> "Z.ai 코딩 플랜 API Key"
-                                    ProviderType.OPENROUTER -> "sk-or-v1-..."
-                                    ProviderType.CLAUDE -> "sk-ant-... 또는 세션 키"
-                                    ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
-                                    ProviderType.XAI -> "xai-... API Key"
-                                    ProviderType.ANTIGRAVITY -> "AIza... 또는 Bearer 토큰"
-                                }
+                            when (selectedProvider) {
+                                ProviderType.ZAI -> "Z.ai 코딩 플랜 API Key"
+                                ProviderType.OPENROUTER -> "sk-or-v1-..."
+                                ProviderType.CLAUDE -> "sk-ant-... 또는 세션 키"
+                                ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
+                                ProviderType.XAI -> "xai-... API Key"
+                                ProviderType.ANTIGRAVITY -> "AIza... 또는 Bearer 토큰"
+                                ProviderType.DEEPSEEK -> "sk-..."
+                                ProviderType.OLLAMA_CLOUD -> "Ollama Cloud API Key"
+                                ProviderType.OPENCODE_GO -> "OpenCode Go API Key"
+                            }
                             )
                         },
                         visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
@@ -561,6 +567,9 @@ fun AddAccountDialog(
                             ProviderType.OPENAI -> "💡 OpenAI API 키(sk-...)를 입력하면 모델 레이트 리밋과 잔여량을 조회합니다."
                             ProviderType.XAI -> "💡 xAI Console API 키 또는 Grok OAuth 토큰으로 주간 한도를 모니터링합니다."
                             ProviderType.ANTIGRAVITY -> "💡 Google Antigravity OAuth 토큰 또는 Gemini API Key를 등록하여 에이전트 쿼터를 조회합니다."
+                            ProviderType.DEEPSEEK -> "💡 DeepSeek API 키를 등록하면 남은 API 크레딧 잔액을 확인합니다."
+                            ProviderType.OLLAMA_CLOUD -> "💡 Ollama Cloud API 키를 등록하면 세션/주간 사용량과 구매 크레딧을 확인합니다."
+                            ProviderType.OPENCODE_GO -> "💡 OpenCode Go API 키를 등록하면 5시간/주간/월간 사용량을 확인합니다."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
