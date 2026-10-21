@@ -82,5 +82,29 @@ enum class ProviderType(
             "https://www.googleapis.com/auth/userinfo.email"
         ),
         isSelectable = false
+    ),
+    DEEPSEEK(
+        displayName = "DeepSeek",
+        description = "DeepSeek API 크레딧 잔액 모니터링",
+        primaryAuthType = AuthType.API_KEY,
+        defaultIconName = "deepseek",
+        baseUrl = "https://api.deepseek.com",
+        dashboardUrl = "https://platform.deepseek.com/api_keys"
+    ),
+    OLLAMA_CLOUD(
+        displayName = "Ollama Cloud",
+        description = "Ollama Cloud 구독 사용량 및 크레딧 모니터링",
+        primaryAuthType = AuthType.API_KEY,
+        defaultIconName = "ollama",
+        baseUrl = "https://ollama.com",
+        dashboardUrl = "https://ollama.com/settings/keys"
+    ),
+    OPENCODE_GO(
+        displayName = "OpenCode Go",
+        description = "OpenCode Go 구독 사용량 모니터링",
+        primaryAuthType = AuthType.API_KEY,
+        defaultIconName = "opencode",
+        baseUrl = "https://opencode.ai",
+        dashboardUrl = "https://opencode.ai/zen"
     )
 }

@@ -79,8 +79,8 @@ import org.parkjw.apps.oot.ui.theme.ootInkButtonColors
 import org.parkjw.apps.oot.ui.theme.ootTextButtonColors
 import org.parkjw.apps.oot.ui.theme.progressLevel
 import org.parkjw.apps.oot.ui.theme.withNumericSpans
+import org.parkjw.apps.oot.notification.NotificationContent
 import java.time.Instant
-import java.util.Locale
 import kotlin.math.roundToInt
 
 private val WordWrapFriendly = LineBreak.Paragraph
@@ -500,6 +500,7 @@ fun VendorCard(
                                 is Remaining.Balance -> {
                                     BalanceRow(
                                         amountLeft = rem.amountLeft,
+                                        currency = rem.currency,
                                         subtitle = window.balanceSubtitle(),
                                     )
                                 }
@@ -591,8 +592,9 @@ fun BalanceRow(
     amountLeft: Double,
     subtitle: String?,
     modifier: Modifier = Modifier,
+    currency: String = "USD",
 ) {
-    val formattedAmount = String.format(Locale.US, "$%.2f", amountLeft)
+    val formattedAmount = NotificationContent.formatBalance(amountLeft, currency)
     val numericSpan = SpanStyle(
         fontFamily = OotMonoFamily,
         letterSpacing = (-0.3).sp,
@@ -744,6 +746,9 @@ fun VendorMark(
             ProviderType.OPENROUTER -> "R"
             ProviderType.OPENAI -> "O"
             ProviderType.ANTIGRAVITY -> "A"
+            ProviderType.DEEPSEEK -> "D"
+            ProviderType.OLLAMA_CLOUD -> "OL"
+            ProviderType.OPENCODE_GO -> "OG"
         }
         Text(
             text = monogram,
@@ -945,6 +950,9 @@ private fun VendorUsage.shortVendorName(): String = when (providerType) {
     ProviderType.OPENROUTER -> "OpenRouter"
     ProviderType.OPENAI -> "OpenAI"
     ProviderType.ANTIGRAVITY -> "Antigravity"
+    ProviderType.DEEPSEEK -> "DeepSeek"
+    ProviderType.OLLAMA_CLOUD -> "Ollama Cloud"
+    ProviderType.OPENCODE_GO -> "OpenCode Go"
 }
 
 private fun VendorUsage.kindChipLabel(): String {
