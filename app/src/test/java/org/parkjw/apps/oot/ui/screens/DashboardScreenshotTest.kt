@@ -114,6 +114,7 @@ class DashboardScreenshotTest {
         }
         composeRule.onNodeWithText("Claude").assertExists()
         composeRule.onNodeWithText("$12.40").assertExists()
+        composeRule.onNodeWithText("프로바이더 추가").assertExists()
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
             File(roborazziSystemPropertyOutputDirectory(), "dashboard-light.png"),
         )
@@ -132,6 +133,7 @@ class DashboardScreenshotTest {
         }
         composeRule.onNodeWithText("Claude").assertExists()
         composeRule.onNodeWithText("$12.40").assertExists()
+        composeRule.onNodeWithText("프로바이더 추가").assertExists()
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
             File(roborazziSystemPropertyOutputDirectory(), "dashboard-dark.png"),
         )
