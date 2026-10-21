@@ -94,7 +94,7 @@ fun AddAccountDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         title = {
             Text(
-                text = "AI 계정 연동",
+                text = "프로바이더 연결",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -115,7 +115,7 @@ fun AddAccountDialog(
                         value = selectedProvider.displayName,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("제공자 (Provider)") },
+                        label = { Text("프로바이더") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isProviderDropdownExpanded) },
                         modifier = Modifier
                             .menuAnchor()
@@ -155,7 +155,7 @@ fun AddAccountDialog(
                 OutlinedTextField(
                     value = accountName,
                     onValueChange = { accountName = it },
-                    label = { Text("계정 별칭") },
+                    label = { Text("표시 이름") },
                     placeholder = { Text(selectedProvider.displayName) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()

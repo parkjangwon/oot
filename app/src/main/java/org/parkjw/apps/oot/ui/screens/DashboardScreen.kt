@@ -199,7 +199,7 @@ fun DashboardScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = "계정 추가",
+                            contentDescription = "프로바이더 추가",
                         )
                     }
                     IconButton(
@@ -391,7 +391,7 @@ fun DashboardScreen(
             },
             text = {
                 Text(
-                    text = "지원 안 함 · 이 계정은 더 이상 지원하지 않으므로 삭제할 수 있습니다.",
+                    text = "지원 안 함 · 이 프로바이더는 더 이상 지원하지 않으므로 삭제할 수 있습니다.",
                     style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -405,7 +405,7 @@ fun DashboardScreen(
                     },
                     colors = ootTextButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) {
-                    Text("계정 삭제")
+                    Text("프로바이더 삭제")
                 }
             },
             dismissButton = {
@@ -983,7 +983,7 @@ fun AddAccountRow(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "계정 추가",
+                text = "프로바이더 추가",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1015,12 +1015,12 @@ fun EmptyAccountsBanner(
             verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
         ) {
             Text(
-                text = "등록된 AI 계정이 없습니다",
+                text = "등록된 프로바이더가 없습니다",
                 style = MaterialTheme.typography.titleMedium.copy(lineBreak = WordWrapFriendly),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "Claude, GLM, xAI, OpenRouter, OpenAI 계정을 추가해 남은 한도와 잔액을 확인하세요.",
+                text = "Claude, GLM, xAI, OpenRouter, OpenAI 프로바이더를 추가해 남은 한도와 잔액을 확인하세요.",
                 style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1033,7 +1033,7 @@ fun EmptyAccountsBanner(
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("계정 추가")
+                Text("프로바이더 추가")
             }
         }
     }
@@ -1078,7 +1078,7 @@ private fun VendorDetailDialog(
                 onClick = onDelete,
                 colors = ootTextButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) {
-                Text("계정 삭제")
+                Text("프로바이더 삭제")
             }
         },
         dismissButton = {
