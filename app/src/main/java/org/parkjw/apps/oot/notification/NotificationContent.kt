@@ -44,6 +44,9 @@ object NotificationContent {
         ProviderType.XAI -> "xAI"
         ProviderType.ZAI -> "GLM"
         ProviderType.ANTIGRAVITY -> "Antigravity"
+        ProviderType.DEEPSEEK -> "DeepSeek"
+        ProviderType.OLLAMA_CLOUD -> "Ollama"
+        ProviderType.OPENCODE_GO -> "OpenCode Go"
     }
 
     fun mark(provider: ProviderType): String = when (provider) {
@@ -53,9 +56,18 @@ object NotificationContent {
         ProviderType.XAI -> "X"
         ProviderType.ZAI -> "G"
         ProviderType.ANTIGRAVITY -> "A"
+        ProviderType.DEEPSEEK -> "D"
+        ProviderType.OLLAMA_CLOUD -> "OL"
+        ProviderType.OPENCODE_GO -> "OG"
     }
 
-    fun formatBalance(amount: Double): String = String.format(Locale.US, "$%.2f", amount)
+    fun currencySymbol(currency: String): String = when (currency.uppercase()) {
+        "CNY" -> "¥"
+        else -> "$"
+    }
+
+    fun formatBalance(amount: Double, currency: String = "USD"): String =
+        "${currencySymbol(currency)}${String.format(Locale.US, "%.2f", amount)}"
 
     fun formatPercent(remaining: Remaining.Percent): String =
         "${remaining.percentLeft.roundToInt().coerceIn(0, 100)}%"
@@ -82,7 +94,7 @@ object NotificationContent {
                 null ->
                     CollapsedItem(mark(usage.providerType), "${shortName(usage.providerType)} 확인 필요", null, true, Level.OK)
                 is Remaining.Balance ->
-                    CollapsedItem(mark(usage.providerType), formatBalance(remaining.amountLeft), null, false, Level.OK)
+                    CollapsedItem(mark(usage.providerType), formatBalance(remaining.amountLeft, remaining.currency), null, false, Level.OK)
                 is Remaining.Percent ->
                     CollapsedItem(
                         mark(usage.providerType),
@@ -106,7 +118,7 @@ object NotificationContent {
                 ?: return@map ExpandedItem(itemMark, name, "확인 필요", null, true, Level.OK)
             when (val remaining = representative.remaining) {
                 is Remaining.Balance ->
-                    ExpandedItem(itemMark, name, "${formatBalance(remaining.amountLeft)} 남음", null, false, Level.OK)
+                    ExpandedItem(itemMark, name, "${formatBalance(remaining.amountLeft, remaining.currency)} 남음", null, false, Level.OK)
                 is Remaining.Percent -> {
                     // Representative window only: the one with the least remaining, plus its reset.
                     val text = "${windowLabel(representative)}${formatPercent(remaining)} 남음"
@@ -131,7 +143,7 @@ object NotificationContent {
     fun textFallback(usages: List<VendorUsage>): String =
         usages.joinToString(" · ") { usage ->
             val label = when (val remaining = usage.representative?.remaining) {
-                is Remaining.Balance -> formatBalance(remaining.amountLeft)
+                is Remaining.Balance -> formatBalance(remaining.amountLeft, remaining.currency)
                 is Remaining.Percent -> formatPercent(remaining)
                 null -> "확인 필요"
             }
