@@ -1,0 +1,90 @@
+name: Conventional Commits
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, milestoned, demilestoned]
+
+permissions:
+  pull-requests: read
+  issues: read
+
+jobs:
+  check:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check PR title and commit subjects
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          PATTERN='^(feat|fix|refactor|test|chore|ci|docs|perf|build|style|revert)(\([a-z0-9-]+\))?!?: .{1,72}$'
+          fail=0
+
+          check() {
+            local label="$1" subject="$2" level="$3"
+            if [[ ${#subject} -gt 72 ]] || ! [[ "$subject" =~ $PATTERN ]]; then
+              echo "::$level::$label does not match Conventional Commits (<=72): $subject"
+              if [[ "$level" == "error" ]]; then fail=1; fi
+            else
+              echo "ok $label: $subject"
+            fi
+          }
+
+          check "PR title" "$PR_TITLE" error
+          while IFS= read -r subject; do
+            check "commit" "$subject" warning
+          done < <(git log --format=%s "${BASE_SHA}..${HEAD_SHA}")
+
+          exit "$fail"
+
+  linked-issue:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR body links an existing issue with matching milestone
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_MILESTONE: ${{ github.event.pull_request.milestone.title }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          PATTERN='(?i)\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+'
+          if ! grep -Pq "$PATTERN" <<< "${PR_BODY:-}"; then
+            echo "::error::PR body has no linked issue. Add 'Closes #N' (or Fixes #N / Resolves #N) to the body. Example: Closes #12"
+            exit 1
+          fi
+
+          if [[ -z "${PR_MILESTONE}" ]]; then
+            echo "::error::PR has no milestone. Set a milestone on the PR."
+            exit 1
+          fi
+          echo "ok PR milestone: ${PR_MILESTONE}"
+
+          fail=0
+          while IFS= read -r num; do
+            [[ -z "$num" ]] && continue
+            if ! gh api "repos/${REPO}/issues/${num}" --jq '.title' > /dev/null 2>&1; then
+              echo "::error::Linked issue #${num} does not exist in this repository."
+              fail=1
+              continue
+            fi
+            issue_milestone=$(gh api "repos/${REPO}/issues/${num}" --jq '.milestone.title // ""')
+            if [[ -z "$issue_milestone" ]]; then
+              echo "::error::Linked issue #${num} has no milestone (PR milestone: ${PR_MILESTONE})."
+              fail=1
+            elif [[ "$issue_milestone" != "$PR_MILESTONE" ]]; then
+              echo "::error::Linked issue #${num} milestone '${issue_milestone}' differs from PR milestone '${PR_MILESTONE}'."
+              fail=1
+            else
+              echo "ok issue #${num} milestone: ${issue_milestone}"
+            fi
+          done < <(grep -ioP '(?i)\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#\K[0-9]+' <<< "${PR_BODY:-}" | sort -u)
+
+          exit "$fail"
