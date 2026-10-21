@@ -30,8 +30,8 @@ enum class ProviderType(
         baseUrl = "https://api.anthropic.com/v1",
         dashboardUrl = "https://console.anthropic.com/settings/keys",
         oauthAuthEndpoint = "https://claude.ai/oauth/authorize",
-        oauthTokenEndpoint = "https://claude.ai/oauth/token",
-        defaultScopes = listOf("user:read", "usage:read")
+        oauthTokenEndpoint = "https://console.anthropic.com/v1/oauth/token",
+        defaultScopes = listOf("org:create_api_key", "user:profile", "user:inference")
     ),
     OPENAI(
         displayName = "OpenAI",
@@ -51,9 +51,9 @@ enum class ProviderType(
         defaultIconName = "xai",
         baseUrl = "https://api.x.ai/v1",
         dashboardUrl = "https://console.x.ai",
-        oauthAuthEndpoint = "https://twitter.com/i/oauth2/authorize",
-        oauthTokenEndpoint = "https://api.twitter.com/2/oauth2/token",
-        defaultScopes = listOf("users.read", "tweet.read", "offline.access")
+        oauthAuthEndpoint = "https://accounts.x.ai/oauth2/device",
+        oauthTokenEndpoint = "https://auth.x.ai/oauth2/token",
+        defaultScopes = listOf("openid", "profile", "email", "offline_access", "grok-cli:access", "api:access")
     ),
     CURSOR(
         displayName = "Cursor",

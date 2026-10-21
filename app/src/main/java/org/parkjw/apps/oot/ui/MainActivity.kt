@@ -96,11 +96,23 @@ class MainActivity : ComponentActivity() {
                     AddAccountDialog(
                         onDismiss = { showAddDialog = false },
                         onStartOAuth = { provider ->
-                            showAddDialog = false
                             app.oauthManager.startOAuthFlow(provider)
                         },
                         onOpenExternalBrowser = { url ->
                             app.oauthManager.openExternalBrowser(url)
+                        },
+                        onStartXaiDeviceFlow = { onCodeReceived, onTokenReceived, onError ->
+                            app.oauthManager.startXaiDeviceFlow(
+                                onCodeReceived = onCodeReceived,
+                                onTokenReceived = onTokenReceived,
+                                onError = onError
+                            )
+                        },
+                        onExchangeClaudeCode = { code, onTokenReceived, onError ->
+                            lifecycleScope.launch {
+                                val result = app.oauthManager.exchangeClaudeAuthCode(code)
+                                result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: "토큰 교환 실패") }
+                            }
                         },
                         onSaveAccount = { newAccount ->
                             showAddDialog = false
@@ -108,6 +120,7 @@ class MainActivity : ComponentActivity() {
                             lifecycleScope.launch {
                                 val updated = app.repository.refreshAll()
                                 app.notificationManager.updateNotification(updated)
+                                Toast.makeText(this@MainActivity, "${newAccount.name} 계정이 등록되었습니다.", Toast.LENGTH_SHORT).show()
                             }
                         }
                     )

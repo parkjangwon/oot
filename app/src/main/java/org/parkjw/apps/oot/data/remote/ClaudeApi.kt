@@ -31,6 +31,7 @@ class ClaudeApi(
         if (account.authType == org.parkjw.apps.oot.data.model.AuthType.OAUTH || credential.startsWith("Bearer ", ignoreCase = true)) {
             val token = if (credential.startsWith("Bearer ", ignoreCase = true)) credential else "Bearer $credential"
             requestBuilder.addHeader("Authorization", token)
+            requestBuilder.addHeader("anthropic-beta", "oauth-2025-04-20")
         } else {
             requestBuilder.addHeader("x-api-key", credential)
         }

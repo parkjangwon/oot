@@ -6,8 +6,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -23,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
+import org.parkjw.apps.oot.data.oauth.OAuthTokenResult
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +35,16 @@ fun AddAccountDialog(
     onDismiss: () -> Unit,
     onStartOAuth: (ProviderType) -> Unit,
     onOpenExternalBrowser: (String) -> Unit,
+    onStartXaiDeviceFlow: (
+        onCodeReceived: (userCode: String, verificationUrl: String) -> Unit,
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit,
+    onExchangeClaudeCode: (
+        code: String,
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit,
     onSaveAccount: (ProviderAccount) -> Unit
 ) {
     var selectedProvider by remember { mutableStateOf(ProviderType.ZAI) }
@@ -38,8 +52,19 @@ fun AddAccountDialog(
     var apiKey by remember { mutableStateOf("") }
     var customEndpoint by remember { mutableStateOf("") }
     var showApiKey by remember { mutableStateOf(false) }
-    var showOAuthSection by remember { mutableStateOf(false) }
     var isProviderDropdownExpanded by remember { mutableStateOf(false) }
+
+    // xAI Device Flow state
+    var isXaiWaiting by remember { mutableStateOf(false) }
+    var xaiUserCode by remember { mutableStateOf<String?>(null) }
+    var xaiVerificationUrl by remember { mutableStateOf<String?>(null) }
+    var xaiErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Claude OAuth Code exchange state
+    var claudeAuthCode by remember { mutableStateOf("") }
+    var isClaudeExchanging by remember { mutableStateOf(false) }
+    var claudeErrorMessage by remember { mutableStateOf<String?>(null) }
+    var showClaudeCodeInput by remember { mutableStateOf(false) }
 
     val clipboardManager = LocalClipboardManager.current
     val scrollState = rememberScrollState()
@@ -91,6 +116,11 @@ fun AddAccountDialog(
                                     selectedProvider = provider
                                     accountName = provider.displayName
                                     customEndpoint = ""
+                                    isXaiWaiting = false
+                                    xaiUserCode = null
+                                    xaiErrorMessage = null
+                                    showClaudeCodeInput = false
+                                    claudeErrorMessage = null
                                     isProviderDropdownExpanded = false
                                 }
                             )
@@ -127,8 +157,215 @@ fun AddAccountDialog(
                     )
                 }
 
-                // API Key / Token input
+                // Provider-Specific OAuth / Device Flow Sections
+                if (selectedProvider == ProviderType.XAI) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "🔑 xAI Device Flow 로그인 (RFC 8628)",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "SuperGrok / X 계정으로 외부 브라우저에서 인증하고 토큰을 발급받습니다.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+
+                            if (!isXaiWaiting) {
+                                Button(
+                                    onClick = {
+                                        isXaiWaiting = true
+                                        xaiErrorMessage = null
+                                        onStartXaiDeviceFlow(
+                                            { code, url ->
+                                                xaiUserCode = code
+                                                xaiVerificationUrl = url
+                                            },
+                                            { tokenResult ->
+                                                val newAccount = ProviderAccount(
+                                                    id = UUID.randomUUID().toString(),
+                                                    provider = ProviderType.XAI,
+                                                    name = accountName.ifBlank { "xAI (Grok)" },
+                                                    authType = AuthType.OAUTH,
+                                                    accessToken = tokenResult.accessToken,
+                                                    refreshToken = tokenResult.refreshToken,
+                                                    tokenExpiresAt = tokenResult.expiresAt
+                                                )
+                                                onSaveAccount(newAccount)
+                                            },
+                                            { errorMsg ->
+                                                xaiErrorMessage = errorMsg
+                                                isXaiWaiting = false
+                                            }
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Filled.VpnKey, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("xAI Device 인증 시작")
+                                }
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    if (xaiUserCode != null) {
+                                        Text(
+                                            text = "인증 코드: ${xaiUserCode}",
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = "(코드가 클립보드에 복사되었습니다)",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                    Text(
+                                        text = "외부 브라우저에서 인증 완료를 대기 중입니다...",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    xaiVerificationUrl?.let { url ->
+                                        TextButton(onClick = { onOpenExternalBrowser(url) }) {
+                                            Text("인증 브라우저 다시 열기")
+                                        }
+                                    }
+                                }
+                            }
+
+                            xaiErrorMessage?.let {
+                                Text(
+                                    text = it,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (selectedProvider == ProviderType.CLAUDE) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "🌐 Claude 브라우저 로그인 (OAuth PKCE)",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Claude Pro/Max 계정 브라우저 인증 또는 Console API 키를 사용할 수 있습니다.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+
+                            Button(
+                                onClick = {
+                                    showClaudeCodeInput = true
+                                    claudeErrorMessage = null
+                                    onStartOAuth(ProviderType.CLAUDE)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("외부 브라우저로 Claude 로그인")
+                            }
+
+                            AnimatedVisibility(visible = showClaudeCodeInput) {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    OutlinedTextField(
+                                        value = claudeAuthCode,
+                                        onValueChange = { claudeAuthCode = it },
+                                        label = { Text("인증 코드 (code#state)") },
+                                        placeholder = { Text("브라우저에 표시된 코드 복사/붙여넣기") },
+                                        singleLine = true,
+                                        trailingIcon = {
+                                            IconButton(onClick = {
+                                                val text = clipboardManager.getText()?.text
+                                                if (!text.isNullOrBlank()) {
+                                                    claudeAuthCode = text.trim()
+                                                }
+                                            }) {
+                                                Icon(Icons.Filled.ContentPaste, contentDescription = "붙여넣기")
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    Button(
+                                        onClick = {
+                                            isClaudeExchanging = true
+                                            claudeErrorMessage = null
+                                            onExchangeClaudeCode(
+                                                claudeAuthCode,
+                                                { tokenResult ->
+                                                    isClaudeExchanging = false
+                                                    val newAccount = ProviderAccount(
+                                                        id = UUID.randomUUID().toString(),
+                                                        provider = ProviderType.CLAUDE,
+                                                        name = accountName.ifBlank { "Claude (OAuth)" },
+                                                        authType = AuthType.OAUTH,
+                                                        accessToken = tokenResult.accessToken,
+                                                        refreshToken = tokenResult.refreshToken,
+                                                        tokenExpiresAt = tokenResult.expiresAt
+                                                    )
+                                                    onSaveAccount(newAccount)
+                                                },
+                                                { errorMsg ->
+                                                    isClaudeExchanging = false
+                                                    claudeErrorMessage = errorMsg
+                                                }
+                                            )
+                                        },
+                                        enabled = claudeAuthCode.isNotBlank() && !isClaudeExchanging,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        if (isClaudeExchanging) {
+                                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("토큰 교환 중...")
+                                        } else {
+                                            Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("인증 코드로 토큰 발급 및 등록")
+                                        }
+                                    }
+
+                                    claudeErrorMessage?.let {
+                                        Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Standard API Key / Token input
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "또는 직접 API Key 등록:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
                     OutlinedTextField(
                         value = apiKey,
                         onValueChange = { apiKey = it },
@@ -180,27 +417,6 @@ fun AddAccountDialog(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-
-                // Optional OAuth Section Toggle
-                if (selectedProvider.oauthAuthEndpoint != null) {
-                    TextButton(
-                        onClick = { showOAuthSection = !showOAuthSection },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Text(if (showOAuthSection) "외부 브라우저 OAuth 접기" else "또는 외부 브라우저 OAuth 인증 시도")
-                    }
-
-                    AnimatedVisibility(visible = showOAuthSection) {
-                        Button(
-                            onClick = { onStartOAuth(selectedProvider) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("폰 기본 브라우저로 ${selectedProvider.displayName} 로그인")
-                        }
-                    }
                 }
 
                 // Custom Endpoint (Optional)

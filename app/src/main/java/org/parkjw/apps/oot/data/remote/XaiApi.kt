@@ -10,22 +10,30 @@ import okhttp3.Request
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
+import java.util.Locale
 
 class XaiApi(
     private val client: OkHttpClient,
     private val json: Json
 ) {
     suspend fun fetchStatus(account: ProviderAccount): TokenStatus = withContext(Dispatchers.IO) {
+        val credential = account.activeCredential().trim().removePrefix("Bearer ").trim()
+        if (credential.isBlank()) {
+            return@withContext TokenStatus(
+                accountId = account.id,
+                provider = ProviderType.XAI,
+                accountName = account.name,
+                remainingFormatted = "API 키 없음",
+                statusSummary = "키 필요",
+                isError = true,
+                errorMessage = "xAI API 키를 등록해주세요."
+            )
+        }
+
         val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.XAI.baseUrl
         val keyUrl = "$baseUrl/api-key"
         val modelsUrl = "$baseUrl/models"
-
-        val credential = account.activeCredential()
-        val authHeader = if (credential.startsWith("Bearer ", ignoreCase = true)) {
-            credential
-        } else {
-            "Bearer $credential"
-        }
+        val authHeader = "Bearer $credential"
 
         try {
             // First try xAI api-key info endpoint
@@ -40,7 +48,7 @@ class XaiApi(
                     val root = try { json.parseToJsonElement(body).jsonObject } catch (e: Exception) { null }
 
                     val name = root?.get("name")?.jsonPrimitive?.content ?: account.name
-                    val tier = root?.get("tier")?.jsonPrimitive?.content ?: "X 통합 요금제"
+                    val tier = root?.get("tier")?.jsonPrimitive?.content ?: "xAI API"
 
                     return@withContext TokenStatus(
                         accountId = account.id,
@@ -67,30 +75,49 @@ class XaiApi(
                         accountId = account.id,
                         provider = ProviderType.XAI,
                         accountName = account.name,
-                        remainingFormatted = if (response.code == 401) "인증 실패" else "HTTP ${response.code}",
+                        remainingFormatted = if (response.code == 401) "인증 실패 (401)" else "HTTP ${response.code}",
                         statusSummary = "오류 (${response.code})",
                         isError = true,
-                        errorMessage = if (response.code == 401) "API 키가 올바르지 않습니다." else "상태 코드: ${response.code}"
+                        errorMessage = if (response.code == 401) "유효하지 않은 xAI API 키입니다." else "상태 코드: ${response.code}"
                     )
                 }
 
+                val limitTokens = response.header("x-ratelimit-limit-tokens")?.toLongOrNull()
+                val remainingTokens = response.header("x-ratelimit-remaining-tokens")?.toLongOrNull()
+                val resetTokens = response.header("x-ratelimit-reset-tokens")
+
                 val limitRequests = response.header("x-ratelimit-limit-requests")
                 val remainingRequests = response.header("x-ratelimit-remaining-requests")
-                val resetTime = response.header("x-ratelimit-reset-requests")
+                val resetRequests = response.header("x-ratelimit-reset-requests")
 
-                val summary = if (remainingRequests != null) {
-                    "남은 요청: $remainingRequests"
-                } else {
-                    "구독 연동 완료"
+                if (limitTokens != null && remainingTokens != null && limitTokens > 0) {
+                    val usedTokens = limitTokens - remainingTokens
+                    val percent = ((usedTokens.toDouble() / limitTokens.toDouble()) * 100).toFloat().coerceIn(0f, 100f)
+
+                    return@withContext TokenStatus(
+                        accountId = account.id,
+                        provider = ProviderType.XAI,
+                        accountName = account.name,
+                        remainingFormatted = String.format(Locale.US, "%,d 토큰 남음", remainingTokens),
+                        totalLimitFormatted = String.format(Locale.US, "한도: %,d 토큰/분", limitTokens),
+                        usagePercent = percent,
+                        resetTimeFormatted = resetTokens?.let { "리셋: $it" },
+                        statusSummary = String.format(Locale.US, "%,dk 남음", remainingTokens / 1000),
+                        isWarning = percent > 80f,
+                        isCritical = percent > 95f
+                    )
                 }
+
+                val summary = if (remainingRequests != null) "남은 요청: $remainingRequests" else "xAI API 정상"
+                val limitInfo = limitRequests?.let { "한도: $it req" } ?: "Grok 모델 연동됨"
 
                 TokenStatus(
                     accountId = account.id,
                     provider = ProviderType.XAI,
                     accountName = account.name,
                     remainingFormatted = summary,
-                    totalLimitFormatted = limitRequests?.let { "한도: $it req" },
-                    resetTimeFormatted = resetTime?.let { "리셋: $it" },
+                    totalLimitFormatted = limitInfo,
+                    resetTimeFormatted = resetRequests?.let { "리셋: $it" },
                     statusSummary = summary,
                     isWarning = false
                 )
