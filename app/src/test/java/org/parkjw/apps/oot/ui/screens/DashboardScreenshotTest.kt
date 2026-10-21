@@ -100,11 +100,16 @@ class DashboardScreenshotTest {
             ),
         ),
         VendorUsage(
-            accountId = "cursor-1",
-            providerType = ProviderType.CURSOR,
-            displayName = "Cursor",
-            windows = emptyList(),
-            error = VendorError.Unauthorized,
+            accountId = "deepseek-1",
+            providerType = ProviderType.DEEPSEEK,
+            displayName = "DeepSeek",
+            windows = listOf(
+                UsageWindow(
+                    id = "credit",
+                    label = "credit",
+                    remaining = Remaining.Balance(110.00, "CNY"),
+                ),
+            ),
         ),
     )
 

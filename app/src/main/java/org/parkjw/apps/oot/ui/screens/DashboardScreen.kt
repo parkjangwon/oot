@@ -47,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.SpanStyle
@@ -80,8 +79,8 @@ import org.parkjw.apps.oot.ui.theme.ootInkButtonColors
 import org.parkjw.apps.oot.ui.theme.ootTextButtonColors
 import org.parkjw.apps.oot.ui.theme.progressLevel
 import org.parkjw.apps.oot.ui.theme.withNumericSpans
+import org.parkjw.apps.oot.notification.NotificationContent
 import java.time.Instant
-import java.util.Locale
 import kotlin.math.roundToInt
 
 private val WordWrapFriendly = LineBreak.Paragraph
@@ -501,6 +500,7 @@ fun VendorCard(
                                 is Remaining.Balance -> {
                                     BalanceRow(
                                         amountLeft = rem.amountLeft,
+                                        currency = rem.currency,
                                         subtitle = window.balanceSubtitle(),
                                     )
                                 }
@@ -593,8 +593,9 @@ fun BalanceRow(
     amountLeft: Double,
     subtitle: String?,
     modifier: Modifier = Modifier,
+    currency: String = "USD",
 ) {
-    val formattedAmount = String.format(Locale.US, "$%.2f", amountLeft)
+    val formattedAmount = NotificationContent.formatBalance(amountLeft, currency)
     val numericSpan = SpanStyle(
         fontFamily = OotMonoFamily,
         letterSpacing = (-0.3).sp,
@@ -739,39 +740,25 @@ fun VendorMark(
             .border(1.dp, border, shape),
         contentAlignment = Alignment.Center,
     ) {
-        if (provider == ProviderType.CURSOR) {
-            Canvas(modifier = Modifier.size(12.dp)) {
-                val path = Path().apply {
-                    moveTo(size.width / 2f, size.height * 0.12f)
-                    lineTo(size.width * 0.9f, size.height * 0.86f)
-                    lineTo(size.width * 0.1f, size.height * 0.86f)
-                    close()
-                }
-                drawPath(
-                    path = path,
-                    color = fg,
-                    style = Stroke(width = 1.6.dp.toPx()),
-                )
-            }
-        } else {
-            val monogram = when (provider) {
-                ProviderType.CLAUDE -> "C"
-                ProviderType.ZAI -> "G"
-                ProviderType.XAI -> "X"
-                ProviderType.OPENROUTER -> "R"
-                ProviderType.OPENAI -> "O"
-                ProviderType.ANTIGRAVITY -> "A"
-                ProviderType.CURSOR -> "C"
-            }
-            Text(
-                text = monogram,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = OotMonoFamily,
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = fg,
-            )
+        val monogram = when (provider) {
+            ProviderType.CLAUDE -> "C"
+            ProviderType.ZAI -> "G"
+            ProviderType.XAI -> "X"
+            ProviderType.OPENROUTER -> "R"
+            ProviderType.OPENAI -> "O"
+            ProviderType.ANTIGRAVITY -> "A"
+            ProviderType.DEEPSEEK -> "D"
+            ProviderType.OLLAMA_CLOUD -> "OL"
+            ProviderType.OPENCODE_GO -> "OG"
         }
+        Text(
+            text = monogram,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = OotMonoFamily,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = fg,
+        )
     }
 }
 
@@ -885,7 +872,7 @@ fun EmptyAccountsBanner(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "Claude, GLM, xAI, OpenRouter, Cursor 계정을 추가해 남은 한도와 잔액을 확인하세요.",
+                text = "Claude, GLM, xAI, OpenRouter, OpenAI 계정을 추가해 남은 한도와 잔액을 확인하세요.",
                 style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -962,9 +949,11 @@ private fun VendorUsage.shortVendorName(): String = when (providerType) {
     ProviderType.ZAI -> "GLM"
     ProviderType.XAI -> "xAI"
     ProviderType.OPENROUTER -> "OpenRouter"
-    ProviderType.CURSOR -> "Cursor"
     ProviderType.OPENAI -> "OpenAI"
     ProviderType.ANTIGRAVITY -> "Antigravity"
+    ProviderType.DEEPSEEK -> "DeepSeek"
+    ProviderType.OLLAMA_CLOUD -> "Ollama Cloud"
+    ProviderType.OPENCODE_GO -> "OpenCode Go"
 }
 
 private fun VendorUsage.kindChipLabel(): String {

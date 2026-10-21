@@ -29,8 +29,10 @@ class TokenSyncRepository(
     private val zaiApi = ZaiApi(client, json)
     private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.saveAccount(it) }
     private val openAiApi = OpenAiApi(client, json)
-    private val cursorApi = CursorApi(client, json)
     private val antigravityApi = AntigravityApi(client, json)
+    private val deepSeekApi = DeepSeekApi(client, json)
+    private val ollamaCloudApi = OllamaCloudApi(client, json)
+    private val openCodeGoApi = OpenCodeGoApi(client, json)
 
     private val _statuses = MutableStateFlow<List<TokenStatus>>(emptyList())
     val statuses: StateFlow<List<TokenStatus>> = _statuses.asStateFlow()
@@ -74,8 +76,10 @@ class TokenSyncRepository(
             ProviderType.ZAI -> zaiApi.fetchStatus(account)
             ProviderType.CLAUDE -> claudeApi.fetchStatus(account)
             ProviderType.OPENAI -> openAiApi.fetchStatus(account)
-            ProviderType.CURSOR -> cursorApi.fetchStatus(account)
             ProviderType.ANTIGRAVITY -> antigravityApi.fetchStatus(account)
+            ProviderType.DEEPSEEK -> deepSeekApi.fetchStatus(account)
+            ProviderType.OLLAMA_CLOUD -> ollamaCloudApi.fetchStatus(account)
+            ProviderType.OPENCODE_GO -> openCodeGoApi.fetchStatus(account)
         }
     }
 }

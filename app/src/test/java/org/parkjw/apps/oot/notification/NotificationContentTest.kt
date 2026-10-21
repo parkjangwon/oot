@@ -31,7 +31,7 @@ class NotificationContentTest {
     private fun balance(amount: Double, provider: ProviderType = ProviderType.OPENROUTER) =
         VendorUsage("id", provider, "acc", listOf(UsageWindow("b", "credit", Remaining.Balance(amount))))
 
-    private fun errored(provider: ProviderType = ProviderType.CURSOR) =
+    private fun errored(provider: ProviderType = ProviderType.XAI) =
         VendorUsage("id", provider, "acc", emptyList(), VendorError.Network)
 
     @Test
@@ -41,7 +41,7 @@ class NotificationContentTest {
         val bal = balance(12.4)
         val err = errored()
         val items = NotificationContent.collapsedItems(listOf(high, bal, err, low), maxItems = 3)
-        assertEquals(listOf("Cu", "G", "Cl"), items.map { it.mark })
+        assertEquals(listOf("X", "G", "Cl"), items.map { it.mark })
     }
 
     @Test
@@ -71,8 +71,8 @@ class NotificationContentTest {
     @Test
     fun `collapsed error label`() {
         val item = NotificationContent.collapsedItems(listOf(errored()), maxItems = 3).single()
-        assertEquals("Cu", item.mark)
-        assertEquals("Cursor 확인 필요", item.label)
+        assertEquals("X", item.mark)
+        assertEquals("xAI 확인 필요", item.label)
         assertNull(item.percent)
         assertTrue(item.isError)
     }
@@ -88,6 +88,8 @@ class NotificationContentTest {
         assertEquals("$12.40", NotificationContent.formatBalance(12.4))
         assertEquals("$0.00", NotificationContent.formatBalance(0.0))
         assertEquals("$123.46", NotificationContent.formatBalance(123.456))
+        assertEquals("¥12.40", NotificationContent.formatBalance(12.4, "CNY"))
+        assertEquals("$12.40", NotificationContent.formatBalance(12.4, "EUR"))
     }
 
     @Test
@@ -104,7 +106,7 @@ class NotificationContentTest {
         val text = NotificationContent.textFallback(
             listOf(balance(12.4), errored(), vendor(62.0), vendor(98.0, ProviderType.ZAI))
         )
-        assertEquals("Cursor 확인 필요 · Claude 62% · GLM 98% · OpenRouter $12.40", text)
+        assertEquals("xAI 확인 필요 · Claude 62% · GLM 98% · OpenRouter $12.40", text)
     }
 
     @Test
@@ -149,7 +151,7 @@ class NotificationContentTest {
     @Test
     fun `expanded error line`() {
         val item = NotificationContent.expandedItems(listOf(errored())).single()
-        assertEquals("Cursor", item.name)
+        assertEquals("xAI", item.name)
         assertEquals("확인 필요", item.text)
         assertNull(item.percent)
         assertTrue(item.isError)
