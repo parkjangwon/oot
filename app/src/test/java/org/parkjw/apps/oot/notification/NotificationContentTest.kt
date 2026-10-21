@@ -41,7 +41,7 @@ class NotificationContentTest {
         val bal = balance(12.4)
         val err = errored()
         val items = NotificationContent.collapsedItems(listOf(high, bal, err, low), maxItems = 3)
-        assertEquals(listOf("Cu", "G", "Cl"), items.map { it.mark })
+        assertEquals(listOf("X", "G", "Cl"), items.map { it.mark })
     }
 
     @Test
@@ -71,7 +71,7 @@ class NotificationContentTest {
     @Test
     fun `collapsed error label`() {
         val item = NotificationContent.collapsedItems(listOf(errored()), maxItems = 3).single()
-        assertEquals("Cu", item.mark)
+        assertEquals("X", item.mark)
         assertEquals("xAI 확인 필요", item.label)
         assertNull(item.percent)
         assertTrue(item.isError)
