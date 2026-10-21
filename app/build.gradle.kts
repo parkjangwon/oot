@@ -118,17 +118,6 @@ android {
     }
 }
 
-gradle.taskGraph.whenReady {
-    val needsReleaseSigning =
-        allTasks.any { task ->
-            Regex("^(assemble|bundle|package|sign).*Release").containsMatchIn(task.name)
-        }
-    if (needsReleaseSigning && !hasReleaseSigning) {
-        throw GradleException(
-            "Release signing requires OOT_KEYSTORE, OOT_STORE_PASSWORD, OOT_KEY_ALIAS, and OOT_KEY_PASSWORD",
-        )
-    }
-}
 
 dependencies {
     implementation(libs.androidx.core.ktx)
