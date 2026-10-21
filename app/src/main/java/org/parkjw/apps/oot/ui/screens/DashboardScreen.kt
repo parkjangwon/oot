@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -737,6 +738,7 @@ fun VendorMark(
     val fg = MaterialTheme.colorScheme.onSurface
     val shape = RoundedCornerShape(8.dp)
     val logo = VendorLogo.of(provider)
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
     Box(
         modifier = modifier
@@ -754,7 +756,7 @@ fun VendorMark(
             }
             Image(
                 painter = painterResource(
-                    if (logo.tintWithOnSurface) logo.mono else logo.color,
+                    if (logo.tintWithOnSurface) logo.mono else logo.colorFor(dark),
                 ),
                 contentDescription = null,
                 modifier = logoMod,
