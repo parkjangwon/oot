@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -21,11 +22,13 @@ import org.parkjw.apps.oot.service.TokenMonitorForegroundService
 import org.parkjw.apps.oot.ui.screens.AddAccountDialog
 import org.parkjw.apps.oot.ui.screens.DashboardScreen
 import org.parkjw.apps.oot.ui.theme.OotTheme
+import org.parkjw.apps.oot.update.UpdateViewModel
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
     private val app by lazy { applicationContext as OotApp }
+    private val updateViewModel: UpdateViewModel by viewModels()
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -39,6 +42,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         checkNotificationPermission()
         handleIncomingIntent(intent)
+        updateViewModel.autoCheckOnLaunch(app.preferences.isAutoUpdateCheckEnabled.value)
 
         setContent {
             OotTheme {
@@ -139,6 +143,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateViewModel.onResumed()
     }
 
     override fun onNewIntent(intent: Intent) {

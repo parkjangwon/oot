@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check tag matches app version
+        run: bash scripts/check-release-tag.sh "$GITHUB_REF_NAME"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: Require signing secrets
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          missing=
+          [ -n "$SIGNING_KEYSTORE_BASE64" ] || missing="$missing SIGNING_KEYSTORE_BASE64"
+          [ -n "$SIGNING_STORE_PASSWORD" ] || missing="$missing SIGNING_STORE_PASSWORD"
+          [ -n "$SIGNING_KEY_ALIAS" ] || missing="$missing SIGNING_KEY_ALIAS"
+          [ -n "$SIGNING_KEY_PASSWORD" ] || missing="$missing SIGNING_KEY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "Missing required signing secrets:$missing" >&2
+            exit 1
+          fi
+      - name: Decode keystore
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+      - name: Assemble release
+        env:
+          OOT_KEYSTORE: ${{ runner.temp }}/release.jks
+          OOT_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          OOT_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          OOT_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ./gradlew printVersion assembleRelease --console=plain
+          cp app/build/outputs/apk/release/app-release.apk "oot-v${VERSION}.apk"
+      - name: Upload GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="$VERSION" '
+            /^## / { inside = (index($0, "## [" v "]") == 1); next }
+            inside { print }
+          ' CHANGELOG.md > release-notes.md
+          if grep -q '[^[:space:]]' release-notes.md; then
+            gh release create "$GITHUB_REF_NAME" "oot-v${VERSION}.apk" \
+              --title "$GITHUB_REF_NAME" \
+              --notes-file release-notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" "oot-v${VERSION}.apk" \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+          fi
