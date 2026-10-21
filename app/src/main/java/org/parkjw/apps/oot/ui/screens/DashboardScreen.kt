@@ -354,9 +354,11 @@ fun AccountStatusCard(
 fun ProviderBadge(provider: ProviderType) {
     val (bgColor, textColor) = when (provider) {
         ProviderType.OPENROUTER -> Color(0xFF6366F1) to Color.White
+        ProviderType.CLAUDE -> Color(0xFFD97706) to Color.White
+        ProviderType.OPENAI -> Color(0xFF10A37F) to Color.White
         ProviderType.XAI -> Color(0xFF1D9BF0) to Color.White
+        ProviderType.CURSOR -> Color(0xFF000000) to Color.White
         ProviderType.ZAI -> Color(0xFFF97316) to Color.White
-        ProviderType.CLAUDE -> Color(0xFFCC785C) to Color.White
     }
 
     Box(
@@ -367,10 +369,17 @@ fun ProviderBadge(provider: ProviderType) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = provider.displayName.take(1),
+            text = when (provider) {
+                ProviderType.OPENROUTER -> "OR"
+                ProviderType.CLAUDE -> "C"
+                ProviderType.OPENAI -> "AI"
+                ProviderType.XAI -> "𝕏"
+                ProviderType.CURSOR -> "Cu"
+                ProviderType.ZAI -> "Z"
+            },
             color = textColor,
             fontWeight = FontWeight.Bold,
-            fontSize = 18.sp
+            fontSize = 14.sp
         )
     }
 }
@@ -399,7 +408,7 @@ fun EmptyAccountsBanner(onAddClick: () -> Unit) {
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "OpenRouter, xAI (X 통합 요금제), ZAI 코딩 플랜, Claude 등의 API 키를 등록하면 상단 알림바에서 남은 토큰과 잔액을 항상 모니터링할 수 있습니다.",
+                text = "클로드, OpenAI, xAI (Grok), Cursor는 OAuth 로그인으로, OpenRouter와 ZAI는 API 키로 간편하게 연동하여 알림바에서 남은 토큰과 쿼터를 실시간 모니터링할 수 있습니다.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

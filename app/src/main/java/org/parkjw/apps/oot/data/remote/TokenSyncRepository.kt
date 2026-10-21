@@ -9,25 +9,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import org.parkjw.apps.oot.data.local.AccountPreferences
+import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
+import org.parkjw.apps.oot.data.oauth.OAuthManager
 import java.util.concurrent.TimeUnit
 
 class TokenSyncRepository(
-    private val preferences: AccountPreferences
+    private val preferences: AccountPreferences,
+    val oauthManager: OAuthManager,
+    private val client: OkHttpClient,
+    private val json: Json
 ) {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
-
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-
     private val openRouterApi = OpenRouterApi(client, json)
     private val xaiApi = XaiApi(client, json)
     private val zaiApi = ZaiApi(client, json)
     private val claudeApi = ClaudeApi(client)
+    private val openAiApi = OpenAiApi(client, json)
+    private val cursorApi = CursorApi(client, json)
 
     private val _statuses = MutableStateFlow<List<TokenStatus>>(emptyList())
     val statuses: StateFlow<List<TokenStatus>> = _statuses.asStateFlow()
@@ -41,7 +41,16 @@ class TokenSyncRepository(
 
         val deferreds = activeAccounts.map { account ->
             async {
-                fetchAccountStatus(account)
+                val updatedAccount = if (account.authType == AuthType.OAUTH && account.isTokenExpired) {
+                    val refreshed = oauthManager.refreshTokenIfNeeded(account)
+                    if (refreshed != account) {
+                        preferences.saveAccount(refreshed)
+                    }
+                    refreshed
+                } else {
+                    account
+                }
+                fetchAccountStatus(updatedAccount)
             }
         }
 
@@ -57,6 +66,8 @@ class TokenSyncRepository(
             ProviderType.XAI -> xaiApi.fetchStatus(account)
             ProviderType.ZAI -> zaiApi.fetchStatus(account)
             ProviderType.CLAUDE -> claudeApi.fetchStatus(account)
+            ProviderType.OPENAI -> openAiApi.fetchStatus(account)
+            ProviderType.CURSOR -> cursorApi.fetchStatus(account)
         }
     }
 }

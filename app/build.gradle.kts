@@ -73,6 +73,7 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.browser)
 
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)

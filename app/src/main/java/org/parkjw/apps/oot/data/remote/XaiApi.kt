@@ -20,10 +20,11 @@ class XaiApi(
         val keyUrl = "$baseUrl/api-key"
         val modelsUrl = "$baseUrl/models"
 
-        val authHeader = if (account.apiKey.startsWith("Bearer ", ignoreCase = true)) {
-            account.apiKey
+        val credential = account.activeCredential()
+        val authHeader = if (credential.startsWith("Bearer ", ignoreCase = true)) {
+            credential
         } else {
-            "Bearer ${account.apiKey}"
+            "Bearer $credential"
         }
 
         try {

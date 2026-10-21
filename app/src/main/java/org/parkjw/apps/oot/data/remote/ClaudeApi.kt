@@ -22,12 +22,20 @@ class ClaudeApi(
         val jsonPayload = """{"model":"claude-3-5-sonnet-20241022","messages":[{"role":"user","content":"ping"}]}"""
         val requestBody = jsonPayload.toRequestBody("application/json".toMediaType())
 
-        val request = Request.Builder()
+        val credential = account.activeCredential()
+        val requestBuilder = Request.Builder()
             .url(endpoint)
-            .addHeader("x-api-key", account.apiKey)
             .addHeader("anthropic-version", "2023-06-01")
             .post(requestBody)
-            .build()
+
+        if (account.authType == org.parkjw.apps.oot.data.model.AuthType.OAUTH || credential.startsWith("Bearer ", ignoreCase = true)) {
+            val token = if (credential.startsWith("Bearer ", ignoreCase = true)) credential else "Bearer $credential"
+            requestBuilder.addHeader("Authorization", token)
+        } else {
+            requestBuilder.addHeader("x-api-key", credential)
+        }
+
+        val request = requestBuilder.build()
 
         try {
             client.newCall(request).execute().use { response ->
