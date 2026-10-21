@@ -12,6 +12,7 @@ kotlinxCoroutines = "1.9.0"
 kotlinxSerializationJson = "1.7.3"
 materialIconsExtended = "1.7.5"
 browser = "1.8.0"
+junit = "4.13.2"
 
 [libraries]
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
@@ -33,6 +34,7 @@ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+junit4 = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
