@@ -178,6 +178,13 @@ class MainActivity : ComponentActivity() {
                                 onError = onError
                             )
                         },
+                        onStartOpenAiDeviceFlow = { onCodeReceived, onTokenReceived, onError ->
+                            app.oauthManager.startOpenAiDeviceFlow(
+                                onCodeReceived = onCodeReceived,
+                                onTokenReceived = onTokenReceived,
+                                onError = onError
+                            )
+                        },
                         onStartAntigravityOAuth = { onTokenReceived, onError ->
                             app.oauthManager.startAntigravityOAuthFlow(
                                 onTokenReceived = onTokenReceived,

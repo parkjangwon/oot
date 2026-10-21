@@ -58,12 +58,11 @@ fun AddAccountDialog(
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
     ) -> Unit,
-    // Wired from MainActivity → OAuthManager.startOpenAiDeviceFlow (other stream owns MainActivity).
     onStartOpenAiDeviceFlow: (
         onCodeReceived: (userCode: String, verificationUrl: String) -> Unit,
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
-    ) -> Unit = { _, _, onError -> onError("MainActivity에 OpenAI Device Flow 배선이 필요합니다.") },
+    ) -> Unit,
     onSaveAccount: (ProviderAccount) -> Unit
 ) {
     var selectedProvider by remember { mutableStateOf(ProviderType.ZAI) }
