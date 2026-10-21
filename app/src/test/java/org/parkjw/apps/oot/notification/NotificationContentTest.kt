@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.parkjw.apps.oot.data.model.Level
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
@@ -163,6 +164,50 @@ class NotificationContentTest {
         assertEquals("OpenRouter", item.name)
         assertEquals("$12.40 남음", item.text)
         assertNull(item.percent)
+    }
+
+    private fun openRouterWithKeyLimit(
+        credit: Double,
+        keyRemaining: Double,
+        keyLimitLabel: String = "키 한도 $20.00"
+    ) = VendorUsage(
+        "id", ProviderType.OPENROUTER, "acc",
+        listOf(
+            UsageWindow("credit", "credit", Remaining.Balance(credit)),
+            UsageWindow("key", keyLimitLabel, Remaining.Balance(keyRemaining))
+        )
+    )
+
+    @Test
+    fun `openrouter notification shows smaller of balance and key remaining`() {
+        val item = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(12.4, 7.6))).single()
+        assertEquals("$7.60 남음", item.text)
+        assertEquals(38, item.percent)
+        assertEquals(Level.OK, item.level)
+    }
+
+    @Test
+    fun `openrouter key bar uses warning and danger levels`() {
+        val warn = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(100.0, 3.0))).single()
+        assertEquals(15, warn.percent)
+        assertEquals(Level.WARN, warn.level)
+        val danger = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(100.0, 0.4))).single()
+        assertEquals(2, danger.percent)
+        assertEquals(Level.DANGER, danger.level)
+    }
+
+    @Test
+    fun `openrouter without key limit has no bar`() {
+        val usage = VendorUsage(
+            "id", ProviderType.OPENROUTER, "acc",
+            listOf(UsageWindow("credit", "credit", Remaining.Balance(12.4)))
+        )
+        val expanded = NotificationContent.expandedItems(listOf(usage)).single()
+        assertEquals("$12.40 남음", expanded.text)
+        assertNull(expanded.percent)
+        val collapsed = NotificationContent.collapsedItems(listOf(usage), 3).single()
+        assertEquals("$12.40", collapsed.label)
+        assertNull(collapsed.percent)
     }
 
     @Test
