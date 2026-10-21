@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Same level drives fill width and color: <=5% danger, <=20% warn, else primary. -->
+<!-- Same level drives fill width and color: <=5% danger, everything else primary. -->
 <clip xmlns:android="http://schemas.android.com/apk/res/android">
     <level-list>
         <item android:maxLevel="500">
             <color android:color="@color/notif_bar_danger" />
-        </item>
-        <item android:maxLevel="2000">
-            <color android:color="@color/notif_bar_warn" />
         </item>
         <item android:maxLevel="10000">
             <color android:color="@color/notif_bar_primary" />

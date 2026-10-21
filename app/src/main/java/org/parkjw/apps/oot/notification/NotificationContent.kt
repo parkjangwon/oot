@@ -39,7 +39,7 @@ object NotificationContent {
     )
 
     fun shortName(provider: ProviderType): String = when (provider) {
-        ProviderType.OPENROUTER -> "OR"
+        ProviderType.OPENROUTER -> "OpenRouter"
         ProviderType.CLAUDE -> "Claude"
         ProviderType.OPENAI -> "OpenAI"
         ProviderType.XAI -> "xAI"
@@ -109,11 +109,10 @@ object NotificationContent {
                 ?: return@map ExpandedItem(itemMark, name, "확인 필요", null, true, Level.OK)
             when (val remaining = representative.remaining) {
                 is Remaining.Balance ->
-                    ExpandedItem(itemMark, name, formatBalance(remaining.amountLeft), null, false, Level.OK)
+                    ExpandedItem(itemMark, name, "${formatBalance(remaining.amountLeft)} 남음", null, false, Level.OK)
                 is Remaining.Percent -> {
-                    val parts = usage.windows
-                        .filter { it.remaining is Remaining.Percent }
-                        .map { "${windowLabel(it)}${formatPercent(it.remaining as Remaining.Percent)}" }
+                    // Representative window only: the one with the least remaining, plus its reset.
+                    val text = "${windowLabel(representative)}${formatPercent(remaining)} 남음"
                     val reset = representative.resetsAt
                         ?.let { formatReset(it, now) }
                         ?.takeIf { it.isNotEmpty() }
@@ -122,7 +121,7 @@ object NotificationContent {
                     ExpandedItem(
                         itemMark,
                         name,
-                        parts.joinToString(" · ") + reset,
+                        text + reset,
                         remaining.percentLeft.roundToInt().coerceIn(0, 100),
                         false,
                         remaining.level
@@ -131,7 +130,7 @@ object NotificationContent {
             }
         }
 
-    // Text-only fallback (option C): "Claude 62% · GLM 98% · OR $12.40"
+    // Text-only fallback (option C): "Claude 62% · GLM 98% · OpenRouter $12.40"
     fun textFallback(usages: List<VendorUsage>): String =
         usages.sortedByRemaining().joinToString(" · ") { usage ->
             val label = when (val remaining = usage.representative?.remaining) {

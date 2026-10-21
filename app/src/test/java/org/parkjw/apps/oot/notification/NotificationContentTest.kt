@@ -104,11 +104,11 @@ class NotificationContentTest {
         val text = NotificationContent.textFallback(
             listOf(balance(12.4), errored(), vendor(62.0), vendor(98.0, ProviderType.ZAI))
         )
-        assertEquals("Cursor 확인 필요 · Claude 62% · GLM 98% · OR $12.40", text)
+        assertEquals("Cursor 확인 필요 · Claude 62% · GLM 98% · OpenRouter $12.40", text)
     }
 
     @Test
-    fun `expanded line shows all windows and representative reset only`() {
+    fun `expanded line shows representative window and its reset`() {
         val resetsAt = now.plusSeconds(120 * 60)
         val weekly = UsageWindow("w2", "주간", Remaining.Percent(81.0), null)
         val item = NotificationContent.expandedItems(
@@ -116,9 +116,34 @@ class NotificationContentTest {
             now = now
         ).single()
         assertEquals("Claude", item.name)
-        assertEquals("5시간 62% · 주간 81% · 2시간 후 리셋", item.text)
+        assertEquals("5시간 62% 남음 · 2시간 후 리셋", item.text)
         assertEquals(62, item.percent)
         assertFalse(item.isError)
+    }
+
+    @Test
+    fun `expanded line uses the window with less remaining and its reset`() {
+        val weeklyResetsAt = now.plusSeconds(3 * 24 * 3600)
+        val fiveHour = UsageWindow("w1", "5시간", Remaining.Percent(62.0), now.plusSeconds(100 * 60))
+        val weekly = UsageWindow("w2", "주간", Remaining.Percent(14.0), weeklyResetsAt)
+        val usage = VendorUsage("id", ProviderType.CLAUDE, "acc", listOf(fiveHour, weekly))
+        val item = NotificationContent.expandedItems(listOf(usage), now = now).single()
+        assertEquals("주간 14% 남음 · 3일 후 리셋", item.text)
+        assertEquals(14, item.percent)
+    }
+
+    @Test
+    fun `every expanded non-error line says 남음 and errors do not`() {
+        val items = NotificationContent.expandedItems(
+            listOf(vendor(62.0), balance(12.4), errored())
+        )
+        assertEquals(3, items.size)
+        assertTrue(items[0].text.endsWith("남음"))
+        assertTrue(items[0].text.contains("%"))
+        assertTrue(items[1].text.endsWith("남음"))
+        assertEquals("$12.40 남음", items[1].text)
+        assertEquals("확인 필요", items[2].text)
+        assertFalse(items[2].text.contains("남음"))
     }
 
     @Test
@@ -133,8 +158,8 @@ class NotificationContentTest {
     @Test
     fun `expanded balance line has no bar`() {
         val item = NotificationContent.expandedItems(listOf(balance(12.4))).single()
-        assertEquals("OR", item.name)
-        assertEquals("$12.40", item.text)
+        assertEquals("OpenRouter", item.name)
+        assertEquals("$12.40 남음", item.text)
         assertNull(item.percent)
     }
 
@@ -145,7 +170,7 @@ class NotificationContentTest {
             listOf(UsageWindow("primary", "primary", Remaining.Percent(40.0)))
         )
         val item = NotificationContent.expandedItems(listOf(v)).single()
-        assertEquals("40%", item.text)
+        assertEquals("40% 남음", item.text)
     }
 
     @Test

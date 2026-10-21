@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="notif_bar_primary">#F54E00</color>
-    <color name="notif_bar_warn">#E08A00</color>
     <color name="notif_bar_danger">#CF2D56</color>
     <color name="notif_bar_track">#EFEEE8</color>
     <color name="notif_text_primary">#26251E</color>

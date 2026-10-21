@@ -31,6 +31,7 @@
             android:background="@color/notif_bar_track"
             android:src="@drawable/notif_bar_fill"
             android:scaleType="fitXY"
+            android:layout_marginEnd="16dp"
             android:importantForAccessibility="no" />
 
         <TextView
@@ -69,6 +70,7 @@
             android:background="@color/notif_bar_track"
             android:src="@drawable/notif_bar_fill"
             android:scaleType="fitXY"
+            android:layout_marginEnd="16dp"
             android:importantForAccessibility="no" />
 
         <TextView
@@ -106,6 +108,7 @@
             android:background="@color/notif_bar_track"
             android:src="@drawable/notif_bar_fill"
             android:scaleType="fitXY"
+            android:layout_marginEnd="16dp"
             android:importantForAccessibility="no" />
 
         <TextView

@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -102,6 +103,13 @@ class NotificationScreenshotTest {
     @Config(qualifiers = "w412dp-h800dp-night")
     fun notifExpanded412Dark() {
         captureExpanded(412, "notif-expanded-412-dark.png")
+    }
+
+    // 14% used to pick the amber "warn" entry; that color no longer exists.
+    @Test
+    fun barHasNoWarningColorAt14Percent() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        assertEquals(0, activity.resources.getIdentifier("notif_bar_warn", "color", activity.packageName))
     }
 
     private fun captureCollapsed(widthDp: Int, fileName: String) {
