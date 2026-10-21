@@ -6,7 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -29,17 +30,18 @@ import java.util.UUID
 fun AddAccountDialog(
     onDismiss: () -> Unit,
     onStartOAuth: (ProviderType) -> Unit,
-    onSaveManualAccount: (ProviderAccount) -> Unit
+    onOpenExternalBrowser: (String) -> Unit,
+    onSaveAccount: (ProviderAccount) -> Unit
 ) {
-    var selectedProvider by remember { mutableStateOf(ProviderType.CLAUDE) }
-    var accountName by remember { mutableStateOf("") }
+    var selectedProvider by remember { mutableStateOf(ProviderType.ZAI) }
+    var accountName by remember { mutableStateOf(ProviderType.ZAI.displayName) }
     var apiKey by remember { mutableStateOf("") }
     var customEndpoint by remember { mutableStateOf("") }
     var showApiKey by remember { mutableStateOf(false) }
-    var showManualInputForOAuth by remember { mutableStateOf(false) }
+    var showOAuthSection by remember { mutableStateOf(false) }
     var isProviderDropdownExpanded by remember { mutableStateOf(false) }
 
-    val isOAuthProvider = selectedProvider.primaryAuthType == AuthType.OAUTH
+    val clipboardManager = LocalClipboardManager.current
     val scrollState = rememberScrollState()
 
     AlertDialog(
@@ -64,7 +66,7 @@ fun AddAccountDialog(
                     onExpandedChange = { isProviderDropdownExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = "${selectedProvider.displayName} (${if (isOAuthProvider) "OAuth" else "API Key"})",
+                        value = selectedProvider.displayName,
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("제공자 (Provider)") },
@@ -78,28 +80,17 @@ fun AddAccountDialog(
                         onDismissRequest = { isProviderDropdownExpanded = false }
                     ) {
                         ProviderType.entries.forEach { provider ->
-                            val isOAuth = provider.primaryAuthType == AuthType.OAUTH
                             DropdownMenuItem(
                                 text = {
                                     Column {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            Text(provider.displayName, fontWeight = FontWeight.SemiBold)
-                                            AssistChip(
-                                                onClick = {},
-                                                label = { Text(if (isOAuth) "OAuth" else "Key", style = MaterialTheme.typography.labelSmall) },
-                                                modifier = Modifier.height(24.dp)
-                                            )
-                                        }
+                                        Text(provider.displayName, fontWeight = FontWeight.SemiBold)
                                         Text(provider.description, style = MaterialTheme.typography.labelSmall)
                                     }
                                 },
                                 onClick = {
                                     selectedProvider = provider
                                     accountName = provider.displayName
-                                    showManualInputForOAuth = false
+                                    customEndpoint = ""
                                     isProviderDropdownExpanded = false
                                 }
                             )
@@ -117,123 +108,140 @@ fun AddAccountDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // OAuth Provider View
-                if (isOAuthProvider) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                text = "🔒 OAuth 2.0 간편 인증",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = when (selectedProvider) {
-                                    ProviderType.CLAUDE -> "Claude 웹 계정에 로그인하여 Pro/Team 플랜 토큰 사용량을 연동합니다."
-                                    ProviderType.OPENAI -> "OpenAI에 로그인하여 ChatGPT Plus/Team/Pro 구독 및 API 쿼터를 연동합니다."
-                                    ProviderType.XAI -> "X(트위터) 계정으로 인증하여 X 통합 요금제 및 Grok 사용량을 연동합니다."
-                                    ProviderType.CURSOR -> "Cursor 계정으로 로그인하여 빠른 요청(Fast Requests) 잔여량을 연동합니다."
-                                    else -> "브라우저를 통해 안전하게 인증합니다."
-                                },
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            Button(
-                                onClick = { onStartOAuth(selectedProvider) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("${selectedProvider.displayName} 로그인 연동")
-                            }
+                // Quick Link to Provider Key / Dashboard
+                OutlinedButton(
+                    onClick = { onOpenExternalBrowser(selectedProvider.dashboardUrl) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        when (selectedProvider) {
+                            ProviderType.ZAI -> "Z.ai 콘솔(키 발급) 열기"
+                            ProviderType.OPENROUTER -> "OpenRouter 키 페이지 열기"
+                            ProviderType.CLAUDE -> "Claude Console 키 발급 열기"
+                            ProviderType.OPENAI -> "OpenAI Platform 키 발급 열기"
+                            ProviderType.XAI -> "xAI Console 키 발급 열기"
+                            ProviderType.CURSOR -> "Cursor 설정 페이지 열기"
                         }
-                    }
-
-                    // Optional manual token fallback toggle
-                    TextButton(
-                        onClick = { showManualInputForOAuth = !showManualInputForOAuth },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Text(if (showManualInputForOAuth) "직접 입력 닫기" else "또는 API Key / 세션 토큰 직접 입력")
-                    }
+                    )
                 }
 
                 // API Key / Token input
-                AnimatedVisibility(visible = !isOAuthProvider || showManualInputForOAuth) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = apiKey,
-                            onValueChange = { apiKey = it },
-                            label = { Text(if (isOAuthProvider) "세션 토큰 / Bearer Key" else "API Key") },
-                            placeholder = {
-                                Text(
-                                    when (selectedProvider) {
-                                        ProviderType.OPENROUTER -> "sk-or-v1-..."
-                                        ProviderType.ZAI -> "zai-..."
-                                        ProviderType.CLAUDE -> "sk-ant-..."
-                                        ProviderType.OPENAI -> "sk-proj-..."
-                                        ProviderType.XAI -> "xai-..."
-                                        ProviderType.CURSOR -> "Bearer token"
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(
+                        value = apiKey,
+                        onValueChange = { apiKey = it },
+                        label = { Text("API Key / 토큰") },
+                        placeholder = {
+                            Text(
+                                when (selectedProvider) {
+                                    ProviderType.ZAI -> "Z.ai 코딩 플랜 API Key"
+                                    ProviderType.OPENROUTER -> "sk-or-v1-..."
+                                    ProviderType.CLAUDE -> "sk-ant-... 또는 세션 키"
+                                    ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
+                                    ProviderType.XAI -> "xai-... API Key"
+                                    ProviderType.CURSOR -> "Cursor 세션 토큰 / Key"
+                                }
+                            )
+                        },
+                        visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        trailingIcon = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = {
+                                    val text = clipboardManager.getText()?.text
+                                    if (!text.isNullOrBlank()) {
+                                        apiKey = text.trim().removeSurrounding("\"").removeSurrounding("'")
                                     }
-                                )
-                            },
-                            visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                            trailingIcon = {
+                                }) {
+                                    Icon(Icons.Filled.ContentPaste, contentDescription = "붙여넣기")
+                                }
                                 IconButton(onClick = { showApiKey = !showApiKey }) {
                                     Icon(
                                         imageVector = if (showApiKey) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                        contentDescription = if (showApiKey) "Hide key" else "Show key"
+                                        contentDescription = if (showApiKey) "Hide" else "Show"
                                     )
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        // Custom Endpoint (Optional)
-                        OutlinedTextField(
-                            value = customEndpoint,
-                            onValueChange = { customEndpoint = it },
-                            label = { Text("엔드포인트 (선택)") },
-                            placeholder = { Text(selectedProvider.baseUrl) },
-                            singleLine = true,
+                    Text(
+                        text = when (selectedProvider) {
+                            ProviderType.ZAI -> "💡 공식 모니터링 엔드포인트(api.z.ai/api/monitor/usage/quota/limit)를 통해 남은 5시간/주간 쿼터와 크레딧을 정확히 측정합니다."
+                            ProviderType.OPENROUTER -> "💡 OpenRouter API 키를 등록하면 실시간 남은 달러($) 잔액과 키 한도를 확인합니다."
+                            ProviderType.CLAUDE -> "💡 Anthropic Console에서 발급한 API 키(sk-ant-...)를 입력해주세요."
+                            ProviderType.OPENAI -> "💡 OpenAI API 키(sk-...)를 입력하면 모델 레이트 리밋과 잔여량을 조회합니다."
+                            ProviderType.XAI -> "💡 xAI Console에서 발급한 API 키를 입력하면 Grok 요청 한도를 모니터링합니다."
+                            ProviderType.CURSOR -> "💡 Cursor 세션 토큰 또는 API Key를 입력하여 Fast Requests 잔여량을 확인합니다."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Optional OAuth Section Toggle
+                if (selectedProvider.oauthAuthEndpoint != null) {
+                    TextButton(
+                        onClick = { showOAuthSection = !showOAuthSection },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text(if (showOAuthSection) "외부 브라우저 OAuth 접기" else "또는 외부 브라우저 OAuth 인증 시도")
+                    }
+
+                    AnimatedVisibility(visible = showOAuthSection) {
+                        Button(
+                            onClick = { onStartOAuth(selectedProvider) },
                             modifier = Modifier.fillMaxWidth()
-                        )
+                        ) {
+                            Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("폰 기본 브라우저로 ${selectedProvider.displayName} 로그인")
+                        }
                     }
                 }
+
+                // Custom Endpoint (Optional)
+                OutlinedTextField(
+                    value = customEndpoint,
+                    onValueChange = { customEndpoint = it },
+                    label = { Text("커스텀 엔드포인트 (선택)") },
+                    placeholder = { Text(selectedProvider.baseUrl) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
-            if (!isOAuthProvider || showManualInputForOAuth) {
-                Button(
-                    onClick = {
-                        val finalName = accountName.ifBlank { selectedProvider.displayName }
-                        val account = ProviderAccount(
-                            id = UUID.randomUUID().toString(),
-                            provider = selectedProvider,
-                            name = finalName,
-                            authType = if (isOAuthProvider && showManualInputForOAuth) AuthType.API_KEY else selectedProvider.primaryAuthType,
-                            apiKey = apiKey.trim(),
-                            customEndpoint = customEndpoint.trim().takeIf { it.isNotBlank() }
-                        )
-                        onSaveManualAccount(account)
-                    },
-                    enabled = apiKey.isNotBlank()
-                ) {
-                    Text("수동 저장")
-                }
+            Button(
+                onClick = {
+                    val cleanedKey = apiKey.trim()
+                        .removePrefix("Bearer ")
+                        .trim()
+                        .removeSurrounding("\"")
+                        .removeSurrounding("'")
+
+                    val finalName = accountName.ifBlank { selectedProvider.displayName }
+                    val account = ProviderAccount(
+                        id = UUID.randomUUID().toString(),
+                        provider = selectedProvider,
+                        name = finalName,
+                        authType = AuthType.API_KEY,
+                        apiKey = cleanedKey,
+                        customEndpoint = customEndpoint.trim().takeIf { it.isNotBlank() }
+                    )
+                    onSaveAccount(account)
+                },
+                enabled = apiKey.isNotBlank()
+            ) {
+                Text("저장하기")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("닫기")
+                Text("취소")
             }
         }
     )

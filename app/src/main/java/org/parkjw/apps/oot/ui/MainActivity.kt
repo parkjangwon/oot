@@ -99,7 +99,10 @@ class MainActivity : ComponentActivity() {
                             showAddDialog = false
                             app.oauthManager.startOAuthFlow(provider)
                         },
-                        onSaveManualAccount = { newAccount ->
+                        onOpenExternalBrowser = { url ->
+                            app.oauthManager.openExternalBrowser(url)
+                        },
+                        onSaveAccount = { newAccount ->
                             showAddDialog = false
                             app.preferences.saveAccount(newAccount)
                             lifecycleScope.launch {

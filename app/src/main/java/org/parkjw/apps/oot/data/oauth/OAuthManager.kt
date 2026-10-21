@@ -50,12 +50,19 @@ class OAuthManager(
 
         val authUri = uriBuilder.build()
 
-        val customTabsIntent = CustomTabsIntent.Builder()
-            .setShowTitle(true)
-            .build()
+        val browserIntent = Intent(Intent.ACTION_VIEW, authUri).apply {
+            addCategory(Intent.CATEGORY_BROWSABLE)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(browserIntent)
+    }
 
-        customTabsIntent.intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        customTabsIntent.launchUrl(context, authUri)
+    fun openExternalBrowser(url: String) {
+        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            addCategory(Intent.CATEGORY_BROWSABLE)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(browserIntent)
     }
 
     suspend fun handleOAuthCallback(uri: Uri): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
