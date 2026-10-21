@@ -56,6 +56,25 @@ class DashboardScreenshotTest {
             ),
         ),
         VendorUsage(
+            accountId = "openai-oauth-1",
+            providerType = ProviderType.OPENAI,
+            displayName = "OpenAI",
+            windows = listOf(
+                UsageWindow(
+                    id = "five_hour",
+                    label = "5시간",
+                    remaining = Remaining.Percent(62.0),
+                    resetsAt = fixedNow.plus(Duration.ofHours(2).plusMinutes(15)),
+                ),
+                UsageWindow(
+                    id = "seven_day",
+                    label = "주간",
+                    remaining = Remaining.Percent(88.0),
+                    resetsAt = fixedNow.plus(Duration.ofDays(4)),
+                ),
+            ),
+        ),
+        VendorUsage(
             accountId = "glm-1",
             providerType = ProviderType.ZAI,
             displayName = "GLM",

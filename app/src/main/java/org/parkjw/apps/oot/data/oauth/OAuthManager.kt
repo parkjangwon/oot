@@ -29,6 +29,7 @@ class OAuthManager(
     private val pendingVerifications = mutableMapOf<String, Pair<ProviderType, String>>()
     private val managerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var xaiPollingJob: Job? = null
+    private var openaiPollingJob: Job? = null
     private var loopbackJob: Job? = null
 
     fun startOAuthFlow(provider: ProviderType) {
@@ -216,6 +217,174 @@ class OAuthManager(
             }
         }
         onError("xAI 인증 대기 시간이 초과되었습니다.")
+    }
+
+    /**
+     * OpenAI / ChatGPT device-code login (Codex CLI flow).
+     * Source: openai/codex codex-rs/login/src/device_code_auth.rs
+     */
+    fun startOpenAiDeviceFlow(
+        onCodeReceived: (userCode: String, verificationUrl: String) -> Unit,
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        openaiPollingJob?.cancel()
+        openaiPollingJob = managerScope.launch {
+            try {
+                val issuer = OPENAI_ISSUER
+                val apiBase = "$issuer/api/accounts"
+                val reqBody = """{"client_id":"$OPENAI_CLIENT_ID"}"""
+                    .toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("$apiBase/deviceauth/usercode")
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Accept", "application/json")
+                    .post(reqBody)
+                    .build()
+
+                val (deviceAuthId, userCode, intervalSec) = client.newCall(request).execute().use { response ->
+                    val body = response.body?.string().orEmpty()
+                    if (!response.isSuccessful) {
+                        onError("OpenAI Device 인증 코드 요청 실패 (${response.code}): $body")
+                        return@launch
+                    }
+                    val root = json.parseToJsonElement(body).jsonObject
+                    val authId = root["device_auth_id"]?.jsonPrimitive?.content.orEmpty()
+                    val uCode = root["user_code"]?.jsonPrimitive?.content
+                        ?: root["usercode"]?.jsonPrimitive?.content
+                        ?: ""
+                    val interval = root["interval"]?.jsonPrimitive?.content?.toLongOrNull()
+                        ?: root["interval"]?.jsonPrimitive?.longOrNull
+                        ?: 5L
+                    Tuple3(authId, uCode, interval.coerceAtLeast(1L))
+                }
+
+                if (deviceAuthId.isBlank() || userCode.isBlank()) {
+                    onError("유효한 OpenAI 디바이스 코드를 받지 못했습니다.")
+                    return@launch
+                }
+
+                val verificationUrl = "$issuer/codex/device"
+                withContext(Dispatchers.Main) {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("OpenAI Verification Code", userCode))
+                    onCodeReceived(userCode, verificationUrl)
+                }
+                openExternalBrowser(verificationUrl)
+                pollOpenAiDeviceToken(deviceAuthId, userCode, intervalSec, onTokenReceived, onError)
+            } catch (e: Exception) {
+                onError("OpenAI Device 인증 요청 중 오류: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    private suspend fun pollOpenAiDeviceToken(
+        deviceAuthId: String,
+        userCode: String,
+        intervalSec: Long,
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val issuer = OPENAI_ISSUER
+        val pollUrl = "$issuer/api/accounts/deviceauth/token"
+        val maxDurationMs = 15 * 60 * 1000L
+        val startTime = System.currentTimeMillis()
+        val interval = intervalSec.coerceAtLeast(1L)
+
+        while (System.currentTimeMillis() - startTime < maxDurationMs) {
+            delay(interval * 1000L)
+
+            val reqBody = buildJsonObject {
+                put("device_auth_id", deviceAuthId)
+                put("user_code", userCode)
+            }.toString().toRequestBody("application/json".toMediaType())
+
+            val tokenReq = Request.Builder()
+                .url(pollUrl)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .post(reqBody)
+                .build()
+
+            try {
+                client.newCall(tokenReq).execute().use { response ->
+                    val body = response.body?.string().orEmpty()
+                    if (response.isSuccessful) {
+                        val root = json.parseToJsonElement(body).jsonObject
+                        val authCode = root["authorization_code"]?.jsonPrimitive?.content.orEmpty()
+                        val codeVerifier = root["code_verifier"]?.jsonPrimitive?.content.orEmpty()
+                        if (authCode.isBlank() || codeVerifier.isBlank()) {
+                            onError("OpenAI deviceauth/token 응답이 불완전합니다.")
+                            return
+                        }
+                        val exchanged = exchangeOpenAiAuthorizationCode(authCode, codeVerifier)
+                        exchanged.onSuccess { result ->
+                            withContext(Dispatchers.Main) { onTokenReceived(result) }
+                        }.onFailure { err ->
+                            onError(err.message ?: "OpenAI 토큰 교환 실패")
+                        }
+                        return
+                    }
+                    // Codex: 403/404 = still waiting for user to enter the code
+                    if (response.code == 403 || response.code == 404) {
+                        return@use
+                    }
+                    onError("OpenAI Device 인증 실패 (${response.code}): $body")
+                    return
+                }
+            } catch (_: Exception) {
+                // Ignore transient network errors during polling
+            }
+        }
+        onError("OpenAI 인증 대기 시간이 초과되었습니다 (15분).")
+    }
+
+    private suspend fun exchangeOpenAiAuthorizationCode(
+        authorizationCode: String,
+        codeVerifier: String
+    ): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
+        try {
+            val redirectUri = "$OPENAI_ISSUER/deviceauth/callback"
+            val formBody = FormBody.Builder()
+                .add("grant_type", "authorization_code")
+                .add("code", authorizationCode)
+                .add("redirect_uri", redirectUri)
+                .add("client_id", OPENAI_CLIENT_ID)
+                .add("code_verifier", codeVerifier)
+                .build()
+            val request = Request.Builder()
+                .url("$OPENAI_ISSUER/oauth/token")
+                .addHeader("Accept", "application/json")
+                .post(formBody)
+                .build()
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("OpenAI 토큰 교환 실패 (${response.code}): $body"))
+                }
+                Result.success(parseOpenAiTokenResponse(body))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun parseOpenAiTokenResponse(body: String): OAuthTokenResult {
+        val root = json.parseToJsonElement(body).jsonObject
+        val accessToken = root["access_token"]?.jsonPrimitive?.content
+            ?: throw Exception("응답에 access_token이 없습니다.")
+        val refreshToken = root["refresh_token"]?.jsonPrimitive?.content
+        val expiresIn = root["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L
+        val idToken = root["id_token"]?.jsonPrimitive?.content
+        val claims = parseChatgptIdTokenClaims(idToken)
+        return OAuthTokenResult(
+            provider = ProviderType.OPENAI,
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            expiresAt = System.currentTimeMillis() + (expiresIn * 1000L),
+            chatgptAccountId = claims.accountId,
+            accountEmail = claims.email
+        )
     }
 
     /**
@@ -503,8 +672,11 @@ Connection: close
         val tokenEndpoint = account.provider.oauthTokenEndpoint ?: return@withContext account
 
         try {
-            val request = if (account.provider == ProviderType.CLAUDE) {
-                val jsonPayload = """{"grant_type":"refresh_token","client_id":"$CLAUDE_CLIENT_ID","refresh_token":"${account.refreshToken}"}"""
+            // Claude + OpenAI ChatGPT refresh use JSON bodies (Codex: TokenEncoding::Json for refresh).
+            val request = if (account.provider == ProviderType.CLAUDE || account.provider == ProviderType.OPENAI) {
+                val clientId = getClientIdForProvider(account.provider)
+                val jsonPayload =
+                    """{"grant_type":"refresh_token","client_id":"$clientId","refresh_token":"${account.refreshToken}"}"""
                 Request.Builder()
                     .url(tokenEndpoint)
                     .addHeader("Content-Type", "application/json")
@@ -533,11 +705,18 @@ Connection: close
                 val newAccessToken = root["access_token"]?.jsonPrimitive?.content ?: return@withContext account
                 val newRefreshToken = root["refresh_token"]?.jsonPrimitive?.content ?: account.refreshToken
                 val expiresIn = root["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L
+                val idClaims = if (account.provider == ProviderType.OPENAI) {
+                    parseChatgptIdTokenClaims(root["id_token"]?.jsonPrimitive?.content)
+                } else {
+                    ChatgptIdClaims(null, null)
+                }
 
                 account.copy(
                     accessToken = newAccessToken,
                     refreshToken = newRefreshToken,
-                    tokenExpiresAt = System.currentTimeMillis() + (expiresIn * 1000L)
+                    tokenExpiresAt = System.currentTimeMillis() + (expiresIn * 1000L),
+                    chatgptAccountId = idClaims.accountId ?: account.chatgptAccountId,
+                    accountEmail = idClaims.email ?: account.accountEmail
                 )
             }
         } catch (e: Exception) {
@@ -550,8 +729,28 @@ Connection: close
             ProviderType.CLAUDE -> CLAUDE_CLIENT_ID
             ProviderType.XAI -> XAI_CLIENT_ID
             ProviderType.ANTIGRAVITY -> ANTIGRAVITY_CLIENT_ID
-            ProviderType.OPENAI -> "oot-openai-client"
+            ProviderType.OPENAI -> OPENAI_CLIENT_ID
             else -> "oot-client"
+        }
+    }
+
+    // Codex token_data.rs: claims under https://api.openai.com/auth + optional email/profile.
+    private fun parseChatgptIdTokenClaims(jwt: String?): ChatgptIdClaims {
+        if (jwt.isNullOrBlank()) return ChatgptIdClaims(null, null)
+        return try {
+            val parts = jwt.split('.')
+            if (parts.size < 2) return ChatgptIdClaims(null, null)
+            val padded = parts[1] + "=".repeat((4 - parts[1].length % 4) % 4)
+            val payloadBytes = Base64.decode(padded, Base64.URL_SAFE)
+            val payload = json.parseToJsonElement(String(payloadBytes, Charsets.UTF_8)).jsonObject
+            val auth = payload["https://api.openai.com/auth"]?.jsonObject
+            val profile = payload["https://api.openai.com/profile"]?.jsonObject
+            val accountId = auth?.get("chatgpt_account_id")?.jsonPrimitive?.contentOrNull
+            val email = payload["email"]?.jsonPrimitive?.contentOrNull
+                ?: profile?.get("email")?.jsonPrimitive?.contentOrNull
+            ChatgptIdClaims(accountId, email)
+        } catch (_: Exception) {
+            ChatgptIdClaims(null, null)
         }
     }
 
@@ -570,7 +769,9 @@ Connection: close
         return Base64.encodeToString(digest, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
     }
 
+    private data class Tuple3<A, B, C>(val a: A, val b: B, val c: C)
     private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+    private data class ChatgptIdClaims(val accountId: String?, val email: String?)
 
     companion object {
         const val REDIRECT_URI = "oot://oauth"
@@ -581,6 +782,10 @@ Connection: close
         const val CLAUDE_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
         const val XAI_CLIENT_ID = "b1a00492-073a-47ea-816f-4c329264a828"
         const val ANTIGRAVITY_CLIENT_ID = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+
+        // Codex: codex-rs/login/src/auth/manager.rs CLIENT_ID + server.rs DEFAULT_ISSUER
+        const val OPENAI_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
+        const val OPENAI_ISSUER = "https://auth.openai.com"
     }
 }
 
@@ -588,5 +793,7 @@ data class OAuthTokenResult(
     val provider: ProviderType,
     val accessToken: String,
     val refreshToken: String?,
-    val expiresAt: Long
+    val expiresAt: Long,
+    val chatgptAccountId: String? = null,
+    val accountEmail: String? = null
 )

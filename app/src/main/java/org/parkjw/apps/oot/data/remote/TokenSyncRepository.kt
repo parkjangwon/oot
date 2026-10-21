@@ -27,7 +27,7 @@ class TokenSyncRepository(
     private val xaiApi = XaiApi(client, json)
     private val zaiApi = ZaiApi(client, json)
     private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.saveAccount(it) }
-    private val openAiApi = OpenAiApi(client, json)
+    private val openAiApi = OpenAiApi(client, json, oauthManager) { preferences.saveAccount(it) }
     private val antigravityApi = AntigravityApi(client, json)
     private val deepSeekApi = DeepSeekApi(client, json)
     private val ollamaCloudApi = OllamaCloudApi(client, json)
