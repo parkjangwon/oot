@@ -50,10 +50,10 @@ object NotificationContent {
 
     fun mark(provider: ProviderType): String = when (provider) {
         ProviderType.OPENROUTER -> "R"
-        ProviderType.CLAUDE -> "C"
+        ProviderType.CLAUDE -> "Cl"
         ProviderType.OPENAI -> "O"
         ProviderType.XAI -> "X"
-        ProviderType.CURSOR -> "△"
+        ProviderType.CURSOR -> "Cu"
         ProviderType.ZAI -> "G"
         ProviderType.ANTIGRAVITY -> "A"
     }
@@ -82,7 +82,8 @@ object NotificationContent {
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int): List<CollapsedItem> =
         usages.sortedByRemaining().take(maxItems.coerceAtLeast(0)).map { usage ->
             when (val remaining = usage.representative?.remaining) {
-                null -> CollapsedItem(mark(usage.providerType), "확인 필요", null, true, Level.OK)
+                null ->
+                    CollapsedItem(mark(usage.providerType), "${shortName(usage.providerType)} 확인 필요", null, true, Level.OK)
                 is Remaining.Balance ->
                     CollapsedItem(mark(usage.providerType), formatBalance(remaining.amountLeft), null, false, Level.OK)
                 is Remaining.Percent ->

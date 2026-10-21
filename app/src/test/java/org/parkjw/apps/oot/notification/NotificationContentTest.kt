@@ -41,7 +41,7 @@ class NotificationContentTest {
         val bal = balance(12.4)
         val err = errored()
         val items = NotificationContent.collapsedItems(listOf(high, bal, err, low), maxItems = 3)
-        assertEquals(listOf("△", "G", "C"), items.map { it.mark })
+        assertEquals(listOf("Cu", "G", "Cl"), items.map { it.mark })
     }
 
     @Test
@@ -54,7 +54,7 @@ class NotificationContentTest {
     @Test
     fun `collapsed percent label and bar value`() {
         val item = NotificationContent.collapsedItems(listOf(vendor(61.6)), maxItems = 3).single()
-        assertEquals("C", item.mark)
+        assertEquals("Cl", item.mark)
         assertEquals("62% 남음", item.label)
         assertEquals(62, item.percent)
         assertFalse(item.isError)
@@ -71,9 +71,16 @@ class NotificationContentTest {
     @Test
     fun `collapsed error label`() {
         val item = NotificationContent.collapsedItems(listOf(errored()), maxItems = 3).single()
-        assertEquals("확인 필요", item.label)
+        assertEquals("Cu", item.mark)
+        assertEquals("Cursor 확인 필요", item.label)
         assertNull(item.percent)
         assertTrue(item.isError)
+    }
+
+    @Test
+    fun `marks are unique per provider`() {
+        val marks = ProviderType.entries.map { NotificationContent.mark(it) }
+        assertEquals(marks.size, marks.distinct().size)
     }
 
     @Test
