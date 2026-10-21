@@ -26,6 +26,11 @@ import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.oauth.OAuthTokenResult
+import org.parkjw.apps.oot.ui.theme.ButtonCorner
+import org.parkjw.apps.oot.ui.theme.DialogCorner
+import org.parkjw.apps.oot.ui.theme.ootInkButtonColors
+import org.parkjw.apps.oot.ui.theme.ootOutlinedButtonColors
+import org.parkjw.apps.oot.ui.theme.ootTextButtonColors
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +90,8 @@ fun AddAccountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = DialogCorner,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         title = {
             Text(
                 text = "AI 계정 연동",
@@ -157,6 +164,8 @@ fun AddAccountDialog(
                 // Quick Link to Provider Key / Dashboard
                 OutlinedButton(
                     onClick = { onOpenExternalBrowser(selectedProvider.dashboardUrl) },
+                    shape = ButtonCorner,
+                    colors = ootOutlinedButtonColors(),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
@@ -592,13 +601,18 @@ fun AddAccountDialog(
                     )
                     onSaveAccount(account)
                 },
+                shape = ButtonCorner,
+                colors = ootInkButtonColors(),
                 enabled = apiKey.isNotBlank()
             ) {
                 Text("저장하기")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                colors = ootTextButtonColors()
+            ) {
                 Text("취소")
             }
         }
