@@ -99,13 +99,6 @@ class DashboardScreenshotTest {
                 ),
             ),
         ),
-        VendorUsage(
-            accountId = "cursor-1",
-            providerType = ProviderType.CURSOR,
-            displayName = "Cursor",
-            windows = emptyList(),
-            error = VendorError.Unauthorized,
-        ),
     )
 
     @Test

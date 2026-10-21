@@ -551,7 +551,6 @@ Connection: close
             ProviderType.XAI -> XAI_CLIENT_ID
             ProviderType.ANTIGRAVITY -> ANTIGRAVITY_CLIENT_ID
             ProviderType.OPENAI -> "oot-openai-client"
-            ProviderType.CURSOR -> "oot-cursor-client"
             else -> "oot-client"
         }
     }

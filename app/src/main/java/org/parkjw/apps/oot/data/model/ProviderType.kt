@@ -57,17 +57,6 @@ enum class ProviderType(
         oauthTokenEndpoint = "https://auth.x.ai/oauth2/token",
         defaultScopes = listOf("openid", "profile", "email", "offline_access", "grok-cli:access", "api:access")
     ),
-    CURSOR(
-        displayName = "Cursor",
-        description = "Cursor Pro / Business 빠른 요청(Fast Requests) 및 사용량",
-        primaryAuthType = AuthType.API_KEY,
-        defaultIconName = "cursor",
-        baseUrl = "https://api2.cursor.sh",
-        dashboardUrl = "https://www.cursor.com/settings",
-        oauthAuthEndpoint = "https://authenticator.cursor.sh/auth/authorize",
-        oauthTokenEndpoint = "https://authenticator.cursor.sh/auth/token",
-        defaultScopes = listOf("user:read", "usage:read")
-    ),
     ZAI(
         displayName = "Z.ai (GLM)",
         description = "Z.ai GLM 코딩 플랜 쿼터 및 토큰 모니터링",

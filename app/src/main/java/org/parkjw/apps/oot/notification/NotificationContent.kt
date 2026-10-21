@@ -43,7 +43,6 @@ object NotificationContent {
         ProviderType.CLAUDE -> "Claude"
         ProviderType.OPENAI -> "OpenAI"
         ProviderType.XAI -> "xAI"
-        ProviderType.CURSOR -> "Cursor"
         ProviderType.ZAI -> "GLM"
         ProviderType.ANTIGRAVITY -> "Antigravity"
     }
@@ -53,7 +52,6 @@ object NotificationContent {
         ProviderType.CLAUDE -> "Cl"
         ProviderType.OPENAI -> "O"
         ProviderType.XAI -> "X"
-        ProviderType.CURSOR -> "Cu"
         ProviderType.ZAI -> "G"
         ProviderType.ANTIGRAVITY -> "A"
     }
