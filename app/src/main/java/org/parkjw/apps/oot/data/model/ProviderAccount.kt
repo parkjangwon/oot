@@ -13,6 +13,8 @@ data class ProviderAccount(
     val refreshToken: String? = null,
     val tokenExpiresAt: Long? = null,
     val accountEmail: String? = null,
+    // ChatGPT workspace id from id_token https://api.openai.com/auth.chatgpt_account_id (Codex).
+    val chatgptAccountId: String? = null,
     val customEndpoint: String? = null,
     val isEnabled: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
