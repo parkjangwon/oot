@@ -27,7 +27,7 @@ class TokenSyncRepository(
     private val openRouterApi = OpenRouterApi(client, json)
     private val xaiApi = XaiApi(client, json)
     private val zaiApi = ZaiApi(client, json)
-    private val claudeApi = ClaudeApi(client, json)
+    private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.saveAccount(it) }
     private val openAiApi = OpenAiApi(client, json)
     private val cursorApi = CursorApi(client, json)
     private val antigravityApi = AntigravityApi(client, json)
@@ -43,7 +43,7 @@ class TokenSyncRepository(
 
     suspend fun refreshAll(): List<TokenStatus> = coroutineScope {
         _isRefreshing.value = true
-        val activeAccounts = preferences.accounts.value.filter { it.isEnabled }
+        val activeAccounts = preferences.accounts.value.filter { it.isEnabled && it.provider.isSelectable }
 
         val deferreds = activeAccounts.map { account ->
             async {

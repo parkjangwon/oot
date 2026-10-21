@@ -118,7 +118,7 @@ fun AddAccountDialog(
                         expanded = isProviderDropdownExpanded,
                         onDismissRequest = { isProviderDropdownExpanded = false }
                     ) {
-                        ProviderType.entries.forEach { provider ->
+                        ProviderType.entries.filter { it.isSelectable }.forEach { provider ->
                             DropdownMenuItem(
                                 text = {
                                     Column {

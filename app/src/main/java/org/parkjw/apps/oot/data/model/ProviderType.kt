@@ -12,7 +12,9 @@ enum class ProviderType(
     val dashboardUrl: String,
     val oauthAuthEndpoint: String? = null,
     val oauthTokenEndpoint: String? = null,
-    val defaultScopes: List<String> = emptyList()
+    val defaultScopes: List<String> = emptyList(),
+    // issue #4: false = hidden from the add-account dialog and skipped in sync (existing accounts kept)
+    val isSelectable: Boolean = true
 ) {
     OPENROUTER(
         displayName = "OpenRouter",
@@ -89,6 +91,7 @@ enum class ProviderType(
             "profile",
             "https://www.googleapis.com/auth/cloud-platform",
             "https://www.googleapis.com/auth/userinfo.email"
-        )
+        ),
+        isSelectable = false
     )
 }

@@ -274,7 +274,13 @@ fun AccountStatusCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Body
-            if (status == null) {
+            if (!account.provider.isSelectable) {
+                Text(
+                    text = "지원 안 함 · 이 계정은 삭제해주세요",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else if (status == null) {
                 Text(
                     text = "동기화 대기 중...",
                     style = MaterialTheme.typography.bodyMedium,
@@ -312,6 +318,15 @@ fun AccountStatusCard(
                         text = status.totalLimitFormatted,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (status.errorMessage != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "⚠️ " + status.errorMessage,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (status.isCritical) StatusRed else StatusYellow
                     )
                 }
 
