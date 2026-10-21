@@ -177,7 +177,6 @@ fun AddAccountDialog(
                             ProviderType.CLAUDE -> "Claude Console 키 발급 열기"
                             ProviderType.OPENAI -> "OpenAI Platform 키 발급 열기"
                             ProviderType.XAI -> "xAI Console 키 발급 열기"
-                            ProviderType.CURSOR -> "Cursor 설정 페이지 열기"
                             ProviderType.ANTIGRAVITY -> "Google Antigravity 사이트 열기"
                         }
                     )
@@ -527,7 +526,6 @@ fun AddAccountDialog(
                                     ProviderType.CLAUDE -> "sk-ant-... 또는 세션 키"
                                     ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
                                     ProviderType.XAI -> "xai-... API Key"
-                                    ProviderType.CURSOR -> "Cursor 세션 토큰 / Key"
                                     ProviderType.ANTIGRAVITY -> "AIza... 또는 Bearer 토큰"
                                 }
                             )
@@ -562,7 +560,6 @@ fun AddAccountDialog(
                             ProviderType.CLAUDE -> "💡 Anthropic Console API 키(sk-ant-...) 또는 OAuth 토큰을 입력해주세요."
                             ProviderType.OPENAI -> "💡 OpenAI API 키(sk-...)를 입력하면 모델 레이트 리밋과 잔여량을 조회합니다."
                             ProviderType.XAI -> "💡 xAI Console API 키 또는 Grok OAuth 토큰으로 주간 한도를 모니터링합니다."
-                            ProviderType.CURSOR -> "💡 Cursor 세션 토큰 또는 API Key를 입력하여 Fast Requests 잔여량을 확인합니다."
                             ProviderType.ANTIGRAVITY -> "💡 Google Antigravity OAuth 토큰 또는 Gemini API Key를 등록하여 에이전트 쿼터를 조회합니다."
                         },
                         style = MaterialTheme.typography.bodySmall,

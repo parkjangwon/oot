@@ -29,7 +29,6 @@ class TokenSyncRepository(
     private val zaiApi = ZaiApi(client, json)
     private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.saveAccount(it) }
     private val openAiApi = OpenAiApi(client, json)
-    private val cursorApi = CursorApi(client, json)
     private val antigravityApi = AntigravityApi(client, json)
 
     private val _statuses = MutableStateFlow<List<TokenStatus>>(emptyList())
@@ -74,7 +73,6 @@ class TokenSyncRepository(
             ProviderType.ZAI -> zaiApi.fetchStatus(account)
             ProviderType.CLAUDE -> claudeApi.fetchStatus(account)
             ProviderType.OPENAI -> openAiApi.fetchStatus(account)
-            ProviderType.CURSOR -> cursorApi.fetchStatus(account)
             ProviderType.ANTIGRAVITY -> antigravityApi.fetchStatus(account)
         }
     }

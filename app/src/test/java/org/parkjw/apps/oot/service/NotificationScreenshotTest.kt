@@ -64,13 +64,6 @@ class NotificationScreenshotTest {
                 windows = listOf(
                     UsageWindow("credit", "credit", Remaining.Balance(12.40))
                 )
-            ),
-            VendorUsage(
-                accountId = "demo-cursor",
-                providerType = ProviderType.CURSOR,
-                displayName = "cursor-demo@example.com",
-                windows = emptyList(),
-                error = VendorError.Unknown("demo error")
             )
         )
     }
