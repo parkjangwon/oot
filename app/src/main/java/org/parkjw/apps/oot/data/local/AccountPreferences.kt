@@ -21,6 +21,9 @@ class AccountPreferences(context: Context) {
     private val _refreshIntervalMinutes = MutableStateFlow(15)
     val refreshIntervalMinutes: StateFlow<Int> = _refreshIntervalMinutes.asStateFlow()
 
+    private val _isAutoUpdateCheckEnabled = MutableStateFlow(true)
+    val isAutoUpdateCheckEnabled: StateFlow<Boolean> = _isAutoUpdateCheckEnabled.asStateFlow()
+
     init {
         loadSettings()
     }
@@ -36,6 +39,7 @@ class AccountPreferences(context: Context) {
 
         _isServiceEnabled.value = secureStorage.getString(KEY_SERVICE_ENABLED, "true")?.toBooleanStrictOrNull() ?: true
         _refreshIntervalMinutes.value = secureStorage.getString(KEY_REFRESH_INTERVAL, "15")?.toIntOrNull() ?: 15
+        _isAutoUpdateCheckEnabled.value = secureStorage.getString(KEY_AUTO_UPDATE_CHECK, "true")?.toBooleanStrictOrNull() ?: true
     }
 
     fun saveAccount(account: ProviderAccount) {
@@ -74,6 +78,11 @@ class AccountPreferences(context: Context) {
         secureStorage.putString(KEY_REFRESH_INTERVAL, minutes.toString())
     }
 
+    fun setAutoUpdateCheckEnabled(enabled: Boolean) {
+        _isAutoUpdateCheckEnabled.value = enabled
+        secureStorage.putString(KEY_AUTO_UPDATE_CHECK, enabled.toString())
+    }
+
     private fun persistAccounts(list: List<ProviderAccount>) {
         try {
             val serialized = json.encodeToString(list)
@@ -87,5 +96,6 @@ class AccountPreferences(context: Context) {
         private const val KEY_ACCOUNTS = "oot_accounts"
         private const val KEY_SERVICE_ENABLED = "oot_service_enabled"
         private const val KEY_REFRESH_INTERVAL = "oot_refresh_interval"
+        private const val KEY_AUTO_UPDATE_CHECK = "oot_auto_update_check"
     }
 }

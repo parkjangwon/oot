@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Settings
@@ -29,14 +28,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -81,7 +77,6 @@ import org.parkjw.apps.oot.ui.theme.OotSpacing
 import org.parkjw.apps.oot.ui.theme.extendedColors
 import org.parkjw.apps.oot.ui.theme.ootIconButtonColors
 import org.parkjw.apps.oot.ui.theme.ootInkButtonColors
-import org.parkjw.apps.oot.ui.theme.ootOutlinedButtonColors
 import org.parkjw.apps.oot.ui.theme.ootTextButtonColors
 import org.parkjw.apps.oot.ui.theme.progressLevel
 import org.parkjw.apps.oot.ui.theme.withNumericSpans
@@ -110,20 +105,8 @@ fun DashboardScreen(
     onToggleService: (Boolean) -> Unit = {},
     onSetRefreshInterval: (Int) -> Unit = {},
 ) {
-    var showSettingsPlaceholder by remember { mutableStateOf(false) }
     var selectedVendorForDetail by remember { mutableStateOf<VendorUsage?>(null) }
     var selectedLegacyForDetail by remember { mutableStateOf<ProviderAccount?>(null) }
-
-    if (showSettingsPlaceholder) {
-        SettingsPlaceholderScreen(
-            isServiceEnabled = isServiceEnabled,
-            refreshIntervalMinutes = refreshIntervalMinutes,
-            onToggleService = onToggleService,
-            onSetRefreshInterval = onSetRefreshInterval,
-            onBack = { showSettingsPlaceholder = false },
-        )
-        return
-    }
 
     Scaffold(
         modifier = modifier,
@@ -167,13 +150,7 @@ fun DashboardScreen(
                         )
                     }
                     IconButton(
-                        onClick = {
-                            if (onSettingsClick != null) {
-                                onSettingsClick()
-                            } else {
-                                showSettingsPlaceholder = true
-                            }
-                        },
+                        onClick = { onSettingsClick?.invoke() },
                         colors = ootIconButtonColors(),
                     ) {
                         Icon(
@@ -978,122 +955,6 @@ private fun VendorDetailDialog(
             }
         },
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SettingsPlaceholderScreen(
-    isServiceEnabled: Boolean = false,
-    refreshIntervalMinutes: Int = 15,
-    onToggleService: (Boolean) -> Unit = {},
-    onSetRefreshInterval: (Int) -> Unit = {},
-    onBack: () -> Unit = {},
-) {
-    val numericSpan = SpanStyle(
-        fontFamily = OotMonoFamily,
-        letterSpacing = (-0.2).sp,
-    )
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "설정",
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack, colors = ootIconButtonColors()) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "뒤로",
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = OotSpacing.screenHorizontal),
-            verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = CardCorner,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-            ) {
-                Column(
-                    modifier = Modifier.padding(OotSpacing.md),
-                    verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "상시 알림 표시",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Text(
-                                text = "상태 표시줄에서 남은 한도를 확인합니다",
-                                style = MaterialTheme.typography.bodySmall.copy(lineBreak = WordWrapFriendly),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = isServiceEnabled,
-                            onCheckedChange = onToggleService,
-                        )
-                    }
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                    Text(
-                        text = withNumericSpans("새로고침 간격 · ${refreshIntervalMinutes}분마다", numericSpan),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        listOf(5, 15, 30, 60).forEach { minutes ->
-                            val selected = refreshIntervalMinutes == minutes
-                            OutlinedButton(
-                                onClick = { onSetRefreshInterval(minutes) },
-                                shape = ButtonCorner,
-                                colors = if (selected) ootInkButtonColors() else ootOutlinedButtonColors(),
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (selected) MaterialTheme.extendedColors.inkButton else MaterialTheme.colorScheme.outlineVariant,
-                                ),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            ) {
-                                Text(
-                                    text = withNumericSpans("${minutes}분", numericSpan),
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 private fun VendorUsage.shortVendorName(): String = when (providerType) {
