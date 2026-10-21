@@ -16,13 +16,13 @@ import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.toVendorUsage
 import org.parkjw.apps.oot.data.oauth.OAuthManager
-import java.util.concurrent.TimeUnit
 
 class TokenSyncRepository(
     private val preferences: AccountPreferences,
     val oauthManager: OAuthManager,
     private val client: OkHttpClient,
-    private val json: Json
+    private val json: Json,
+    private val refreshScheduler: RefreshScheduler = RefreshScheduler(),
 ) {
     private val openRouterApi = OpenRouterApi(client, json)
     private val xaiApi = XaiApi(client, json)
@@ -43,9 +43,14 @@ class TokenSyncRepository(
     suspend fun refreshAll(): List<TokenStatus> = coroutineScope {
         _isRefreshing.value = true
         val activeAccounts = preferences.accounts.value.filter { it.isEnabled && it.provider.isSelectable }
+        val intervalMs = preferences.refreshIntervalMinutes.value.coerceAtLeast(1) * 60_000L
+        val previous = _statuses.value.associateBy { it.accountId }
 
         val deferreds = activeAccounts.map { account ->
             async {
+                if (!refreshScheduler.shouldFetch(account.id)) {
+                    return@async previous[account.id] ?: skippedBackoffStatus(account)
+                }
                 val updatedAccount = if (account.authType == AuthType.OAUTH && account.isTokenExpired) {
                     val refreshed = oauthManager.refreshTokenIfNeeded(account)
                     if (refreshed != account) {
@@ -55,7 +60,17 @@ class TokenSyncRepository(
                 } else {
                     account
                 }
-                fetchAccountStatus(updatedAccount)
+                val status = fetchAccountStatus(updatedAccount)
+                if (status.isRateLimited) {
+                    refreshScheduler.onRateLimited(
+                        account.id,
+                        intervalMs,
+                        status.rateLimitedRetryAfterMs,
+                    )
+                } else if (!status.isError) {
+                    refreshScheduler.onSuccess(account.id)
+                }
+                status
             }
         }
 
@@ -65,6 +80,17 @@ class TokenSyncRepository(
         _isRefreshing.value = false
         results
     }
+
+    private fun skippedBackoffStatus(account: ProviderAccount): TokenStatus = TokenStatus(
+        accountId = account.id,
+        provider = account.provider,
+        accountName = account.name,
+        remainingFormatted = "요청 제한 (대기)",
+        statusSummary = "확인 필요",
+        isError = true,
+        errorMessage = "조회 제한 대기 중",
+        isRateLimited = true,
+    )
 
     private suspend fun fetchAccountStatus(account: ProviderAccount): TokenStatus {
         return when (account.provider) {

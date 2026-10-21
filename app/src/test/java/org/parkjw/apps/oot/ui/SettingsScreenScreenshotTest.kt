@@ -34,7 +34,7 @@ class SettingsScreenScreenshotTest {
             OotTheme(darkTheme = darkTheme) {
                 SettingsScreen(
                     isServiceEnabled = true,
-                    refreshIntervalMinutes = 15,
+                    refreshIntervalMinutes = 1,
                     autoUpdateCheckEnabled = true,
                     versionName = "1.0.3",
                     updateState = state,

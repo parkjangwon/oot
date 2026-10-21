@@ -54,7 +54,8 @@ import org.parkjw.apps.oot.update.displayVersion
 
 internal const val SOURCE_CODE_URL = "https://github.com/parkjangwon/oot"
 
-private val REFRESH_INTERVALS = listOf(5, 15, 30, 60)
+private val REFRESH_INTERVALS = listOf(1, 5, 15, 30, 60)
+private val SHORT_REFRESH_INTERVALS = setOf(1, 5)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -222,6 +223,17 @@ private fun IntervalSegment(
                     },
                 )
             }
+        }
+        if (selectedMinutes in SHORT_REFRESH_INTERVALS) {
+            Text(
+                text = stringResource(R.string.settings_refresh_interval_battery_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    horizontal = OotSpacing.md,
+                    vertical = OotSpacing.xs,
+                ),
+            )
         }
     }
 }

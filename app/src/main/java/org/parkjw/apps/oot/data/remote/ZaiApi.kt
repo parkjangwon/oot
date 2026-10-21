@@ -123,6 +123,14 @@ class ZaiApi(
                     )
                 }
 
+                if (response.code == 429) {
+                    return@withContext rateLimitedTokenStatus(
+                        account,
+                        ProviderType.ZAI,
+                        response.header("Retry-After"),
+                    )
+                }
+
                 if (response.code == 401 || response.code == 403) {
                     return@withContext TokenStatus(
                         accountId = account.id,

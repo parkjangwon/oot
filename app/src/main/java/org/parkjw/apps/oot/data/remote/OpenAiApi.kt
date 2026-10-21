@@ -43,6 +43,13 @@ class OpenAiApi(
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
+                    if (response.code == 429) {
+                        return@withContext rateLimitedTokenStatus(
+                            account,
+                            ProviderType.OPENAI,
+                            response.header("Retry-After"),
+                        )
+                    }
                     if (response.code == 401) {
                         return@withContext TokenStatus(
                             accountId = account.id,

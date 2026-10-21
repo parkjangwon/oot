@@ -43,6 +43,13 @@ class AntigravityApi(
                     .build()
 
                 client.newCall(userReq).execute().use { response ->
+                    if (response.code == 429) {
+                        return@withContext rateLimitedTokenStatus(
+                            account,
+                            ProviderType.ANTIGRAVITY,
+                            response.header("Retry-After"),
+                        )
+                    }
                     if (response.code == 401) {
                         return@withContext TokenStatus(
                             accountId = account.id,
@@ -114,6 +121,12 @@ class AntigravityApi(
                             totalLimitFormatted = "Gemini 2.0 / 1.5 Pro 모델 활성",
                             statusSummary = "Gemini 정상",
                             isWarning = false
+                        )
+                    } else if (response.code == 429) {
+                        return@withContext rateLimitedTokenStatus(
+                            account,
+                            ProviderType.ANTIGRAVITY,
+                            response.header("Retry-After"),
                         )
                     } else {
                         return@withContext TokenStatus(

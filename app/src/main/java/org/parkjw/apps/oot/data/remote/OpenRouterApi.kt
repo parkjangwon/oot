@@ -48,6 +48,13 @@ class OpenRouterApi(
                 .build()
 
             client.newCall(keyRequest).execute().use { response ->
+                if (!response.isSuccessful && response.code == 429) {
+                    return@withContext rateLimitedTokenStatus(
+                        account,
+                        ProviderType.OPENROUTER,
+                        response.header("Retry-After"),
+                    )
+                }
                 if (!response.isSuccessful && response.code == 401) {
                     return@withContext TokenStatus(
                         accountId = account.id,

@@ -18,6 +18,10 @@ data class TokenStatus(
     val isError: Boolean = false,
     val errorMessage: String? = null,
     val lastUpdated: Long = System.currentTimeMillis(),
+    /** True when the vendor responded with HTTP 429. */
+    val isRateLimited: Boolean = false,
+    /** Parsed Retry-After delay in ms, if the 429 response included one. */
+    val rateLimitedRetryAfterMs: Long? = null,
     // Real usage windows for providers that report them (e.g. Claude 5-hour/weekly). Not persisted.
     @Transient val windows: List<UsageWindow> = emptyList()
 )

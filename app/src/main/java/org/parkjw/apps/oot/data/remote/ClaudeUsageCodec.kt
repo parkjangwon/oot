@@ -76,24 +76,11 @@ fun parseClaudeUsage(body: String, json: Json = Json): List<ClaudeWindowUsage>? 
 }
 
 // 429: keep the last successful value (shown as stale) and retry next cycle.
-fun claudeRateLimitedStatus(account: ProviderAccount, cached: TokenStatus?): TokenStatus = when {
-    cached != null -> cached.copy(
-        remainingFormatted = "${cached.remainingFormatted} (이전 값)",
-        statusSummary = "${cached.statusSummary} (이전값)",
-        isWarning = true,
-        errorMessage = "조회 제한(429) - 마지막 확인 값 표시",
-        lastUpdated = System.currentTimeMillis()
-    )
-    else -> TokenStatus(
-        accountId = account.id,
-        provider = account.provider,
-        accountName = account.name,
-        remainingFormatted = "요청 제한 (429)",
-        statusSummary = "확인 필요",
-        isError = true,
-        errorMessage = "사용량 조회 제한(429) - 다음 주기에 재시도"
-    )
-}
+fun claudeRateLimitedStatus(
+    account: ProviderAccount,
+    cached: TokenStatus?,
+    retryAfterHeader: String? = null,
+): TokenStatus = rateLimitedTokenStatus(account, account.provider, retryAfterHeader, cached)
 
 // Diagnosis summary for logs: path, HTTP status, window labels + utilization + resets_at.
 // Tokens/headers/emails are never passed in, so they can never leak into the output.
