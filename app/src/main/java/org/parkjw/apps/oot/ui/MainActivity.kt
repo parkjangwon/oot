@@ -58,8 +58,8 @@ class MainActivity : ComponentActivity() {
                     refreshIntervalMinutes = refreshInterval,
                     onRefresh = {
                         lifecycleScope.launch {
-                            val updated = app.repository.refreshAll()
-                            app.notificationManager.updateNotification(updated)
+                            app.repository.refreshAll()
+                            app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                         }
                     },
                     onToggleService = { enabled ->
@@ -79,15 +79,15 @@ class MainActivity : ComponentActivity() {
                     onDeleteAccount = { accountId ->
                         app.preferences.deleteAccount(accountId)
                         lifecycleScope.launch {
-                            val updated = app.repository.refreshAll()
-                            app.notificationManager.updateNotification(updated)
+                            app.repository.refreshAll()
+                            app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                         }
                     },
                     onToggleAccount = { accountId, isEnabled ->
                         app.preferences.toggleAccount(accountId, isEnabled)
                         lifecycleScope.launch {
-                            val updated = app.repository.refreshAll()
-                            app.notificationManager.updateNotification(updated)
+                            app.repository.refreshAll()
+                            app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                         }
                     }
                 )
@@ -130,8 +130,8 @@ class MainActivity : ComponentActivity() {
                             showAddDialog = false
                             app.preferences.saveAccount(newAccount)
                             lifecycleScope.launch {
-                                val updated = app.repository.refreshAll()
-                                app.notificationManager.updateNotification(updated)
+                                app.repository.refreshAll()
+                                app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                                 Toast.makeText(this@MainActivity, "${newAccount.name} 계정이 등록되었습니다.", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -163,8 +163,8 @@ class MainActivity : ComponentActivity() {
                         tokenExpiresAt = tokenResult.expiresAt
                     )
                     app.preferences.saveAccount(newAccount)
-                    val updated = app.repository.refreshAll()
-                    app.notificationManager.updateNotification(updated)
+                    app.repository.refreshAll()
+                    app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                     Toast.makeText(this@MainActivity, "${tokenResult.provider.displayName} OAuth 연동이 완료되었습니다!", Toast.LENGTH_LONG).show()
                 }.onFailure { error ->
                     Toast.makeText(this@MainActivity, "인증 오류: ${error.message}", Toast.LENGTH_LONG).show()

@@ -7,15 +7,29 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import org.parkjw.apps.oot.R
-import org.parkjw.apps.oot.data.model.TokenStatus
+import org.parkjw.apps.oot.data.model.VendorUsage
+import org.parkjw.apps.oot.notification.NotificationContent
 import org.parkjw.apps.oot.ui.MainActivity
 
 class TokenNotificationManager(private val context: Context) {
 
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    private val collapsedItemIds = intArrayOf(R.id.item0, R.id.item1, R.id.item2)
+    private val collapsedMarkIds = intArrayOf(R.id.mark0, R.id.mark1, R.id.mark2)
+    private val collapsedBarIds = intArrayOf(R.id.bar0, R.id.bar1, R.id.bar2)
+    private val collapsedLabelIds = intArrayOf(R.id.label0, R.id.label1, R.id.label2)
+
+    private val expandedRowIds = intArrayOf(R.id.row0, R.id.row1, R.id.row2, R.id.row3, R.id.row4, R.id.row5, R.id.row6, R.id.row7)
+    private val expandedMarkIds = intArrayOf(R.id.mark0, R.id.mark1, R.id.mark2, R.id.mark3, R.id.mark4, R.id.mark5, R.id.mark6, R.id.mark7)
+    private val expandedNameIds = intArrayOf(R.id.name0, R.id.name1, R.id.name2, R.id.name3, R.id.name4, R.id.name5, R.id.name6, R.id.name7)
+    private val expandedTextIds = intArrayOf(R.id.text0, R.id.text1, R.id.text2, R.id.text3, R.id.text4, R.id.text5, R.id.text6, R.id.text7)
+    private val expandedBarIds = intArrayOf(R.id.bar0, R.id.bar1, R.id.bar2, R.id.bar3, R.id.bar4, R.id.bar5, R.id.bar6, R.id.bar7)
 
     init {
         createNotificationChannel()
@@ -35,7 +49,7 @@ class TokenNotificationManager(private val context: Context) {
         }
     }
 
-    fun buildNotification(statuses: List<TokenStatus>): Notification {
+    fun buildNotification(usages: List<VendorUsage>): Notification {
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -56,7 +70,7 @@ class TokenNotificationManager(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        if (statuses.isEmpty()) {
+        if (usages.isEmpty()) {
             return NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_oot_token)
                 .setContentTitle("OOT: 토큰 모니터")
@@ -72,54 +86,15 @@ class TokenNotificationManager(private val context: Context) {
                 .build()
         }
 
-        val hasCritical = statuses.any { it.isCritical }
-        val hasWarning = statuses.any { it.isWarning }
+        // Text-only fallback (option C) is the standard contentText/ticker,
+        // so the notification stays readable wherever custom views break.
+        val summary = NotificationContent.textFallback(usages)
 
-        val titlePrefix = when {
-            hasCritical -> "🚨 [위험] OOT 토큰 알림"
-            hasWarning -> "⚠️ [주의] OOT 토큰 알림"
-            else -> "⚡ OOT: AI 토큰 현황"
-        }
-
-        // Compact short summary for status bar collapsed view
-        val shortSummary = statuses.joinToString(" | ") { status ->
-            "${status.provider.displayName.take(8)}: ${status.statusSummary}"
-        }
-
-        // Expanded BigTextStyle view with full details
-        val bigTextBuilder = StringBuilder()
-        statuses.forEachIndexed { index, status ->
-            val icon = when {
-                status.isError -> "❌"
-                status.isCritical -> "🔴"
-                status.isWarning -> "🟡"
-                else -> "🟢"
-            }
-            bigTextBuilder.append("$icon ${status.accountName} (${status.provider.displayName}): ${status.remainingFormatted}")
-            if (status.totalLimitFormatted != null) {
-                bigTextBuilder.append(" [${status.totalLimitFormatted}]")
-            }
-            if (status.resetTimeFormatted != null) {
-                bigTextBuilder.append(" (${status.resetTimeFormatted})")
-            }
-            if (status.isError && status.errorMessage != null) {
-                bigTextBuilder.append(" - ${status.errorMessage}")
-            }
-            if (index < statuses.lastIndex) {
-                bigTextBuilder.append("\n")
-            }
-        }
-
-        val bigTextStyle = NotificationCompat.BigTextStyle()
-            .bigText(bigTextBuilder.toString())
-            .setBigContentTitle(titlePrefix)
-            .setSummaryText("${statuses.size}개 AI 구독/API 모니터링 중")
-
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_oot_token)
-            .setContentTitle(titlePrefix)
-            .setContentText(shortSummary)
-            .setStyle(bigTextStyle)
+            .setContentTitle(context.getString(R.string.app_name))
+            .setContentText(summary)
+            .setTicker(summary)
             .setContentIntent(openAppPendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -128,11 +103,82 @@ class TokenNotificationManager(private val context: Context) {
                 "새로고침",
                 refreshPendingIntent
             )
-            .build()
+
+        if (NotificationContent.FORCE_TEXT_ONLY) {
+            val bigText = NotificationContent.expandedItems(usages)
+                .joinToString("\n") { "${it.name} ${it.text}" }
+            return builder
+                .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
+                .build()
+        }
+
+        builder
+            .setCustomContentView(collapsedViews(usages))
+            .setCustomBigContentView(expandedViews(usages))
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+
+        return builder.build()
     }
 
-    fun updateNotification(statuses: List<TokenStatus>) {
-        val notification = buildNotification(statuses)
+    private fun collapsedViews(usages: List<VendorUsage>): RemoteViews {
+        val maxItems = context.resources.getInteger(R.integer.notification_collapsed_items)
+        val items = NotificationContent.collapsedItems(usages, maxItems)
+        val views = RemoteViews(context.packageName, R.layout.notification_collapsed)
+        repeat(collapsedItemIds.size) { i ->
+            if (i >= items.size) {
+                views.setViewVisibility(collapsedItemIds[i], View.GONE)
+                return@repeat
+            }
+            val item = items[i]
+            views.setViewVisibility(collapsedItemIds[i], View.VISIBLE)
+            views.setTextViewText(collapsedMarkIds[i], item.mark)
+            views.setTextViewText(collapsedLabelIds[i], item.label)
+            if (item.percent == null) {
+                views.setViewVisibility(collapsedBarIds[i], View.GONE)
+                views.setTextColor(
+                    collapsedLabelIds[i],
+                    context.getColor(if (item.isError) R.color.notif_text_danger else R.color.notif_text_primary)
+                )
+            } else {
+                views.setViewVisibility(collapsedBarIds[i], View.VISIBLE)
+                views.setTextColor(collapsedLabelIds[i], context.getColor(R.color.notif_text_primary))
+                views.setInt(collapsedBarIds[i], "setImageLevel", item.percent * 100)
+            }
+        }
+        return views
+    }
+
+    // shortcut: fixed 8 rows; vendors beyond 8 are truncated until RemoteViews supports dynamic rows
+    private fun expandedViews(usages: List<VendorUsage>): RemoteViews {
+        val items = NotificationContent.expandedItems(usages).take(expandedRowIds.size)
+        val views = RemoteViews(context.packageName, R.layout.notification_expanded)
+        repeat(expandedRowIds.size) { i ->
+            if (i >= items.size) {
+                views.setViewVisibility(expandedRowIds[i], View.GONE)
+                return@repeat
+            }
+            val item = items[i]
+            views.setViewVisibility(expandedRowIds[i], View.VISIBLE)
+            views.setTextViewText(expandedMarkIds[i], item.mark)
+            views.setTextViewText(expandedNameIds[i], item.name)
+            views.setTextViewText(expandedTextIds[i], item.text)
+            if (item.isError) {
+                views.setViewVisibility(expandedBarIds[i], View.GONE)
+                views.setTextColor(expandedTextIds[i], context.getColor(R.color.notif_text_danger))
+            } else if (item.percent == null) {
+                views.setViewVisibility(expandedBarIds[i], View.GONE)
+                views.setTextColor(expandedTextIds[i], context.getColor(R.color.notif_text_secondary))
+            } else {
+                views.setViewVisibility(expandedBarIds[i], View.VISIBLE)
+                views.setTextColor(expandedTextIds[i], context.getColor(R.color.notif_text_secondary))
+                views.setInt(expandedBarIds[i], "setImageLevel", item.percent * 100)
+            }
+        }
+        return views
+    }
+
+    fun updateNotification(usages: List<VendorUsage>) {
+        val notification = buildNotification(usages)
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 

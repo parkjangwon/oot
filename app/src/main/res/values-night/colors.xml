@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notif_bar_primary">#FF8A50</color>
+    <color name="notif_bar_warn">#FFC46B</color>
+    <color name="notif_bar_danger">#FF8FA8</color>
+    <color name="notif_bar_track">#36342D</color>
+    <color name="notif_text_primary">#EDEBE4</color>
+    <color name="notif_text_secondary">#B6B2A7</color>
+    <color name="notif_text_danger">#FF8FA8</color>
+</resources>

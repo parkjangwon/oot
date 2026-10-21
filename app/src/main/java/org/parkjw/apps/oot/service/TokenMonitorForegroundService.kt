@@ -25,7 +25,7 @@ class TokenMonitorForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        val initialNotification = app.notificationManager.buildNotification(app.repository.statuses.value)
+        val initialNotification = app.notificationManager.buildNotification(app.repository.vendorUsages.value)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceCompat.startForeground(
@@ -45,8 +45,8 @@ class TokenMonitorForegroundService : Service() {
         when (intent?.action) {
             ACTION_REFRESH -> {
                 serviceScope.launch {
-                    val updated = app.repository.refreshAll()
-                    app.notificationManager.updateNotification(updated)
+                    app.repository.refreshAll()
+                    app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                 }
             }
             ACTION_STOP -> {
@@ -56,8 +56,8 @@ class TokenMonitorForegroundService : Service() {
             else -> {
                 // Trigger immediate initial check
                 serviceScope.launch {
-                    val updated = app.repository.refreshAll()
-                    app.notificationManager.updateNotification(updated)
+                    app.repository.refreshAll()
+                    app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                 }
             }
         }
@@ -71,8 +71,8 @@ class TokenMonitorForegroundService : Service() {
                 val intervalMinutes = app.preferences.refreshIntervalMinutes.value.coerceAtLeast(1)
                 delay(intervalMinutes * 60 * 1000L)
 
-                val updated = app.repository.refreshAll()
-                app.notificationManager.updateNotification(updated)
+                app.repository.refreshAll()
+                app.notificationManager.updateNotification(app.repository.vendorUsages.value)
             }
         }
     }
