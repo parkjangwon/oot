@@ -150,4 +150,40 @@ class DashboardScreenshotTest {
             File(roborazziSystemPropertyOutputDirectory(), "dashboard-dark.png"),
         )
     }
+
+    @Test
+    fun dashboardDraggingLight() {
+        composeRule.setContent {
+            OotTheme(darkTheme = false) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages,
+                    now = fixedNow,
+                    previewDraggingAccountId = "glm-1",
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("GLM").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-dragging-light.png"),
+        )
+    }
+
+    @Test
+    fun dashboardDraggingDark() {
+        composeRule.setContent {
+            OotTheme(darkTheme = true) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages,
+                    now = fixedNow,
+                    previewDraggingAccountId = "glm-1",
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("GLM").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-dragging-dark.png"),
+        )
+    }
 }

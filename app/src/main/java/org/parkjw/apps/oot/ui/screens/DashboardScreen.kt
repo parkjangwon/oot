@@ -1,10 +1,14 @@
 package org.parkjw.apps.oot.ui.screens
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +22,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -39,23 +44,39 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.launch
+import org.parkjw.apps.oot.OotApp
 import org.parkjw.apps.oot.data.model.Level
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
@@ -84,8 +105,9 @@ import java.time.Instant
 import kotlin.math.roundToInt
 
 private val WordWrapFriendly = LineBreak.Paragraph
+private val ReorderPlacementSpec = tween<IntOffset>(150)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
     vendorUsages: List<VendorUsage>,
@@ -99,6 +121,9 @@ fun DashboardScreen(
     onVendorClick: ((VendorUsage) -> Unit)? = null,
     onDeleteAccount: (String) -> Unit = {},
     onToggleAccount: (String, Boolean) -> Unit = { _, _ -> },
+    onReorderVendors: (List<String>) -> Unit = {},
+    /** Static drag look for screenshots; null = normal. */
+    previewDraggingAccountId: String? = null,
     isServiceEnabled: Boolean = false,
     refreshIntervalMinutes: Int = 15,
     onToggleService: (Boolean) -> Unit = {},
@@ -106,6 +131,35 @@ fun DashboardScreen(
 ) {
     var selectedVendorForDetail by remember { mutableStateOf<VendorUsage?>(null) }
     var selectedLegacyForDetail by remember { mutableStateOf<ProviderAccount?>(null) }
+    var orderedUsages by remember { mutableStateOf(vendorUsages) }
+    LaunchedEffect(vendorUsages) {
+        if (previewDraggingAccountId == null) orderedUsages = vendorUsages
+    }
+    var draggingId by remember { mutableStateOf<String?>(null) }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val listState = rememberLazyListState()
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val edgePx = with(density) { 48.dp.toPx() }
+    val scope = rememberCoroutineScope()
+    val activeDraggingId = draggingId ?: previewDraggingAccountId
+    // shortcut: persist via OotApp because MainActivity is owned by another stream; drop cast when it wires onReorderVendors
+    val app = LocalContext.current.applicationContext as? OotApp
+
+    fun persistOrder(ids: List<String>) {
+        onReorderVendors(ids)
+        app?.preferences?.setAccountOrder(ids)
+        app?.repository?.applyAccountOrder(ids)
+        app?.let { it.notificationManager.updateNotification(it.repository.vendorUsages.value) }
+    }
+
+    fun moveVendor(from: Int, to: Int) {
+        if (from == to || from !in orderedUsages.indices || to !in orderedUsages.indices) return
+        orderedUsages = orderedUsages.toMutableList().apply {
+            add(to, removeAt(from))
+        }
+        persistOrder(orderedUsages.map { it.accountId })
+    }
 
     Scaffold(
         modifier = modifier,
@@ -174,13 +228,15 @@ fun DashboardScreen(
                 .padding(innerPadding),
         ) {
             LazyColumn(
+                state = listState,
+                userScrollEnabled = draggingId == null,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = OotSpacing.screenHorizontal),
                 contentPadding = PaddingValues(bottom = OotSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
             ) {
-                val leastItem = findLeastRemainingItem(vendorUsages)
+                val leastItem = findLeastRemainingItem(orderedUsages)
                 if (leastItem != null) {
                     item(key = "summary_line") {
                         QuotaSummaryLine(
@@ -192,29 +248,113 @@ fun DashboardScreen(
                     }
                 }
 
-                if (vendorUsages.isEmpty() && legacyAccounts.isEmpty()) {
+                if (orderedUsages.isEmpty() && legacyAccounts.isEmpty()) {
                     item(key = "empty_state") {
                         EmptyAccountsBanner(onAddClick = onAddAccountClick)
                     }
                 } else {
-                    items(vendorUsages, key = { it.accountId }) { usage ->
+                    itemsIndexed(orderedUsages, key = { _, u -> u.accountId }) { index, usage ->
+                        val isDragged = activeDraggingId == usage.accountId
                         VendorCard(
                             usage = usage,
                             now = now,
+                            isDragged = isDragged,
                             onClick = {
+                                if (draggingId != null) return@VendorCard
                                 if (onVendorClick != null) {
                                     onVendorClick(usage)
                                 } else {
                                     selectedVendorForDetail = usage
                                 }
                             },
+                            modifier = Modifier
+                                .animateItem(placementSpec = ReorderPlacementSpec)
+                                .zIndex(if (isDragged) 1f else 0f)
+                                .graphicsLayer {
+                                    if (isDragged) {
+                                        if (draggingId != null) translationY = dragOffsetY
+                                        scaleX = 1.02f
+                                        scaleY = 1.02f
+                                    }
+                                }
+                                .semantics {
+                                    customActions = buildList {
+                                        if (index > 0) {
+                                            add(
+                                                CustomAccessibilityAction("위로 이동") {
+                                                    moveVendor(index, index - 1)
+                                                    true
+                                                },
+                                            )
+                                        }
+                                        if (index < orderedUsages.lastIndex) {
+                                            add(
+                                                CustomAccessibilityAction("아래로 이동") {
+                                                    moveVendor(index, index + 1)
+                                                    true
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                                .pointerInput(orderedUsages, usage.accountId) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            draggingId = usage.accountId
+                                            dragOffsetY = 0f
+                                        },
+                                        onDragCancel = {
+                                            draggingId = null
+                                            dragOffsetY = 0f
+                                        },
+                                        onDragEnd = {
+                                            val ids = orderedUsages.map { it.accountId }
+                                            draggingId = null
+                                            dragOffsetY = 0f
+                                            persistOrder(ids)
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            dragOffsetY += dragAmount.y
+                                            val from = orderedUsages.indexOfFirst { it.accountId == draggingId }
+                                            if (from < 0) return@detectDragGesturesAfterLongPress
+                                            val itemInfo = listState.layoutInfo.visibleItemsInfo
+                                                .find { it.key == usage.accountId }
+                                                ?: return@detectDragGesturesAfterLongPress
+                                            val spacing = with(density) { OotSpacing.sm.toPx() }
+                                            val step = itemInfo.size + spacing
+                                            val shift = when {
+                                                dragOffsetY > step / 2f && from < orderedUsages.lastIndex -> 1
+                                                dragOffsetY < -step / 2f && from > 0 -> -1
+                                                else -> 0
+                                            }
+                                            if (shift != 0) {
+                                                orderedUsages = orderedUsages.toMutableList().apply {
+                                                    add(from + shift, removeAt(from))
+                                                }
+                                                dragOffsetY -= shift * step
+                                            }
+                                            val center = itemInfo.offset + itemInfo.size / 2f + dragOffsetY
+                                            val viewportStart = listState.layoutInfo.viewportStartOffset.toFloat()
+                                            val viewportEnd = listState.layoutInfo.viewportEndOffset.toFloat()
+                                            when {
+                                                center < viewportStart + edgePx ->
+                                                    scope.launch { listState.scrollBy(-edgePx / 3f) }
+                                                center > viewportEnd - edgePx ->
+                                                    scope.launch { listState.scrollBy(edgePx / 3f) }
+                                            }
+                                        },
+                                    )
+                                },
                         )
                     }
 
-                    items(legacyAccounts, key = { "legacy_${it.id}" }) { account ->
+                    itemsIndexed(legacyAccounts, key = { _, a -> "legacy_${a.id}" }) { _, account ->
                         UnsupportedLegacyCard(
                             account = account,
                             onClick = { selectedLegacyForDetail = account },
+                            modifier = Modifier.animateItem(placementSpec = ReorderPlacementSpec),
                         )
                     }
 
@@ -399,6 +539,7 @@ fun VendorCard(
     now: Instant,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isDragged: Boolean = false,
 ) {
     val worstLevel = usage.windows
         .filter { it.remaining is Remaining.Percent }
@@ -410,13 +551,20 @@ fun VendorCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(CardCorner)
-            .clickable(onClick = onClick),
+            .clickable(enabled = !isDragged, onClick = onClick),
         shape = CardCorner,
         color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = if (isDragged) 4.dp else 0.dp,
+        border = BorderStroke(
+            width = if (isDragged) 1.5.dp else 1.dp,
+            color = if (isDragged) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outlineVariant
+            },
+        ),
     ) {
         Column(
             modifier = Modifier.padding(OotSpacing.md),

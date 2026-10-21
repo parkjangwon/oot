@@ -6,7 +6,6 @@ import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.level
-import org.parkjw.apps.oot.data.model.sortedByRemaining
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
@@ -88,9 +87,9 @@ object NotificationContent {
     private fun windowLabel(window: UsageWindow): String =
         if (window.label == "primary" || window.label.isBlank()) "" else "${window.label} "
 
-    // Errored vendors first ("확인 필요"), then lowest remaining ascending.
+    // User order as given; errored vendors stay in place ("확인 필요").
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int): List<CollapsedItem> =
-        usages.sortedByRemaining().take(maxItems.coerceAtLeast(0)).map { usage ->
+        usages.take(maxItems.coerceAtLeast(0)).map { usage ->
             when (val remaining = usage.representative?.remaining) {
                 null ->
                     CollapsedItem(mark(usage.providerType), "${shortName(usage.providerType)} 확인 필요", null, true, Level.OK)
@@ -107,7 +106,7 @@ object NotificationContent {
             }
         }
 
-    // One line per registered vendor, registration order.
+    // One line per registered vendor, user order.
     fun expandedItems(usages: List<VendorUsage>, now: Instant = Instant.now()): List<ExpandedItem> =
         usages.map { usage ->
             val itemMark = mark(usage.providerType)
@@ -140,9 +139,9 @@ object NotificationContent {
             }
         }
 
-    // Text-only fallback (option C): "Claude 62% · GLM 98% · OpenRouter $12.40"
+    // Text-only fallback (option C): user order, e.g. "Claude 62% · GLM 98% · OpenRouter $12.40"
     fun textFallback(usages: List<VendorUsage>): String =
-        usages.sortedByRemaining().joinToString(" · ") { usage ->
+        usages.joinToString(" · ") { usage ->
             val label = when (val remaining = usage.representative?.remaining) {
                 is Remaining.Balance -> formatBalance(remaining.amountLeft, remaining.currency)
                 is Remaining.Percent -> formatPercent(remaining)
