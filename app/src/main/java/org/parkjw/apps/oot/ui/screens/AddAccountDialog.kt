@@ -523,17 +523,17 @@ fun AddAccountDialog(
                         label = { Text("API Key / 토큰") },
                         placeholder = {
                             Text(
-                            when (selectedProvider) {
-                                ProviderType.ZAI -> "Z.ai 코딩 플랜 API Key"
-                                ProviderType.OPENROUTER -> "sk-or-v1-..."
-                                ProviderType.CLAUDE -> "sk-ant-... 또는 세션 키"
-                                ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
-                                ProviderType.XAI -> "xai-... API Key"
-                                ProviderType.ANTIGRAVITY -> "AIza... 또는 Bearer 토큰"
-                                ProviderType.DEEPSEEK -> "sk-..."
-                                ProviderType.OLLAMA_CLOUD -> "Ollama Cloud API Key"
-                                ProviderType.OPENCODE_GO -> "OpenCode Go API Key"
-                            }
+                                when (selectedProvider) {
+                                    ProviderType.ZAI -> "Z.ai 코딩 플랜 API Key"
+                                    ProviderType.OPENROUTER -> "sk-or-v1-..."
+                                    ProviderType.CLAUDE -> "sk-ant-... 또는 세션 키"
+                                    ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
+                                    ProviderType.XAI -> "xai-... API Key"
+                                    ProviderType.ANTIGRAVITY -> "AIza... 또는 Bearer 토큰"
+                                    ProviderType.DEEPSEEK -> "sk-..."
+                                    ProviderType.OLLAMA_CLOUD -> "Ollama Cloud API Key"
+                                    ProviderType.OPENCODE_GO -> "OpenCode Go API Key"
+                                }
                             )
                         },
                         visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
