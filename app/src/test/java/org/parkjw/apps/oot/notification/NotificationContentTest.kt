@@ -88,6 +88,8 @@ class NotificationContentTest {
         assertEquals("$12.40", NotificationContent.formatBalance(12.4))
         assertEquals("$0.00", NotificationContent.formatBalance(0.0))
         assertEquals("$123.46", NotificationContent.formatBalance(123.456))
+        assertEquals("¥12.40", NotificationContent.formatBalance(12.4, "CNY"))
+        assertEquals("$12.40", NotificationContent.formatBalance(12.4, "EUR"))
     }
 
     @Test

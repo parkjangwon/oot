@@ -99,6 +99,18 @@ class DashboardScreenshotTest {
                 ),
             ),
         ),
+        VendorUsage(
+            accountId = "deepseek-1",
+            providerType = ProviderType.DEEPSEEK,
+            displayName = "DeepSeek",
+            windows = listOf(
+                UsageWindow(
+                    id = "credit",
+                    label = "credit",
+                    remaining = Remaining.Balance(110.00, "CNY"),
+                ),
+            ),
+        ),
     )
 
     // Dummy Antigravity card: Google and third-party model windows, each with its own reset.
