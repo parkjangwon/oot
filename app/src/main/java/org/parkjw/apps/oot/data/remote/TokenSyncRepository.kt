@@ -5,7 +5,9 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import org.parkjw.apps.oot.data.local.AccountPreferences
@@ -32,6 +34,8 @@ class TokenSyncRepository(
 
     private val _statuses = MutableStateFlow<List<TokenStatus>>(emptyList())
     val statuses: StateFlow<List<TokenStatus>> = _statuses.asStateFlow()
+
+    val vendorUsages: Flow<List<VendorUsage>> = _statuses.map { list -> list.map { it.toVendorUsage() } }
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
