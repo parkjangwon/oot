@@ -1,22 +1,32 @@
 package org.parkjw.apps.oot.data.remote
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
+import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
-import java.text.SimpleDateFormat
+import org.parkjw.apps.oot.data.model.UsageWindow
+import org.parkjw.apps.oot.data.model.VendorError
+import org.parkjw.apps.oot.data.oauth.OAuthManager
+import java.io.IOException
+import java.time.Instant
 import java.util.Locale
-import java.util.TimeZone
 
 class ClaudeApi(
     private val client: OkHttpClient,
-    private val json: Json
+    private val json: Json,
+    private val oauthManager: OAuthManager,
+    private val onAccountRefreshed: (ProviderAccount) -> Unit
 ) {
+    // accountId -> last successful usage status, reused when /api/oauth/usage returns 429
+    private val lastGoodUsage = HashMap<String, TokenStatus>()
+
     suspend fun fetchStatus(account: ProviderAccount): TokenStatus = withContext(Dispatchers.IO) {
         val credential = account.activeCredential().trim()
         if (credential.isBlank()) {
@@ -34,123 +44,44 @@ class ClaudeApi(
         val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.CLAUDE.baseUrl
         val isOAuth = account.authType == AuthType.OAUTH || credential.startsWith("Bearer ", ignoreCase = true) || credential.startsWith("sk-ant-oat", ignoreCase = true)
         val cleanToken = credential.removePrefix("Bearer ").trim()
-        val authBearer = "Bearer $cleanToken"
 
-        // 1. For OAuth / Subscription accounts: Query Claude Official Usage Endpoint
-        // Returns 5-hour rolling limit and 7-day weekly quota
         if (isOAuth) {
-            val usageUrl = "https://api.anthropic.com/api/oauth/usage"
-            val usageReq = Request.Builder()
-                .url(usageUrl)
-                .addHeader("Authorization", authBearer)
-                .addHeader("anthropic-beta", "oauth-2025-04-20")
-                .addHeader("User-Agent", "claude-code/0.2.29")
-                .addHeader("Content-Type", "application/json")
-                .build()
-
-            try {
-                client.newCall(usageReq).execute().use { response ->
-                    if (response.isSuccessful) {
-                        val body = response.body?.string().orEmpty()
-                        val root = try { json.parseToJsonElement(body).jsonObject } catch (e: Exception) { null }
-
-                        if (root != null) {
-                            val fiveHourObj = root["five_hour"]?.jsonObject
-                            val sevenDayObj = root["seven_day"]?.jsonObject
-                            val sonnetObj = root["seven_day_sonnet"]?.jsonObject
-
-                            val fiveHourPct = fiveHourObj?.get("utilization")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                            val fiveHourReset = fiveHourObj?.get("resets_at")?.jsonPrimitive?.content
-                            val fiveHourRemaining = (100.0 - fiveHourPct).coerceIn(0.0, 100.0)
-                            val fiveHourResetFormatted = formatIsoReset(fiveHourReset)
-
-                            val weeklyPct = sevenDayObj?.get("utilization")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                            val weeklyReset = sevenDayObj?.get("resets_at")?.jsonPrimitive?.content
-                            val weeklyRemaining = (100.0 - weeklyPct).coerceIn(0.0, 100.0)
-                            val weeklyResetFormatted = formatIsoReset(weeklyReset)
-
-                            val sonnetPct = sonnetObj?.get("utilization")?.jsonPrimitive?.doubleOrNull
-
-                            val remainingText = String.format(Locale.US, "5시간: %.0f%% 남음 | 주간: %.0f%% 남음", fiveHourRemaining, weeklyRemaining)
-                            val limitText = buildString {
-                                append(String.format(Locale.US, "5h 사용: %.0f%%", fiveHourPct))
-                                if (fiveHourResetFormatted.isNotBlank()) append(" ($fiveHourResetFormatted)")
-                                append(String.format(Locale.US, " | 주간 사용: %.0f%%", weeklyPct))
-                                if (weeklyResetFormatted.isNotBlank()) append(" ($weeklyResetFormatted)")
-                                if (sonnetPct != null) append(String.format(Locale.US, " [Sonnet %.0f%%]", sonnetPct))
-                            }
-
-                            val summaryText = String.format(Locale.US, "5h %.0f%% | 주 %.0f%%", fiveHourRemaining, weeklyRemaining)
-
-                            return@withContext TokenStatus(
-                                accountId = account.id,
-                                provider = ProviderType.CLAUDE,
-                                accountName = account.name,
-                                remainingFormatted = remainingText,
-                                totalLimitFormatted = limitText,
-                                usagePercent = fiveHourPct.toFloat(),
-                                resetTimeFormatted = if (fiveHourResetFormatted.isNotBlank()) "5h $fiveHourResetFormatted" else null,
-                                statusSummary = summaryText,
-                                isWarning = fiveHourPct > 80.0 || weeklyPct > 80.0,
-                                isCritical = fiveHourPct > 95.0 || weeklyPct > 95.0
-                            )
-                        }
-                    } else if (response.code == 401) {
-                        return@withContext TokenStatus(
-                            accountId = account.id,
-                            provider = ProviderType.CLAUDE,
-                            accountName = account.name,
-                            remainingFormatted = "인증 실패 (401)",
-                            statusSummary = "인증 오류",
-                            isError = true,
-                            errorMessage = "만료되었거나 유효하지 않은 Claude OAuth 토큰입니다."
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                // Fall back to models check
-            }
+            return@withContext fetchUsageStatus(account, cleanToken, allowRefresh = true)
         }
 
-        // 2. Fallback / API Key check: GET /v1/models
+        // API-key accounts: GET /v1/models
         val modelsUrl = "$baseUrl/models"
-        val modelsReqBuilder = Request.Builder()
+        val modelsReq = Request.Builder()
             .url(modelsUrl)
             .addHeader("anthropic-version", "2023-06-01")
+            .addHeader("x-api-key", cleanToken)
+            .addHeader("User-Agent", USER_AGENT)
+            .build()
 
-        if (isOAuth) {
-            modelsReqBuilder.addHeader("Authorization", authBearer)
-            modelsReqBuilder.addHeader("anthropic-beta", "oauth-2025-04-20,claude-code-20250219")
-            modelsReqBuilder.addHeader("User-Agent", "claude-cli")
-            modelsReqBuilder.addHeader("x-app", "cli")
-        } else {
-            modelsReqBuilder.addHeader("x-api-key", cleanToken)
+        val response = try {
+            client.newCall(modelsReq).execute()
+        } catch (e: IOException) {
+            Log.w(TAG, "models request failed endpoint=/v1/models error=IOException")
+            return@withContext errorStatus(account, claudeErrorText(VendorError.Network))
+        } catch (e: Exception) {
+            Log.w(TAG, "models request failed endpoint=/v1/models error=${e.javaClass.simpleName}")
+            return@withContext errorStatus(account, claudeErrorText(VendorError.Network))
         }
 
-        try {
-            client.newCall(modelsReqBuilder.build()).execute().use { response ->
-                if (response.code == 401) {
-                    return@withContext TokenStatus(
-                        accountId = account.id,
-                        provider = ProviderType.CLAUDE,
-                        accountName = account.name,
-                        remainingFormatted = "인증 실패 (401)",
-                        statusSummary = "인증 오류",
-                        isError = true,
-                        errorMessage = "유효하지 않은 Claude 인증 정보입니다."
-                    )
-                }
-
-                if (response.isSuccessful) {
-                    val tokensLimit = response.header("anthropic-ratelimit-tokens-limit")?.toLongOrNull()
-                    val tokensRemaining = response.header("anthropic-ratelimit-tokens-remaining")?.toLongOrNull()
-                    val tokensReset = response.header("anthropic-ratelimit-tokens-reset")
+        response.use { resp ->
+            Log.i(TAG, "models response endpoint=/v1/models http=${resp.code}")
+            when {
+                resp.code == 401 -> errorStatus(account, claudeErrorText(VendorError.Unauthorized))
+                resp.isSuccessful -> {
+                    val tokensLimit = resp.header("anthropic-ratelimit-tokens-limit")?.toLongOrNull()
+                    val tokensRemaining = resp.header("anthropic-ratelimit-tokens-remaining")?.toLongOrNull()
+                    val tokensReset = resp.header("anthropic-ratelimit-tokens-reset")
 
                     if (tokensLimit != null && tokensRemaining != null && tokensLimit > 0) {
                         val usedTokens = tokensLimit - tokensRemaining
                         val percent = ((usedTokens.toDouble() / tokensLimit.toDouble()) * 100).toFloat().coerceIn(0f, 100f)
 
-                        return@withContext TokenStatus(
+                        return@use TokenStatus(
                             accountId = account.id,
                             provider = ProviderType.CLAUDE,
                             accountName = account.name,
@@ -164,48 +95,157 @@ class ClaudeApi(
                         )
                     }
 
-                    val planName = if (isOAuth) "Claude Pro/Max" else "Anthropic API"
-                    return@withContext TokenStatus(
+                    TokenStatus(
                         accountId = account.id,
                         provider = ProviderType.CLAUDE,
                         accountName = account.name,
-                        remainingFormatted = "구독 정상 연동 ($planName)",
+                        remainingFormatted = "연결 정상 (Anthropic API)",
                         totalLimitFormatted = "정상 작동 중",
-                        statusSummary = "Claude 정상",
+                        statusSummary = "정상",
                         isWarning = false
                     )
                 }
+                else -> {
+                    val error = mapClaudeHttpError(resp.code)
+                    Log.w(TAG, "models http error code=${resp.code} type=${error.javaClass.simpleName}")
+                    errorStatus(account, claudeErrorText(error))
+                }
             }
+        }
+    }
+
+    private suspend fun fetchUsageStatus(account: ProviderAccount, token: String, allowRefresh: Boolean): TokenStatus {
+        val request = Request.Builder()
+            .url(USAGE_URL)
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("anthropic-beta", "oauth-2025-04-20")
+            .addHeader("User-Agent", USER_AGENT)
+            .addHeader("Content-Type", "application/json")
+            .build()
+
+        val response = try {
+            client.newCall(request).execute()
+        } catch (e: IOException) {
+            Log.w(TAG, "usage request failed endpoint=/api/oauth/usage error=IOException")
+            return errorStatus(account, claudeErrorText(VendorError.Network))
         } catch (e: Exception) {
-            // ignore
+            Log.w(TAG, "usage request failed endpoint=/api/oauth/usage error=${e.javaClass.simpleName}")
+            return errorStatus(account, claudeErrorText(VendorError.Network))
         }
 
-        TokenStatus(
+        response.use { resp ->
+            Log.i(TAG, "usage response endpoint=/api/oauth/usage http=${resp.code} bytes=${resp.body?.contentLength() ?: -1L}")
+            when {
+                resp.isSuccessful -> {
+                    val body = resp.body?.string().orEmpty()
+                    val windows = parseClaudeUsage(body, json)
+                    if (windows == null) {
+                        Log.w(TAG, "usage parse failed endpoint=/api/oauth/usage error=Parse bytes=${body.toByteArray().size}")
+                        return errorStatus(account, claudeErrorText(VendorError.Parse))
+                    }
+                    Log.i(TAG, "usage parsed ${claudeLogSummary("/api/oauth/usage", resp.code, windows)}")
+                    val status = successStatus(account, windows)
+                    lastGoodUsage[account.id] = status
+                    return status
+                }
+                resp.code == 401 -> {
+                    if (!allowRefresh) {
+                        Log.w(TAG, "usage 401 after refresh, giving up")
+                        return errorStatus(account, claudeErrorText(VendorError.Unauthorized))
+                    }
+                    Log.w(TAG, "usage 401, attempting token refresh")
+                    val refreshed = try {
+                        oauthManager.refreshTokenIfNeeded(account, force = true)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "token refresh attempt threw error=${e.javaClass.simpleName}")
+                        account
+                    }
+                    if (refreshed == account || refreshed.refreshToken.isNullOrBlank()) {
+                        Log.w(TAG, "token refresh failed -> Unauthorized")
+                        return errorStatus(account, claudeErrorText(VendorError.Unauthorized))
+                    }
+                    onAccountRefreshed(refreshed)
+                    Log.i(TAG, "token refresh ok, retrying usage once")
+                    return fetchUsageStatus(
+                        refreshed,
+                        refreshed.activeCredential().trim().removePrefix("Bearer ").trim(),
+                        allowRefresh = false
+                    )
+                }
+                resp.code == 429 -> {
+                    Log.w(TAG, "usage 429 rate limited, cached=${lastGoodUsage.containsKey(account.id)}")
+                    return claudeRateLimitedStatus(account, lastGoodUsage[account.id])
+                }
+                else -> {
+                    val error = mapClaudeHttpError(resp.code)
+                    Log.w(TAG, "usage http error code=${resp.code} type=${error.javaClass.simpleName}")
+                    return errorStatus(account, claudeErrorText(error))
+                }
+            }
+        }
+    }
+
+    private fun successStatus(account: ProviderAccount, windows: List<ClaudeWindowUsage>): TokenStatus {
+        val fiveHour = windows.firstOrNull { it.id == "five_hour" }
+        val weekly = windows.firstOrNull { it.id == "seven_day" }
+        val fiveHourPct = fiveHour?.utilization ?: 0.0
+        val weeklyPct = weekly?.utilization ?: 0.0
+        val fiveHourRemaining = (100.0 - fiveHourPct).coerceIn(0.0, 100.0)
+        val weeklyRemaining = (100.0 - weeklyPct).coerceIn(0.0, 100.0)
+        val fiveHourResetText = formatReset(fiveHour?.resetsAt)
+        val weeklyResetText = formatReset(weekly?.resetsAt)
+
+        val remainingText = String.format(Locale.US, "5시간: %.0f%% 남음 | 주간: %.0f%% 남음", fiveHourRemaining, weeklyRemaining)
+        val limitText = buildString {
+            append(String.format(Locale.US, "5h 사용: %.0f%%", fiveHourPct))
+            if (fiveHourResetText.isNotBlank()) append(" ($fiveHourResetText)")
+            append(String.format(Locale.US, " | 주간 사용: %.0f%%", weeklyPct))
+            if (weeklyResetText.isNotBlank()) append(" ($weeklyResetText)")
+        }
+
+        return TokenStatus(
             accountId = account.id,
             provider = ProviderType.CLAUDE,
             accountName = account.name,
-            remainingFormatted = "Claude 연동 완료",
-            totalLimitFormatted = "정상 작동 중",
-            statusSummary = "Claude 정상",
-            isWarning = false
+            remainingFormatted = remainingText,
+            totalLimitFormatted = limitText,
+            usagePercent = fiveHourPct.toFloat(),
+            resetTimeFormatted = if (fiveHourResetText.isNotBlank()) "5h $fiveHourResetText" else null,
+            statusSummary = String.format(Locale.US, "5h %.0f%% | 주 %.0f%%", fiveHourRemaining, weeklyRemaining),
+            isWarning = fiveHourPct > 80.0 || weeklyPct > 80.0,
+            isCritical = fiveHourPct > 95.0 || weeklyPct > 95.0,
+            windows = listOf(
+                UsageWindow("five_hour", "5시간", Remaining.Percent(fiveHourRemaining), fiveHour?.resetsAt),
+                UsageWindow("seven_day", "주간", Remaining.Percent(weeklyRemaining), weekly?.resetsAt)
+            )
         )
     }
 
-    private fun formatIsoReset(isoStr: String?): String {
-        if (isoStr.isNullOrBlank()) return ""
-        return try {
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }
-            val date = sdf.parse(isoStr.substringBefore(".")) ?: return ""
-            val diffMs = date.time - System.currentTimeMillis()
-            if (diffMs <= 0) return "곧 리셋"
-            val hours = diffMs / (1000 * 60 * 60)
-            val days = hours / 24
-            val remHours = hours % 24
-            if (days > 0) "${days}일 ${remHours}시간 후" else "${hours}시간 후"
-        } catch (e: Exception) {
-            ""
-        }
+    private fun errorStatus(account: ProviderAccount, text: String): TokenStatus = TokenStatus(
+        accountId = account.id,
+        provider = ProviderType.CLAUDE,
+        accountName = account.name,
+        remainingFormatted = text,
+        statusSummary = "확인 필요",
+        isError = true,
+        errorMessage = text
+    )
+
+    private fun formatReset(resetsAt: Instant?): String {
+        if (resetsAt == null) return ""
+        val diffMs = resetsAt.toEpochMilli() - System.currentTimeMillis()
+        if (diffMs <= 0) return "곧 리셋"
+        val hours = diffMs / (1000 * 60 * 60)
+        val days = hours / 24
+        val remHours = hours % 24
+        return if (days > 0) "${days}일 ${remHours}시간 후" else "${hours}시간 후"
+    }
+
+    companion object {
+        private const val TAG = "oot.Claude"
+        private const val USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
+
+        // Current Claude Code style User-Agent; the old "claude-code/0.2.29" was outdated.
+        const val USER_AGENT = "claude-cli/2.0.28 (external, cli)"
     }
 }

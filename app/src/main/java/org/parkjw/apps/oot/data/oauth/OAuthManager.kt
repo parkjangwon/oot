@@ -495,8 +495,8 @@ Connection: close
         }
     }
 
-    suspend fun refreshTokenIfNeeded(account: ProviderAccount): ProviderAccount = withContext(Dispatchers.IO) {
-        if (!account.isTokenExpired || account.refreshToken == null) {
+    suspend fun refreshTokenIfNeeded(account: ProviderAccount, force: Boolean = false): ProviderAccount = withContext(Dispatchers.IO) {
+        if ((!force && !account.isTokenExpired) || account.refreshToken == null) {
             return@withContext account
         }
 
