@@ -52,70 +52,71 @@ class ZaiApi(
                     val limitsArray = data?.get("limits")?.jsonArray
                         ?: root?.get("limits")?.jsonArray
 
+                    val level = data?.get("level")?.jsonPrimitive?.content ?: "GLM"
+
                     if (!limitsArray.isNullOrEmpty()) {
-                        // Find the most relevant limit: CREDIT_LIMIT or TOKENS_LIMIT or first entry
-                        val primaryLimit = limitsArray.firstOrNull { elem ->
-                            val type = elem.jsonObject["type"]?.jsonPrimitive?.content ?: elem.jsonObject["limitType"]?.jsonPrimitive?.content
-                            type == "CREDIT_LIMIT" || type == "TOKENS_LIMIT"
-                        }?.jsonObject ?: limitsArray.first().jsonObject
+                        // unit: 3 = 5-hour rolling session limit
+                        // unit: 6 = weekly quota limit
+                        val fiveHourLimit = limitsArray.firstOrNull { elem ->
+                            elem.jsonObject["unit"]?.jsonPrimitive?.intOrNull == 3
+                        }?.jsonObject ?: limitsArray.firstOrNull()?.jsonObject
 
-                        val limitType = primaryLimit["type"]?.jsonPrimitive?.content
-                            ?: primaryLimit["limitType"]?.jsonPrimitive?.content ?: "쿼터"
+                        val weeklyLimit = limitsArray.firstOrNull { elem ->
+                            elem.jsonObject["unit"]?.jsonPrimitive?.intOrNull == 6
+                        }?.jsonObject ?: limitsArray.getOrNull(1)?.jsonObject
 
-                        val current = primaryLimit["currentValue"]?.jsonPrimitive?.doubleOrNull
-                            ?: primaryLimit["usage"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                        val fiveHourPct = fiveHourLimit?.get("percentage")?.jsonPrimitive?.intOrNull ?: 0
+                        val fiveHourResetTime = fiveHourLimit?.get("nextResetTime")?.jsonPrimitive?.longOrNull
+                            ?: fiveHourLimit?.get("expireTime")?.jsonPrimitive?.longOrNull
 
-                        val total = primaryLimit["threshold"]?.jsonPrimitive?.doubleOrNull
-                            ?: primaryLimit["total"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                        val weeklyPct = weeklyLimit?.get("percentage")?.jsonPrimitive?.intOrNull ?: 0
+                        val weeklyResetTime = weeklyLimit?.get("nextResetTime")?.jsonPrimitive?.longOrNull
+                            ?: weeklyLimit?.get("expireTime")?.jsonPrimitive?.longOrNull
 
-                        val expireTime = primaryLimit["expireTime"]?.jsonPrimitive?.longOrNull
-                            ?: primaryLimit["resetTime"]?.jsonPrimitive?.longOrNull
+                        val fiveHourRemaining = (100 - fiveHourPct).coerceIn(0, 100)
+                        val weeklyRemaining = (100 - weeklyPct).coerceIn(0, 100)
 
-                        val remaining = (total - current).coerceAtLeast(0.0)
-                        val percent = if (total > 0) ((current / total) * 100).toFloat().coerceIn(0f, 100f) else null
+                        val fiveHourResetFormatted = fiveHourResetTime?.let { formatRelativeTime(it) } ?: ""
+                        val weeklyResetFormatted = weeklyResetTime?.let { formatRelativeTime(it) } ?: ""
 
-                        val unitName = when (limitType) {
-                            "CREDIT_LIMIT" -> "크레딧"
-                            "TOKENS_LIMIT" -> "토큰"
-                            else -> "포인트"
+                        // Main Text: Show BOTH 5-Hour and Weekly Remaining
+                        val remainingText = "5시간: ${fiveHourRemaining}% 남음 | 주간: ${weeklyRemaining}% 남음"
+
+                        // Subtitle: Usage percentages, reset timers, and plan level
+                        val totalLimitText = buildString {
+                            append("5h 사용: ${fiveHourPct}%")
+                            if (fiveHourResetFormatted.isNotBlank()) append(" ($fiveHourResetFormatted)")
+                            append(" | 주간 사용: ${weeklyPct}%")
+                            if (weeklyResetFormatted.isNotBlank()) append(" ($weeklyResetFormatted)")
+                            append(" [${level.uppercase()}]")
                         }
 
-                        val remainingText = if (total > 0) {
-                            String.format(Locale.US, "%,.0f %s 남음", remaining, unitName)
-                        } else {
-                            String.format(Locale.US, "사용량: %,.0f %s", current, unitName)
-                        }
+                        // Compact ticker for status bar notification
+                        val tickerText = "5h: ${fiveHourRemaining}% | 주: ${weeklyRemaining}%"
 
-                        val totalText = if (total > 0) {
-                            String.format(Locale.US, "총 한도 %,.0f %s (%s)", total, unitName, limitType)
-                        } else {
-                            "Z.ai 코딩 플랜 ($limitType)"
-                        }
-
-                        val resetText = expireTime?.let {
-                            formatResetTime(it)
-                        }
+                        val isWarn = fiveHourPct > 80 || weeklyPct > 80
+                        val isCrit = fiveHourPct > 95 || weeklyPct > 95
 
                         return@withContext TokenStatus(
                             accountId = account.id,
                             provider = ProviderType.ZAI,
                             accountName = account.name,
                             remainingFormatted = remainingText,
-                            totalLimitFormatted = totalText,
-                            usagePercent = percent,
-                            resetTimeFormatted = resetText,
-                            statusSummary = if (total > 0) String.format(Locale.US, "%,.0f %s", remaining, unitName) else "Z.ai 활성",
-                            isWarning = (percent != null && percent > 80f),
-                            isCritical = (percent != null && percent > 95f)
+                            totalLimitFormatted = totalLimitText,
+                            usagePercent = fiveHourPct.toFloat(),
+                            resetTimeFormatted = if (fiveHourResetFormatted.isNotBlank()) "5h $fiveHourResetFormatted" else null,
+                            statusSummary = tickerText,
+                            isWarning = isWarn,
+                            isCritical = isCrit
                         )
                     }
 
-                    // No limits array, but success response
+                    // Fallback if limits array is empty but 200 OK
                     return@withContext TokenStatus(
                         accountId = account.id,
                         provider = ProviderType.ZAI,
                         accountName = account.name,
-                        remainingFormatted = "Z.ai 코딩 플랜 활성화됨",
+                        remainingFormatted = "Z.ai 코딩 플랜 ($level) 활성",
                         totalLimitFormatted = "정상 작동 중",
                         statusSummary = "Z.ai 정상",
                         isWarning = false
@@ -134,8 +135,15 @@ class ZaiApi(
                     )
                 }
 
-                // Fallback: ping OpenAI-compatible coding endpoint
-                return@withContext checkCodingPlanFallback(baseUrl, authHeader, account)
+                TokenStatus(
+                    accountId = account.id,
+                    provider = ProviderType.ZAI,
+                    accountName = account.name,
+                    remainingFormatted = "HTTP ${response.code}",
+                    statusSummary = "오류 (${response.code})",
+                    isError = true,
+                    errorMessage = "Z.ai 서버 응답 오류 (${response.code})"
+                )
             }
         } catch (e: Exception) {
             TokenStatus(
@@ -150,58 +158,23 @@ class ZaiApi(
         }
     }
 
-    private fun checkCodingPlanFallback(baseUrl: String, authHeader: String, account: ProviderAccount): TokenStatus {
-        val modelsUrl = "$baseUrl/api/coding/paas/v4/models"
-        return try {
-            val req = Request.Builder()
-                .url(modelsUrl)
-                .addHeader("Authorization", authHeader)
-                .build()
-            client.newCall(req).execute().use { res ->
-                if (res.isSuccessful) {
-                    TokenStatus(
-                        accountId = account.id,
-                        provider = ProviderType.ZAI,
-                        accountName = account.name,
-                        remainingFormatted = "Z.ai 코딩 플랜 연동 성공",
-                        totalLimitFormatted = "GLM 코딩 플랜 활성",
-                        statusSummary = "Z.ai 정상"
-                    )
-                } else {
-                    TokenStatus(
-                        accountId = account.id,
-                        provider = ProviderType.ZAI,
-                        accountName = account.name,
-                        remainingFormatted = "HTTP ${res.code}",
-                        statusSummary = "오류 (${res.code})",
-                        isError = true,
-                        errorMessage = "Z.ai 응답 오류 (${res.code})"
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            TokenStatus(
-                accountId = account.id,
-                provider = ProviderType.ZAI,
-                accountName = account.name,
-                remainingFormatted = "연결 실패",
-                statusSummary = "오류",
-                isError = true,
-                errorMessage = e.localizedMessage ?: "연결 실패"
-            )
-        }
-    }
-
-    private fun formatResetTime(timestampMs: Long): String {
+    private fun formatRelativeTime(timestampMs: Long): String {
         val now = System.currentTimeMillis()
         val diffMs = timestampMs - now
         return if (diffMs > 0) {
-            val hours = diffMs / (1000 * 60 * 60)
-            val minutes = (diffMs % (1000 * 60 * 60)) / (1000 * 60)
-            if (hours > 0) "리셋: ${hours}시간 ${minutes}분 후" else "리셋: ${minutes}분 후"
+            val totalMinutes = diffMs / (1000 * 60)
+            val hours = totalMinutes / 60
+            val minutes = totalMinutes % 60
+            val days = hours / 24
+
+            when {
+                days > 0 -> "${days}일 ${hours % 24}시간 후 리셋"
+                hours > 0 -> "${hours}시간 ${minutes}분 후 리셋"
+                else -> "${minutes}분 후 리셋"
+            }
         } else {
             val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-            "리셋 완료 (${sdf.format(Date(timestampMs))})"
+            "리셋됨 (${sdf.format(Date(timestampMs))})"
         }
     }
 }

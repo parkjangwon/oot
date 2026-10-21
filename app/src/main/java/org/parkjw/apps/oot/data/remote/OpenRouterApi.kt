@@ -18,18 +18,30 @@ class OpenRouterApi(
     private val json: Json
 ) {
     suspend fun fetchStatus(account: ProviderAccount): TokenStatus = withContext(Dispatchers.IO) {
+        val credential = account.activeCredential().trim().removePrefix("Bearer ").trim()
+        if (credential.isBlank()) {
+            return@withContext TokenStatus(
+                accountId = account.id,
+                provider = ProviderType.OPENROUTER,
+                accountName = account.name,
+                remainingFormatted = "API 키 없음",
+                statusSummary = "키 필요",
+                isError = true,
+                errorMessage = "OpenRouter API 키를 등록해주세요."
+            )
+        }
+
         val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.OPENROUTER.baseUrl
         val creditsUrl = "$baseUrl/credits"
         val keyUrl = "$baseUrl/auth/key"
-
-        val authHeader = if (account.apiKey.startsWith("Bearer ", ignoreCase = true)) {
-            account.apiKey
-        } else {
-            "Bearer ${account.apiKey}"
-        }
+        val authHeader = "Bearer $credential"
 
         try {
-            // First try /auth/key to check key limits and usage
+            var keyLimit: Double? = null
+            var keyUsage: Double = 0.0
+            var keyFetched = false
+
+            // 1. Fetch /auth/key for key-specific limit & usage
             val keyRequest = Request.Builder()
                 .url(keyUrl)
                 .addHeader("Authorization", authHeader)
@@ -44,7 +56,7 @@ class OpenRouterApi(
                         remainingFormatted = "인증 실패",
                         statusSummary = "인증 오류 (401)",
                         isError = true,
-                        errorMessage = "유효하지 않은 API 키입니다."
+                        errorMessage = "유효하지 않은 OpenRouter API 키입니다."
                     )
                 }
 
@@ -53,67 +65,100 @@ class OpenRouterApi(
                     val root = json.parseToJsonElement(body).jsonObject
                     val data = root["data"]?.jsonObject
 
-                    val limit = data?.get("limit")?.jsonPrimitive?.doubleOrNull
-                    val usage = data?.get("usage")?.jsonPrimitive?.doubleOrNull ?: 0.0
-
-                    if (limit != null && limit > 0) {
-                        val remaining = (limit - usage).coerceAtLeast(0.0)
-                        val percent = ((usage / limit) * 100).toFloat().coerceIn(0f, 100f)
-                        return@withContext TokenStatus(
-                            accountId = account.id,
-                            provider = ProviderType.OPENROUTER,
-                            accountName = account.name,
-                            remainingFormatted = String.format(Locale.US, "$%.2f 남음", remaining),
-                            totalLimitFormatted = String.format(Locale.US, "한도 $%.2f", limit),
-                            usagePercent = percent,
-                            statusSummary = String.format(Locale.US, "$%.2f 남음", remaining),
-                            isWarning = percent > 80f,
-                            isCritical = percent > 95f
-                        )
-                    }
+                    keyLimit = data?.get("limit")?.jsonPrimitive?.doubleOrNull
+                    keyUsage = data?.get("usage")?.jsonPrimitive?.doubleOrNull ?: 0.0
+                    keyFetched = true
                 }
             }
 
-            // Fallback to /credits (total account balance)
+            // 2. Fetch /credits for total account balance & credits
             val creditsRequest = Request.Builder()
                 .url(creditsUrl)
                 .addHeader("Authorization", authHeader)
                 .build()
 
+            var totalCredits = 0.0
+            var totalUsage = 0.0
+            var creditsFetched = false
+
             client.newCall(creditsRequest).execute().use { response ->
-                if (!response.isSuccessful) {
-                    return@withContext TokenStatus(
-                        accountId = account.id,
-                        provider = ProviderType.OPENROUTER,
-                        accountName = account.name,
-                        remainingFormatted = "조회 실패 (${response.code})",
-                        statusSummary = "오류 (${response.code})",
-                        isError = true,
-                        errorMessage = "HTTP ${response.code}: ${response.message}"
-                    )
+                if (response.isSuccessful) {
+                    val body = response.body?.string().orEmpty()
+                    val root = json.parseToJsonElement(body).jsonObject
+                    val data = root["data"]?.jsonObject
+
+                    totalCredits = data?.get("total_credits")?.jsonPrimitive?.doubleOrNull ?: 0.0
+                    totalUsage = data?.get("total_usage")?.jsonPrimitive?.doubleOrNull ?: 0.0
+                    creditsFetched = true
                 }
+            }
 
-                val body = response.body?.string().orEmpty()
-                val root = json.parseToJsonElement(body).jsonObject
-                val data = root["data"]?.jsonObject
-
-                val totalCredits = data?.get("total_credits")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                val totalUsage = data?.get("total_usage")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                val remaining = (totalCredits - totalUsage).coerceAtLeast(0.0)
-                val percent = if (totalCredits > 0) ((totalUsage / totalCredits) * 100).toFloat().coerceIn(0f, 100f) else null
-
-                TokenStatus(
+            if (!keyFetched && !creditsFetched) {
+                return@withContext TokenStatus(
                     accountId = account.id,
                     provider = ProviderType.OPENROUTER,
                     accountName = account.name,
-                    remainingFormatted = String.format(Locale.US, "$%.2f 크레딧", remaining),
-                    totalLimitFormatted = String.format(Locale.US, "총 $%.2f", totalCredits),
-                    usagePercent = percent,
-                    statusSummary = String.format(Locale.US, "$%.2f 크레딧", remaining),
-                    isWarning = (remaining < 2.0 && totalCredits > 0),
-                    isCritical = (remaining < 0.5 && totalCredits > 0)
+                    remainingFormatted = "조회 실패",
+                    statusSummary = "통신 실패",
+                    isError = true,
+                    errorMessage = "OpenRouter 서버 응답 오류"
                 )
             }
+
+            // Total remaining account credits
+            val totalRemaining = (totalCredits - totalUsage).coerceAtLeast(0.0)
+            val totalPercent = if (totalCredits > 0) ((totalUsage / totalCredits) * 100).toFloat().coerceIn(0f, 100f) else null
+
+            // Key limit calculations
+            val hasKeyLimit = (keyLimit != null && keyLimit!! > 0)
+            val keyRemaining = if (hasKeyLimit) (keyLimit!! - keyUsage).coerceAtLeast(0.0) else null
+            val keyPercent = if (hasKeyLimit) ((keyUsage / keyLimit!!) * 100).toFloat().coerceIn(0f, 100f) else null
+
+            // Format main display text: Show BOTH total remaining and key limit
+            val remainingDisplay = if (hasKeyLimit) {
+                String.format(Locale.US, "총 잔여 $%.2f (키 잔여 $%.2f)", totalRemaining, keyRemaining)
+            } else {
+                String.format(Locale.US, "총 잔여 크레딧 $%.2f", totalRemaining)
+            }
+
+            val limitDisplay = if (hasKeyLimit) {
+                String.format(
+                    Locale.US,
+                    "키 한도: $%.2f (현재 $%.2f 사용) | 총 크레딧: $%.2f",
+                    keyLimit,
+                    keyUsage,
+                    totalCredits
+                )
+            } else {
+                String.format(
+                    Locale.US,
+                    "키 한도: 무제한 (현재 $%.2f 사용) | 총 크레딧: $%.2f",
+                    keyUsage,
+                    totalCredits
+                )
+            }
+
+            // Summary ticker for status bar collapsed view
+            val tickerSummary = if (hasKeyLimit) {
+                String.format(Locale.US, "총 $%.2f / 한도 $%.2f", totalRemaining, keyLimit)
+            } else {
+                String.format(Locale.US, "$%.2f 잔여", totalRemaining)
+            }
+
+            val isWarn = (totalRemaining < 2.0 && totalCredits > 0) || (keyPercent != null && keyPercent > 80f)
+            val isCrit = (totalRemaining < 0.5 && totalCredits > 0) || (keyPercent != null && keyPercent > 95f)
+
+            TokenStatus(
+                accountId = account.id,
+                provider = ProviderType.OPENROUTER,
+                accountName = account.name,
+                remainingFormatted = remainingDisplay,
+                totalLimitFormatted = limitDisplay,
+                usagePercent = keyPercent ?: totalPercent,
+                statusSummary = tickerSummary,
+                isWarning = isWarn,
+                isCritical = isCrit
+            )
         } catch (e: Exception) {
             TokenStatus(
                 accountId = account.id,
