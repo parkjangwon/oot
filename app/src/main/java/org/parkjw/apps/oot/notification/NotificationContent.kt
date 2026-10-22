@@ -125,6 +125,10 @@ object NotificationContent {
     private fun openRouterLevel(percent: Int?): Level =
         percent?.let { Remaining.Percent(it.toDouble()).level } ?: Level.OK
 
+    // Accounts switched off in Settings stay on the dashboard but leave every notification form; order is kept.
+    fun visibleUsages(usages: List<VendorUsage>, hiddenAccountIds: Set<String>): List<VendorUsage> =
+        usages.filter { it.accountId !in hiddenAccountIds }
+
     // User order as given; errored vendors stay in place ("확인 필요").
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int): List<CollapsedItem> =
         usages.take(maxItems.coerceAtLeast(0)).map { usage ->

@@ -37,7 +37,7 @@ class OotApp : Application() {
         preferences = AccountPreferences(this)
         oauthManager = OAuthManager(this, client, json)
         repository = TokenSyncRepository(preferences, oauthManager, client, json)
-        notificationManager = TokenNotificationManager(this)
+        notificationManager = TokenNotificationManager(this) { preferences.notificationHiddenAccountIds.value }
 
         if (preferences.isServiceEnabled.value) {
             TokenMonitorForegroundService.startService(this)

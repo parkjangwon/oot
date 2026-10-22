@@ -15,6 +15,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
@@ -141,6 +142,34 @@ class NotificationScreenshotTest {
         captureCollapsed(360, "notif-collapsed-360-light-3x.png")
     }
 
+    // Claude, first in user order, is switched off in Settings: the collapsed line pulls the next vendor in.
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifCollapsed412Light3xClaudeHidden() {
+        captureCollapsed(412, "notif-collapsed-412-light-3x-claude-hidden.png", hidden = setOf("demo-claude"))
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifExpanded412Light3xClaudeHidden() {
+        captureExpanded(412, "notif-expanded-412-light-3x-claude-hidden.png", hidden = setOf("demo-claude"))
+    }
+
+    @Test
+    fun hiddenVendorsLeaveEveryNotificationForm() {
+        val hiddenClaude = buildNotification(hidden = setOf("demo-claude"))
+        assertEquals("GLM 98% · xAI 14% · OpenRouter $7.60 · Antigravity 62%", hiddenClaude.contentText())
+        val expanded = applyToNewActivity(hiddenClaude.bigContentView!!)
+        assertEquals(View.VISIBLE, expanded.findViewById<View>(R.id.row3).visibility)
+        assertEquals(View.GONE, expanded.findViewById<View>(R.id.row4).visibility)
+
+        // Every vendor off: the normal empty state, not a blank notification.
+        val allHidden = buildNotification(hidden = fakeUsages().map { it.accountId }.toSet())
+        assertEquals("등록된 프로바이더가 없습니다. 앱에서 추가해주세요.", allHidden.contentText())
+    }
+
+    private fun Notification.contentText(): String = extras.getCharSequence(Notification.EXTRA_TEXT).toString()
+
     // 14% used to pick the amber "warn" entry; that color no longer exists.
     @Test
     fun barHasNoWarningColorAt14Percent() {
@@ -148,19 +177,24 @@ class NotificationScreenshotTest {
         assertEquals(0, activity.resources.getIdentifier("notif_bar_warn", "color", activity.packageName))
     }
 
-    private fun captureCollapsed(widthDp: Int, fileName: String) {
-        val notification = buildNotification()
+    private fun captureCollapsed(widthDp: Int, fileName: String, hidden: Set<String> = emptySet()) {
+        val notification = buildNotification(hidden)
         capture(notification.contentView!!, widthDp, fileName)
     }
 
-    private fun captureExpanded(widthDp: Int, fileName: String) {
-        val notification = buildNotification()
+    private fun captureExpanded(widthDp: Int, fileName: String, hidden: Set<String> = emptySet()) {
+        val notification = buildNotification(hidden)
         capture(notification.bigContentView!!, widthDp, fileName)
     }
 
-    private fun buildNotification(): Notification =
-        TokenNotificationManager(Robolectric.buildActivity(Activity::class.java).setup().get())
+    private fun buildNotification(hidden: Set<String> = emptySet()): Notification =
+        TokenNotificationManager(Robolectric.buildActivity(Activity::class.java).setup().get()) { hidden }
             .buildNotification(fakeUsages())
+
+    private fun applyToNewActivity(views: android.widget.RemoteViews): View {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        return views.apply(activity, FrameLayout(activity))
+    }
 
     private fun capture(views: android.widget.RemoteViews, widthDp: Int, fileName: String) {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()

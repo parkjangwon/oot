@@ -26,6 +26,10 @@ class AccountPreferences(context: Context) {
     private val _isAutoUpdateCheckEnabled = MutableStateFlow(true)
     val isAutoUpdateCheckEnabled: StateFlow<Boolean> = _isAutoUpdateCheckEnabled.asStateFlow()
 
+    // Accounts the user switched off in Settings; absent = shown, so upgrades keep everything in the notification.
+    private val _notificationHiddenAccountIds = MutableStateFlow<Set<String>>(emptySet())
+    val notificationHiddenAccountIds: StateFlow<Set<String>> = _notificationHiddenAccountIds.asStateFlow()
+
     init {
         loadSettings()
     }
@@ -33,11 +37,16 @@ class AccountPreferences(context: Context) {
     private fun loadSettings() {
         val accountsJson = secureStorage.getString(KEY_ACCOUNTS, "[]") ?: "[]"
         val decoded = decodeAccounts(json, accountsJson)
-        val savedOrder = decodeAccountOrder(secureStorage.getString(KEY_ACCOUNT_ORDER, "[]") ?: "[]")
+        val savedOrder = decodeIdList(secureStorage.getString(KEY_ACCOUNT_ORDER, "[]") ?: "[]")
         val ordered = applyAccountOrder(decoded.accounts, savedOrder)
         _accounts.value = ordered
         persistOrder(ordered.map { it.id })
         if (decoded.droppedCount > 0) persistAccounts(ordered)
+
+        val savedHidden = decodeIdList(secureStorage.getString(KEY_NOTIFICATION_HIDDEN, "[]") ?: "[]").toSet()
+        val hidden = savedHidden.intersect(ordered.map { it.id }.toSet())
+        _notificationHiddenAccountIds.value = hidden
+        if (hidden != savedHidden) persistNotificationHidden(hidden)
 
         _isServiceEnabled.value = secureStorage.getString(KEY_SERVICE_ENABLED, "true")?.toBooleanStrictOrNull() ?: true
         _refreshIntervalMinutes.value = secureStorage.getString(KEY_REFRESH_INTERVAL, "15")?.toIntOrNull() ?: 15
@@ -62,6 +71,7 @@ class AccountPreferences(context: Context) {
         _accounts.value = current
         persistAccounts(current)
         persistOrder(current.map { it.id })
+        setShownInNotification(accountId, true) // drops the hidden id with its account
     }
 
     fun setAccountOrder(accountIds: List<String>) {
@@ -77,6 +87,12 @@ class AccountPreferences(context: Context) {
         }
         _accounts.value = current
         persistAccounts(current)
+    }
+
+    fun setShownInNotification(accountId: String, shown: Boolean) {
+        val hidden = _notificationHiddenAccountIds.value.let { if (shown) it - accountId else it + accountId }
+        _notificationHiddenAccountIds.value = hidden
+        persistNotificationHidden(hidden)
     }
 
     fun setServiceEnabled(enabled: Boolean) {
@@ -111,7 +127,15 @@ class AccountPreferences(context: Context) {
         }
     }
 
-    private fun decodeAccountOrder(raw: String): List<String> = try {
+    private fun persistNotificationHidden(accountIds: Set<String>) {
+        try {
+            secureStorage.putString(KEY_NOTIFICATION_HIDDEN, json.encodeToString(accountIds))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun decodeIdList(raw: String): List<String> = try {
         json.decodeFromString<List<String>>(raw)
     } catch (e: Exception) {
         emptyList()
@@ -156,6 +180,7 @@ class AccountPreferences(context: Context) {
 
         private const val KEY_ACCOUNTS = "oot_accounts"
         private const val KEY_ACCOUNT_ORDER = "oot_account_order"
+        private const val KEY_NOTIFICATION_HIDDEN = "oot_notification_hidden"
         private const val KEY_SERVICE_ENABLED = "oot_service_enabled"
         private const val KEY_REFRESH_INTERVAL = "oot_refresh_interval"
         private const val KEY_AUTO_UPDATE_CHECK = "oot_auto_update_check"

@@ -320,4 +320,36 @@ class NotificationContentTest {
         val item = NotificationContent.expandedItems(listOf(antigravity(null, 10.0)), now = now).single()
         assertEquals("타사 10% 남음 · 30분 후 리셋", item.text)
     }
+
+    private fun account(id: String, percent: Double, provider: ProviderType) =
+        vendor(percent, provider).copy(accountId = id)
+
+    @Test
+    fun `hidden accounts leave every notification form and the rest keep their order`() {
+        val usages = listOf(
+            account("a", 90.0, ProviderType.CLAUDE),
+            account("b", 10.0, ProviderType.ZAI),
+            account("c", 50.0, ProviderType.XAI),
+            account("d", 70.0, ProviderType.OPENAI)
+        )
+        val visible = NotificationContent.visibleUsages(usages, hiddenAccountIds = setOf("b"))
+        assertEquals(listOf("a", "c", "d"), visible.map { it.accountId })
+        // The collapsed line fills up with the next account instead of leaving a gap.
+        assertEquals(listOf("Cl", "X", "O"), NotificationContent.collapsedItems(visible, maxItems = 3).map { it.mark })
+        assertEquals(listOf("Claude", "xAI", "OpenAI"), NotificationContent.expandedItems(visible).map { it.name })
+        assertEquals("Claude 90% · xAI 50% · OpenAI 70%", NotificationContent.textFallback(visible))
+    }
+
+    @Test
+    fun `nothing hidden keeps every account and ids of deleted accounts are ignored`() {
+        val usages = listOf(account("a", 90.0, ProviderType.CLAUDE), account("b", 10.0, ProviderType.ZAI))
+        assertEquals(usages, NotificationContent.visibleUsages(usages, emptySet()))
+        assertEquals(usages, NotificationContent.visibleUsages(usages, setOf("deleted-account")))
+    }
+
+    @Test
+    fun `hiding every account leaves nothing to show`() {
+        val usages = listOf(account("a", 90.0, ProviderType.CLAUDE), account("b", 10.0, ProviderType.ZAI))
+        assertEquals(emptyList<VendorUsage>(), NotificationContent.visibleUsages(usages, setOf("a", "b")))
+    }
 }

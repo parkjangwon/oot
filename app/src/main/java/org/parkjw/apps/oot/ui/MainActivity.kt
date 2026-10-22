@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
                 val isServiceEnabled by app.preferences.isServiceEnabled.collectAsState()
                 val refreshInterval by app.preferences.refreshIntervalMinutes.collectAsState()
                 val autoUpdateCheck by app.preferences.isAutoUpdateCheckEnabled.collectAsState()
+                val notificationHiddenIds by app.preferences.notificationHiddenAccountIds.collectAsState()
                 val vendorUsages by app.repository.vendorUsages.collectAsState(initial = emptyList())
                 val isRefreshing by app.repository.isRefreshing.collectAsState()
 
@@ -81,6 +82,8 @@ class MainActivity : ComponentActivity() {
                     SettingsScreen(
                         isServiceEnabled = isServiceEnabled,
                         refreshIntervalMinutes = refreshInterval,
+                        accounts = accounts.filter { it.provider.isSelectable },
+                        notificationHiddenIds = notificationHiddenIds,
                         autoUpdateCheckEnabled = autoUpdateCheck,
                         versionName = versionName,
                         updateState = updateState,
@@ -94,6 +97,9 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onSetRefreshInterval = { minutes -> app.preferences.setRefreshInterval(minutes) },
+                        onNotificationShownChange = { accountId, shown ->
+                            app.preferences.setShownInNotification(accountId, shown)
+                        },
                         onAutoUpdateCheckChange = { enabled -> app.preferences.setAutoUpdateCheckEnabled(enabled) },
                         onUpdateAction = { action ->
                             when (action) {
