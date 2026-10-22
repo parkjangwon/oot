@@ -48,6 +48,9 @@
     <string name="time_in_hours_minutes">%1$d시간 %2$d분 후</string>
     <string name="time_in_minutes">%1$d분 후</string>
     <string name="time_reset_soon">곧 리셋</string>
+    <string name="time_ago_minutes">%1$d분</string>
+    <string name="time_ago_hours">%1$d시간</string>
+    <string name="time_ago_days">%1$d일</string>
     <string name="window_five_hour">5시간</string>
     <string name="window_weekly">주간</string>
     <string name="window_monthly">월간</string>

@@ -25,4 +25,5 @@
     <string name="dashboard_error_parse">Couldn\'t read the response</string>
     <string name="dashboard_error_http">HTTP %1$d</string>
     <string name="dashboard_error_unknown">Check your connection</string>
+    <string name="dashboard_stale_values">Values from %1$s ago · Refresh failed</string>
 </resources>
