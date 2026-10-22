@@ -189,6 +189,31 @@ class DashboardScreenshotTest {
         )
     }
 
+    // Nothing registered: 해요체 title, same as the notification's empty state.
+    @Test
+    @Config(qualifiers = "w412dp-h1300dp-notnight-xxhdpi")
+    fun dashboardEmptyLight() = captureEmpty(darkTheme = false, fileName = "dashboard-empty-light.png")
+
+    @Test
+    @Config(qualifiers = "w412dp-h1300dp-night-xxhdpi")
+    fun dashboardEmptyDark() = captureEmpty(darkTheme = true, fileName = "dashboard-empty-dark.png")
+
+    private fun captureEmpty(darkTheme: Boolean, fileName: String) {
+        composeRule.setContent {
+            OotTheme(darkTheme = darkTheme) {
+                DashboardScreen(
+                    vendorUsages = emptyList(),
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("등록된 프로바이더가 없어요").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), fileName),
+        )
+    }
+
     @Test
     @Config(qualifiers = "w412dp-h1300dp-notnight-xxhdpi")
     fun dashboardLight() {
