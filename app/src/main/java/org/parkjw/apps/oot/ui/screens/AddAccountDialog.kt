@@ -34,6 +34,7 @@ import org.parkjw.apps.oot.ui.theme.DialogCorner
 import org.parkjw.apps.oot.ui.theme.ootInkButtonColors
 import org.parkjw.apps.oot.ui.theme.ootOutlinedButtonColors
 import org.parkjw.apps.oot.ui.theme.ootTextButtonColors
+import org.parkjw.apps.oot.ui.theme.ootWordBreak
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +96,7 @@ fun AddAccountDialog(
         title = {
             Text(
                 text = stringResource(R.string.add_account_title),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLarge.ootWordBreak(),
                 fontWeight = FontWeight.Bold
             )
         },
@@ -115,7 +116,7 @@ fun AddAccountDialog(
                         value = selectedProvider.displayName,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text(stringResource(R.string.add_account_provider_label)) },
+                        label = { Text(stringResource(R.string.add_account_provider_label), style = LocalTextStyle.current.ootWordBreak()) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isProviderDropdownExpanded) },
                         modifier = Modifier
                             .menuAnchor()
@@ -130,7 +131,7 @@ fun AddAccountDialog(
                                 text = {
                                     Column {
                                         Text(provider.displayName, fontWeight = FontWeight.SemiBold)
-                                        Text(stringResource(provider.descriptionRes), style = MaterialTheme.typography.labelSmall)
+                                        Text(stringResource(provider.descriptionRes), style = MaterialTheme.typography.labelSmall.ootWordBreak())
                                     }
                                 },
                                 onClick = {
@@ -153,8 +154,8 @@ fun AddAccountDialog(
                 OutlinedTextField(
                     value = accountName,
                     onValueChange = { accountName = it },
-                    label = { Text(stringResource(R.string.add_account_display_name_label)) },
-                    placeholder = { Text(selectedProvider.displayName) },
+                    label = { Text(stringResource(R.string.add_account_display_name_label), style = LocalTextStyle.current.ootWordBreak()) },
+                    placeholder = { Text(selectedProvider.displayName, style = LocalTextStyle.current.ootWordBreak()) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -178,7 +179,8 @@ fun AddAccountDialog(
                             ProviderType.DEEPSEEK -> stringResource(R.string.add_account_open_deepseek)
                             ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_open_ollama_cloud)
                             ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_open_opencode_go)
-                        }
+                        },
+                        style = LocalTextStyle.current.ootWordBreak()
                     )
                 }
 
@@ -196,11 +198,11 @@ fun AddAccountDialog(
                         ) {
                             Text(
                                 text = stringResource(R.string.add_account_xai_title),
-                                style = MaterialTheme.typography.titleSmall
+                                style = MaterialTheme.typography.titleSmall.ootWordBreak()
                             )
                             Text(
                                 text = stringResource(R.string.add_account_xai_desc),
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall.ootWordBreak()
                             )
 
                             if (!isXaiWaiting) {
@@ -235,7 +237,7 @@ fun AddAccountDialog(
                                 ) {
                                     Icon(Icons.Filled.VpnKey, contentDescription = null)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.add_account_xai_start))
+                                    Text(stringResource(R.string.add_account_xai_start), style = LocalTextStyle.current.ootWordBreak())
                                 }
                             } else {
                                 Column(
@@ -249,21 +251,21 @@ fun AddAccountDialog(
                                         Text(
                                             text = stringResource(R.string.add_account_auth_code_value, code),
                                             fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.bodyMedium,
+                                            style = MaterialTheme.typography.bodyMedium.ootWordBreak(),
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                         Text(
                                             text = stringResource(R.string.add_account_code_copied),
-                                            style = MaterialTheme.typography.labelSmall
+                                            style = MaterialTheme.typography.labelSmall.ootWordBreak()
                                         )
                                     }
                                     Text(
                                         text = stringResource(R.string.add_account_xai_waiting),
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodySmall.ootWordBreak()
                                     )
                                     xaiVerificationUrl?.let { url ->
                                         TextButton(onClick = { onOpenExternalBrowser(url) }) {
-                                            Text(stringResource(R.string.add_account_reopen_browser))
+                                            Text(stringResource(R.string.add_account_reopen_browser), style = LocalTextStyle.current.ootWordBreak())
                                         }
                                     }
                                 }
@@ -273,7 +275,7 @@ fun AddAccountDialog(
                                 Text(
                                     text = it,
                                     color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall.ootWordBreak()
                                 )
                             }
                         }
@@ -293,12 +295,12 @@ fun AddAccountDialog(
                         ) {
                             Text(
                                 text = stringResource(R.string.add_account_openai_title),
-                                style = MaterialTheme.typography.titleSmall,
+                                style = MaterialTheme.typography.titleSmall.ootWordBreak(),
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = stringResource(R.string.add_account_openai_desc),
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall.ootWordBreak()
                             )
 
                             if (!isOpenAiWaiting) {
@@ -335,7 +337,7 @@ fun AddAccountDialog(
                                 ) {
                                     Icon(Icons.Filled.VpnKey, contentDescription = null)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.add_account_openai_signin))
+                                    Text(stringResource(R.string.add_account_openai_signin), style = LocalTextStyle.current.ootWordBreak())
                                 }
                             } else {
                                 Column(
@@ -349,21 +351,21 @@ fun AddAccountDialog(
                                         Text(
                                             text = stringResource(R.string.add_account_auth_code_value, code),
                                             fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.bodyMedium,
+                                            style = MaterialTheme.typography.bodyMedium.ootWordBreak(),
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                         Text(
                                             text = stringResource(R.string.add_account_code_copied),
-                                            style = MaterialTheme.typography.labelSmall
+                                            style = MaterialTheme.typography.labelSmall.ootWordBreak()
                                         )
                                     }
                                     Text(
                                         text = stringResource(R.string.add_account_openai_waiting),
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodySmall.ootWordBreak()
                                     )
                                     openAiVerificationUrl?.let { url ->
                                         TextButton(onClick = { onOpenExternalBrowser(url) }) {
-                                            Text(stringResource(R.string.add_account_reopen_browser))
+                                            Text(stringResource(R.string.add_account_reopen_browser), style = LocalTextStyle.current.ootWordBreak())
                                         }
                                     }
                                 }
@@ -373,7 +375,7 @@ fun AddAccountDialog(
                                 Text(
                                     text = it,
                                     color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall.ootWordBreak()
                                 )
                             }
                         }
@@ -393,11 +395,11 @@ fun AddAccountDialog(
                         ) {
                             Text(
                                 text = stringResource(R.string.add_account_claude_title),
-                                style = MaterialTheme.typography.titleSmall
+                                style = MaterialTheme.typography.titleSmall.ootWordBreak()
                             )
                             Text(
                                 text = stringResource(R.string.add_account_claude_desc),
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall.ootWordBreak()
                             )
 
                             Button(
@@ -410,7 +412,7 @@ fun AddAccountDialog(
                             ) {
                                 Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.add_account_claude_login_browser))
+                                Text(stringResource(R.string.add_account_claude_login_browser), style = LocalTextStyle.current.ootWordBreak())
                             }
 
                             AnimatedVisibility(visible = showClaudeCodeInput) {
@@ -418,8 +420,8 @@ fun AddAccountDialog(
                                     OutlinedTextField(
                                         value = claudeAuthCode,
                                         onValueChange = { claudeAuthCode = it },
-                                        label = { Text(stringResource(R.string.add_account_claude_code_label)) },
-                                        placeholder = { Text(stringResource(R.string.add_account_claude_code_placeholder)) },
+                                        label = { Text(stringResource(R.string.add_account_claude_code_label), style = LocalTextStyle.current.ootWordBreak()) },
+                                        placeholder = { Text(stringResource(R.string.add_account_claude_code_placeholder), style = LocalTextStyle.current.ootWordBreak()) },
                                         singleLine = true,
                                         trailingIcon = {
                                             IconButton(onClick = {
@@ -465,16 +467,16 @@ fun AddAccountDialog(
                                         if (isClaudeExchanging) {
                                             CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Text(stringResource(R.string.add_account_exchanging))
+                                            Text(stringResource(R.string.add_account_exchanging), style = LocalTextStyle.current.ootWordBreak())
                                         } else {
                                             Icon(Icons.Filled.CheckCircle, contentDescription = null)
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Text(stringResource(R.string.add_account_issue_register_token))
+                                            Text(stringResource(R.string.add_account_issue_register_token), style = LocalTextStyle.current.ootWordBreak())
                                         }
                                     }
 
                                     claudeErrorMessage?.let {
-                                        Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                        Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall.ootWordBreak())
                                     }
                                 }
                             }
@@ -486,14 +488,14 @@ fun AddAccountDialog(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = stringResource(R.string.add_account_manual_key_hint),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelMedium.ootWordBreak(),
                         fontWeight = FontWeight.SemiBold
                     )
 
                     OutlinedTextField(
                         value = apiKey,
                         onValueChange = { apiKey = it },
-                        label = { Text(stringResource(R.string.add_account_api_key_label)) },
+                        label = { Text(stringResource(R.string.add_account_api_key_label), style = LocalTextStyle.current.ootWordBreak()) },
                         placeholder = {
                             Text(
                                 when (selectedProvider) {
@@ -505,7 +507,8 @@ fun AddAccountDialog(
                                     ProviderType.DEEPSEEK -> "sk-..."
                                     ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_key_placeholder_ollama_cloud)
                                     ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_key_placeholder_opencode_go)
-                                }
+                                },
+                                style = LocalTextStyle.current.ootWordBreak()
                             )
                         },
                         visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
@@ -544,7 +547,7 @@ fun AddAccountDialog(
                             ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_helper_ollama_cloud)
                             ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_helper_opencode_go)
                         },
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.ootWordBreak(),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -553,7 +556,7 @@ fun AddAccountDialog(
                 OutlinedTextField(
                     value = customEndpoint,
                     onValueChange = { customEndpoint = it },
-                    label = { Text(stringResource(R.string.add_account_custom_endpoint_label)) },
+                    label = { Text(stringResource(R.string.add_account_custom_endpoint_label), style = LocalTextStyle.current.ootWordBreak()) },
                     placeholder = { Text(selectedProvider.baseUrl) },
                     supportingText = if (!customEndpointValid) {
                         { Text(stringResource(R.string.add_account_custom_endpoint_https_only)) }
@@ -590,7 +593,7 @@ fun AddAccountDialog(
                 colors = ootInkButtonColors(),
                 enabled = apiKey.isNotBlank() && customEndpointValid
             ) {
-                Text(stringResource(R.string.add_account_save))
+                Text(stringResource(R.string.add_account_save), style = LocalTextStyle.current.ootWordBreak())
             }
         },
         dismissButton = {
@@ -598,7 +601,7 @@ fun AddAccountDialog(
                 onClick = onDismiss,
                 colors = ootTextButtonColors()
             ) {
-                Text(stringResource(R.string.add_account_cancel))
+                Text(stringResource(R.string.add_account_cancel), style = LocalTextStyle.current.ootWordBreak())
             }
         }
     )
