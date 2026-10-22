@@ -20,8 +20,9 @@ val OotMonoFamily = FontFamily(
 )
 
 /** Keeps Korean words whole when wrapping (no mid-word breaks, #92). */
-// Paragraph uses WordBreak.Default in this Compose BOM; Heading is the built-in that packs WordBreak.Phrase.
-fun TextStyle.ootWordBreak(): TextStyle = copy(lineBreak = LineBreak.Heading)
+// Phrase word breaking keeps Korean words whole on Android 13+; older versions use default breaking.
+fun TextStyle.ootWordBreak(): TextStyle =
+    copy(lineBreak = LineBreak.Paragraph.copy(wordBreak = LineBreak.WordBreak.Phrase))
 
 val OotNumeric = TextStyle(
     fontFamily = OotMonoFamily,
