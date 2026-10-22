@@ -257,7 +257,7 @@ fun AddAccountDialog(
                                         value = antigravityAuthCode,
                                         onValueChange = { antigravityAuthCode = it },
                                         label = { Text("인증 코드 또는 콜백 URL") },
-                                        placeholder = { Text("http://localhost:4000/?code=... 또는 코드") },
+                                        placeholder = { Text("http://127.0.0.1:4000/?code=... 또는 코드") },
                                         singleLine = true,
                                         trailingIcon = {
                                             IconButton(onClick = {
@@ -639,7 +639,7 @@ fun AddAccountDialog(
                                     ProviderType.CLAUDE -> "sk-ant-... 또는 세션 키"
                                     ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
                                     ProviderType.XAI -> "xai-... API Key"
-                                    ProviderType.ANTIGRAVITY -> "AIza... 또는 Bearer 토큰"
+                                    ProviderType.ANTIGRAVITY -> "Bearer 토큰"
                                     ProviderType.DEEPSEEK -> "sk-..."
                                     ProviderType.OLLAMA_CLOUD -> "Ollama Cloud API Key"
                                     ProviderType.OPENCODE_GO -> "OpenCode Go API Key"
@@ -676,7 +676,7 @@ fun AddAccountDialog(
                             ProviderType.CLAUDE -> "💡 Anthropic Console API 키(sk-ant-...) 또는 OAuth 토큰을 입력해주세요."
                             ProviderType.OPENAI -> "💡 ChatGPT 로그인(5h/주간) 또는 API 키(sk-...)로 레이트 리밋을 조회합니다."
                             ProviderType.XAI -> "💡 xAI Console API 키 또는 Grok OAuth 토큰으로 주간 한도를 모니터링합니다."
-                            ProviderType.ANTIGRAVITY -> "💡 Google Antigravity OAuth 토큰 또는 Gemini API Key를 등록하여 에이전트 쿼터를 조회합니다."
+                            ProviderType.ANTIGRAVITY -> "💡 Antigravity 사용량은 Google 로그인으로만 조회할 수 있어요. Gemini API Key로는 조회되지 않습니다."
                             ProviderType.DEEPSEEK -> "💡 DeepSeek API 키를 등록하면 남은 API 크레딧 잔액을 확인합니다."
                             ProviderType.OLLAMA_CLOUD -> "💡 Ollama Cloud API 키를 등록하면 세션/주간 사용량과 구매 크레딧을 확인합니다."
                             ProviderType.OPENCODE_GO -> "💡 OpenCode Go API 키를 등록하면 5시간/주간/월간 사용량을 확인합니다."

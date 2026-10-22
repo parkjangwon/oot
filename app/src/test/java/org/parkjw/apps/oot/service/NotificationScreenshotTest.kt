@@ -100,6 +100,30 @@ class NotificationScreenshotTest {
         captureExpanded(412, "notif-expanded-412-dark.png")
     }
 
+    // Dummy Antigravity line for the 3x review shots: only the Google window reaches the notification.
+    private fun antigravityUsage(): VendorUsage = VendorUsage(
+        accountId = "demo-antigravity",
+        providerType = ProviderType.ANTIGRAVITY,
+        displayName = "agy-demo@example.com",
+        windows = listOf(
+            UsageWindow("google", "Google 모델", Remaining.Percent(62.0), Instant.now().plusSeconds(2 * 3600 + 30)),
+            UsageWindow("third_party", "타사 모델", Remaining.Percent(18.0), Instant.now().plusSeconds(75 * 60))
+        )
+    )
+
+    // 3x = xxhdpi; Android's qualifier order puts night mode before density.
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifExpanded412AntigravityLight3x() {
+        captureExpanded(412, "notif-expanded-412-antigravity-light-3x.png", fakeUsages() + antigravityUsage())
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
+    fun notifExpanded412AntigravityDark3x() {
+        captureExpanded(412, "notif-expanded-412-antigravity-dark-3x.png", fakeUsages() + antigravityUsage())
+    }
+
     // 14% used to pick the amber "warn" entry; that color no longer exists.
     @Test
     fun barHasNoWarningColorAt14Percent() {
@@ -112,14 +136,14 @@ class NotificationScreenshotTest {
         capture(notification.contentView!!, widthDp, fileName)
     }
 
-    private fun captureExpanded(widthDp: Int, fileName: String) {
-        val notification = buildNotification()
+    private fun captureExpanded(widthDp: Int, fileName: String, usages: List<VendorUsage> = fakeUsages()) {
+        val notification = buildNotification(usages)
         capture(notification.bigContentView!!, widthDp, fileName)
     }
 
-    private fun buildNotification(): Notification =
+    private fun buildNotification(usages: List<VendorUsage> = fakeUsages()): Notification =
         TokenNotificationManager(Robolectric.buildActivity(Activity::class.java).setup().get())
-            .buildNotification(fakeUsages())
+            .buildNotification(usages)
 
     private fun capture(views: android.widget.RemoteViews, widthDp: Int, fileName: String) {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()

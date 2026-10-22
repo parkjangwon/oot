@@ -243,4 +243,38 @@ class NotificationContentTest {
             assertFalse(text.contains("tok"))
         }
     }
+
+    private fun antigravity(googlePercent: Double?, thirdPartyPercent: Double): VendorUsage = VendorUsage(
+        "id", ProviderType.ANTIGRAVITY, "acc",
+        listOfNotNull(
+            googlePercent?.let {
+                UsageWindow("google", "Google 모델", Remaining.Percent(it), now.plusSeconds(120 * 60))
+            },
+            UsageWindow("third_party", "타사 모델", Remaining.Percent(thirdPartyPercent), now.plusSeconds(30 * 60))
+        )
+    )
+
+    @Test
+    fun `antigravity expanded line shows only the Google window and its reset`() {
+        val item = NotificationContent.expandedItems(listOf(antigravity(62.0, 10.0)), now = now).single()
+        assertEquals("Antigravity", item.name)
+        assertEquals("Google 62% 남음 · 2시간 후 리셋", item.text)
+        assertEquals(62, item.percent)
+        assertFalse(item.text.contains("타사"))
+    }
+
+    @Test
+    fun `antigravity collapsed and text fallback use the Google window`() {
+        val usage = antigravity(62.0, 10.0)
+        val item = NotificationContent.collapsedItems(listOf(usage), maxItems = 3).single()
+        assertEquals("62% 남음", item.label)
+        assertEquals(62, item.percent)
+        assertEquals("Antigravity 62%", NotificationContent.textFallback(listOf(usage)))
+    }
+
+    @Test
+    fun `antigravity without a Google window falls back to its lowest window`() {
+        val item = NotificationContent.expandedItems(listOf(antigravity(null, 10.0)), now = now).single()
+        assertEquals("타사 10% 남음 · 30분 후 리셋", item.text)
+    }
 }

@@ -143,6 +143,50 @@ class DashboardScreenshotTest {
         ),
     )
 
+    // Dummy Antigravity card: Google and third-party model windows, each with its own reset.
+    private val antigravityUsage = VendorUsage(
+        accountId = "antigravity-1",
+        providerType = ProviderType.ANTIGRAVITY,
+        displayName = "Antigravity",
+        windows = listOf(
+            UsageWindow(
+                id = "google",
+                label = "Google 모델",
+                remaining = Remaining.Percent(62.0),
+                resetsAt = fixedNow.plus(Duration.ofHours(2)),
+            ),
+            UsageWindow(
+                id = "third_party",
+                label = "타사 모델",
+                remaining = Remaining.Percent(18.0),
+                resetsAt = fixedNow.plus(Duration.ofHours(1).plusMinutes(10)),
+            ),
+        ),
+    )
+
+    @Test
+    fun dashboardAntigravityLight() = captureAntigravity(darkTheme = false, fileName = "dashboard-antigravity-light.png")
+
+    @Test
+    fun dashboardAntigravityDark() = captureAntigravity(darkTheme = true, fileName = "dashboard-antigravity-dark.png")
+
+    private fun captureAntigravity(darkTheme: Boolean, fileName: String) {
+        composeRule.setContent {
+            OotTheme(darkTheme = darkTheme) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages(openRouterKeyLimit = true) + antigravityUsage,
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("Google 모델").assertExists()
+        composeRule.onNodeWithText("타사 모델").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), fileName),
+        )
+    }
+
     @Test
     fun dashboardLight() {
         composeRule.setContent {
