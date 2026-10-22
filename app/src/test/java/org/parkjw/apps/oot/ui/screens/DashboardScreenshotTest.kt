@@ -85,8 +85,16 @@ class DashboardScreenshotTest {
                     remaining = Remaining.Percent(98.0),
                     resetsAt = fixedNow.plus(Duration.ofHours(3).plusMinutes(27)),
                 ),
+                // <=20% warns by badge only; the number keeps the default color.
+                UsageWindow(
+                    id = "seven_day",
+                    label = "주간",
+                    remaining = Remaining.Percent(14.0),
+                    resetsAt = fixedNow.plus(Duration.ofDays(4)),
+                ),
             ),
         ),
+        // xAI reports only its weekly credit period, with the period end as the reset.
         VendorUsage(
             accountId = "xai-1",
             providerType = ProviderType.XAI,
@@ -95,14 +103,8 @@ class DashboardScreenshotTest {
                 UsageWindow(
                     id = "weekly",
                     label = "주간",
-                    remaining = Remaining.Percent(14.0),
-                    resetsAt = fixedNow.plus(Duration.ofDays(2)),
-                ),
-                UsageWindow(
-                    id = "five_hour",
-                    label = "5시간",
                     remaining = Remaining.Percent(4.0),
-                    resetsAt = fixedNow.plus(Duration.ofMinutes(45)),
+                    resetsAt = fixedNow.plus(Duration.ofHours(7).plusMinutes(12)),
                 ),
             ),
         ),

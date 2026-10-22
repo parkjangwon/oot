@@ -689,10 +689,9 @@ fun LimitRow(
     val pctInt = remainingPercent.roundToInt().coerceIn(0, 100)
     val level = progressLevel(pctInt)
     val resetText = formatTimeToReset(resetsAt, now)
+    // <=20% only warns through the card badge; the number turns error-colored at <=5%.
     val numberColor = if (pctInt <= 5) {
         MaterialTheme.colorScheme.error
-    } else if (pctInt <= 20) {
-        MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.onSurface
     }
