@@ -6,7 +6,6 @@ import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.level
-import org.parkjw.apps.oot.data.model.sortedByRemaining
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
@@ -114,9 +113,9 @@ object NotificationContent {
     private fun openRouterLevel(percent: Int?): Level =
         percent?.let { Remaining.Percent(it.toDouble()).level } ?: Level.OK
 
-    // Errored vendors first ("확인 필요"), then lowest remaining ascending.
+    // User order as given; errored vendors stay in place ("확인 필요").
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int): List<CollapsedItem> =
-        usages.sortedByRemaining().take(maxItems.coerceAtLeast(0)).map { usage ->
+        usages.take(maxItems.coerceAtLeast(0)).map { usage ->
             openRouterView(usage)?.let { or ->
                 return@map CollapsedItem(
                     mark(usage.providerType),
@@ -142,7 +141,7 @@ object NotificationContent {
             }
         }
 
-    // One line per registered vendor, registration order.
+    // One line per registered vendor, user order.
     fun expandedItems(usages: List<VendorUsage>, now: Instant = Instant.now()): List<ExpandedItem> =
         usages.map { usage ->
             val itemMark = mark(usage.providerType)
@@ -185,9 +184,9 @@ object NotificationContent {
             }
         }
 
-    // Text-only fallback (option C): "Claude 62% · GLM 98% · OpenRouter $12.40"
+    // Text-only fallback (option C): user order, e.g. "Claude 62% · GLM 98% · OpenRouter $12.40"
     fun textFallback(usages: List<VendorUsage>): String =
-        usages.sortedByRemaining().joinToString(" · ") { usage ->
+        usages.joinToString(" · ") { usage ->
             val openRouter = openRouterView(usage)
             val label = when {
                 openRouter != null -> formatBalance(openRouter.amountLeft, openRouter.currency)

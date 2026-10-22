@@ -72,9 +72,9 @@ class TokenNotificationManager(private val context: Context) {
 
         if (usages.isEmpty()) {
             return NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_oot_token)
+                .setSmallIcon(R.drawable.ic_stat_oot)
                 .setContentTitle("OOT: 토큰 모니터")
-                .setContentText("등록된 AI 계정이 없습니다. 앱에서 추가해주세요.")
+                .setContentText("등록된 프로바이더가 없습니다. 앱에서 추가해주세요.")
                 .setContentIntent(openAppPendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
@@ -91,7 +91,7 @@ class TokenNotificationManager(private val context: Context) {
         val summary = NotificationContent.textFallback(usages)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_oot_token)
+            .setSmallIcon(R.drawable.ic_stat_oot)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(summary)
             .setTicker(summary)

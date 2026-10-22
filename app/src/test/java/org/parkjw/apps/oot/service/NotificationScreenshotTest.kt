@@ -69,6 +69,7 @@ class NotificationScreenshotTest {
         )
     }
 
+    // Android qualifier order: night mode before dpi (brief's xxhdpi-notnight is reversed).
     @Test
     @Config(qualifiers = "w360dp-h800dp-notnight-xxhdpi")
     fun notifCollapsed360Light() {
