@@ -1,5 +1,6 @@
 package org.parkjw.apps.oot.data.local
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
@@ -27,6 +28,12 @@ class SecureStorage(context: Context) {
 
     fun putString(key: String, value: String) {
         prefs.edit().putString(key, value).apply()
+    }
+
+    /** Like [putString] but returns only once the value (and any earlier queued write) is on disk. */
+    @SuppressLint("ApplySharedPref") // blocking is the point: data that must survive a force-stop
+    fun putStringNow(key: String, value: String) {
+        prefs.edit().putString(key, value).commit()
     }
 
     fun getString(key: String, defaultValue: String? = null): String? {

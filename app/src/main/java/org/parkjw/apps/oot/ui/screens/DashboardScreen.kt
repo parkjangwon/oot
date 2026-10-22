@@ -51,6 +51,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,7 +66,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -81,7 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
-import org.parkjw.apps.oot.OotApp
+import org.parkjw.apps.oot.data.local.AccountPreferences
 import org.parkjw.apps.oot.data.model.Level
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
@@ -138,33 +138,43 @@ fun DashboardScreen(
     var selectedVendorForDetail by remember { mutableStateOf<VendorUsage?>(null) }
     var selectedLegacyForDetail by remember { mutableStateOf<ProviderAccount?>(null) }
     var orderedUsages by remember { mutableStateOf(vendorUsages) }
-    LaunchedEffect(vendorUsages) {
-        if (previewDraggingAccountId == null) orderedUsages = vendorUsages
-    }
     var draggingId by remember { mutableStateOf<String?>(null) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(vendorUsages) {
+        if (previewDraggingAccountId != null) return@LaunchedEffect
+        // A refresh landing mid-drag still carries the saved order: keep the dragged one, take only the new numbers.
+        orderedUsages = if (draggingId == null) {
+            vendorUsages
+        } else {
+            val byId = vendorUsages.associateBy { it.accountId }
+            AccountPreferences.mergeAccountOrder(orderedUsages.map { it.accountId }, vendorUsages.map { it.accountId })
+                .mapNotNull { byId[it] }
+        }
+    }
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
     val edgePx = with(density) { 48.dp.toPx() }
     val scope = rememberCoroutineScope()
     val activeDraggingId = draggingId ?: previewDraggingAccountId
-    // shortcut: persist via OotApp because MainActivity is owned by another stream; drop cast when it wires onReorderVendors
-    val app = LocalContext.current.applicationContext as? OotApp
-
-    fun persistOrder(ids: List<String>) {
-        onReorderVendors(ids)
-        app?.preferences?.setAccountOrder(ids)
-        app?.repository?.applyAccountOrder(ids)
-        app?.let { it.notificationManager.updateNotification(it.repository.vendorUsages.value) }
-    }
+    // The drag handler outlives recompositions, so it must call the latest callback.
+    val reorder by rememberUpdatedState(onReorderVendors)
 
     fun moveVendor(from: Int, to: Int) {
         if (from == to || from !in orderedUsages.indices || to !in orderedUsages.indices) return
         orderedUsages = orderedUsages.toMutableList().apply {
             add(to, removeAt(from))
         }
-        persistOrder(orderedUsages.map { it.accountId })
+        reorder(orderedUsages.map { it.accountId })
+    }
+
+    // A drop and a cancelled gesture both leave the list as shown, so report what is shown.
+    fun endDrag() {
+        if (draggingId == null) return
+        val ids = orderedUsages.map { it.accountId }
+        draggingId = null
+        dragOffsetY = 0f
+        reorder(ids)
     }
 
     Scaffold(
@@ -303,23 +313,16 @@ fun DashboardScreen(
                                         }
                                     }
                                 }
-                                .pointerInput(orderedUsages, usage.accountId) {
+                                // Keyed by id only: keying on the order restarted the gesture on every swap and lost the drop (#61).
+                                .pointerInput(usage.accountId) {
                                     detectDragGesturesAfterLongPress(
                                         onDragStart = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             draggingId = usage.accountId
                                             dragOffsetY = 0f
                                         },
-                                        onDragCancel = {
-                                            draggingId = null
-                                            dragOffsetY = 0f
-                                        },
-                                        onDragEnd = {
-                                            val ids = orderedUsages.map { it.accountId }
-                                            draggingId = null
-                                            dragOffsetY = 0f
-                                            persistOrder(ids)
-                                        },
+                                        onDragCancel = { endDrag() },
+                                        onDragEnd = { endDrag() },
                                         onDrag = { change, dragAmount ->
                                             change.consume()
                                             dragOffsetY += dragAmount.y

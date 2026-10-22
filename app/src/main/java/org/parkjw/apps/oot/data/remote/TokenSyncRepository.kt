@@ -43,8 +43,9 @@ class TokenSyncRepository(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    /** Reorder cached usages to match user drag order (no network). */
+    /** Save the user's drag order and reorder cached usages to match (no network). */
     fun applyAccountOrder(accountIds: List<String>) {
+        preferences.setAccountOrder(accountIds)
         val usageById = _vendorUsages.value.associateBy { it.accountId }
         val statusById = _statuses.value.associateBy { it.accountId }
         val orderedIds = AccountPreferences.mergeAccountOrder(
@@ -90,9 +91,9 @@ class TokenSyncRepository(
         }
 
         val results = deferreds.awaitAll()
-        // Preserve preferences.accounts order (user drag order).
+        // Order by what is saved now, not at the start: the user may have dragged while requests were in flight.
         val byId = results.associateBy { it.accountId }
-        val ordered = activeAccounts.mapNotNull { byId[it.id] }
+        val ordered = preferences.accounts.value.mapNotNull { byId[it.id] }
         _statuses.value = ordered
         _vendorUsages.value = ordered.map { it.toVendorUsage() }
         _isRefreshing.value = false
