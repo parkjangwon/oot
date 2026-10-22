@@ -32,12 +32,12 @@
     <string name="add_account_manual_key_hint">Or add an API key or token directly:</string>
     <string name="add_account_api_key_label">API key / token</string>
     <string name="add_account_key_placeholder_zai">Z.ai Coding Plan API key</string>
-    <string name="add_account_key_placeholder_claude">sk-ant-... or session key</string>
-    <string name="add_account_key_placeholder_openai">sk-proj-... or API key</string>
+    <string name="add_account_key_placeholder_claude">sk-ant-… or session key</string>
+    <string name="add_account_key_placeholder_openai">sk-proj-… or API key</string>
     <string name="add_account_helper_zai">Checks your remaining 5-hour and weekly quota and credits using the official monitoring endpoint (api.z.ai/api/monitor/usage/quota/limit).</string>
     <string name="add_account_helper_openrouter">Add an OpenRouter API key to check your remaining balance ($) and key limits.</string>
-    <string name="add_account_helper_claude">Enter an Anthropic Console API key (sk-ant-...) or an OAuth token.</string>
-    <string name="add_account_helper_openai">Checks rate limits with ChatGPT sign-in (5h/weekly) or an API key (sk-...).</string>
+    <string name="add_account_helper_claude">Enter an Anthropic Console API key (sk-ant-…) or an OAuth token.</string>
+    <string name="add_account_helper_openai">Checks rate limits with ChatGPT sign-in (5h/weekly) or an API key (sk-…).</string>
     <string name="add_account_helper_xai">Monitors weekly limits with an xAI Console API key or a Grok OAuth token.</string>
     <string name="add_account_helper_deepseek">Add a DeepSeek API key to check your remaining API credit balance.</string>
     <string name="add_account_helper_ollama_cloud">Add an Ollama Cloud API key to check session/weekly usage and purchased credits.</string>
@@ -46,9 +46,11 @@
     <string name="add_account_custom_endpoint_https_only">Only https:// addresses can be used.</string>
     <string name="add_account_save">Save</string>
     <string name="add_account_cancel">Cancel</string>
-    <string name="add_account_key_placeholder_xai">xai-... API key</string>
+    <string name="add_account_key_placeholder_xai">xai-… API key</string>
     <string name="add_account_key_placeholder_ollama_cloud">Ollama Cloud API key</string>
     <string name="add_account_key_placeholder_opencode_go">OpenCode Go API key</string>
+    <string name="add_account_key_placeholder_openrouter">sk-or-v1-…</string>
+    <string name="add_account_key_placeholder_deepseek">sk-…</string>
     <string name="add_account_hide_key">Hide key</string>
     <string name="add_account_show_key">Show key</string>
 </resources>
