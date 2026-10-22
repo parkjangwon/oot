@@ -29,6 +29,23 @@ class OAuthManager(
     private var xaiPollingJob: Job? = null
     private var openaiPollingJob: Job? = null
 
+    // Bumped by cancelPendingFlows(): a sign-in that was in flight during a secure-storage reset must not save.
+    @Volatile
+    private var flowGeneration = 0
+
+    /** Cancel pending PKCE/device-code sign-ins; callbacks from before the reset are ignored. */
+    @Synchronized
+    fun cancelPendingFlows() {
+        flowGeneration++
+        xaiPollingJob?.cancel()
+        xaiPollingJob = null
+        openaiPollingJob?.cancel()
+        openaiPollingJob = null
+        pendingVerifications.clear()
+    }
+
+    internal fun hasPendingVerificationFlow(): Boolean = pendingVerifications.isNotEmpty()
+
     fun startOAuthFlow(provider: ProviderType) {
         val authEndpoint = provider.oauthAuthEndpoint ?: return
         val state = UUID.randomUUID().toString()
@@ -79,6 +96,7 @@ class OAuthManager(
         onError: (String) -> Unit
     ) {
         xaiPollingJob?.cancel()
+        val generation = flowGeneration
         xaiPollingJob = managerScope.launch {
             try {
                 val formBody = FormBody.Builder()
@@ -95,6 +113,7 @@ class OAuthManager(
                 val (deviceCode, userCode, verificationUrl, intervalSec) = client.newCall(request).execute().use { response ->
                     val body = response.body?.string().orEmpty()
                     if (!response.isSuccessful) {
+                        if (generation != flowGeneration) return@launch
                         onError(AppText.get(R.string.oauth_xai_code_request_failed, response.code, body))
                         return@launch
                     }
@@ -108,6 +127,8 @@ class OAuthManager(
 
                     Tuple4(devCode, uCode, vUrl, interval)
                 }
+
+                if (generation != flowGeneration) return@launch
 
                 if (deviceCode.isBlank() || userCode.isBlank()) {
                     onError(AppText.get(R.string.oauth_xai_no_device_code))
@@ -125,9 +146,10 @@ class OAuthManager(
                 openExternalBrowser(verificationUrl)
 
                 // Poll token endpoint
-                pollXaiDeviceToken(deviceCode, intervalSec, onTokenReceived, onError)
+                pollXaiDeviceToken(deviceCode, intervalSec, generation, onTokenReceived, onError)
 
             } catch (e: Exception) {
+                if (generation != flowGeneration) return@launch
                 onError(AppText.get(R.string.oauth_xai_request_error, e.localizedMessage ?: ""))
             }
         }
@@ -136,6 +158,7 @@ class OAuthManager(
     private suspend fun pollXaiDeviceToken(
         deviceCode: String,
         intervalSec: Long,
+        generation: Int,
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -145,6 +168,7 @@ class OAuthManager(
 
         while (System.currentTimeMillis() - startTime < maxDurationMs) {
             delay(currentInterval * 1000L)
+            if (generation != flowGeneration) return
 
             val tokenForm = FormBody.Builder()
                 .add("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
@@ -161,6 +185,7 @@ class OAuthManager(
             try {
                 client.newCall(tokenReq).execute().use { response ->
                     val body = response.body?.string().orEmpty()
+                    if (generation != flowGeneration) return
                     if (response.isSuccessful) {
                         val root = json.parseToJsonElement(body).jsonObject
                         val accessToken = root["access_token"]?.jsonPrimitive?.content ?: ""
@@ -168,15 +193,15 @@ class OAuthManager(
                         val expiresIn = root["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L
 
                         if (accessToken.isNotBlank()) {
+                            val result = OAuthTokenResult(
+                                provider = ProviderType.XAI,
+                                accessToken = accessToken,
+                                refreshToken = refreshToken,
+                                expiresAt = System.currentTimeMillis() + (expiresIn * 1000L)
+                            )
                             withContext(Dispatchers.Main) {
-                                onTokenReceived(
-                                    OAuthTokenResult(
-                                        provider = ProviderType.XAI,
-                                        accessToken = accessToken,
-                                        refreshToken = refreshToken,
-                                        expiresAt = System.currentTimeMillis() + (expiresIn * 1000L)
-                                    )
-                                )
+                                // A reset (or a newer sign-in) while this response was in flight wins.
+                                if (generation == flowGeneration) onTokenReceived(result)
                             }
                             return
                         }
@@ -191,10 +216,12 @@ class OAuthManager(
                                 currentInterval += 5
                             }
                             "expired_token" -> {
+                                if (generation != flowGeneration) return
                                 onError(AppText.get(R.string.oauth_auth_expired))
                                 return
                             }
                             "access_denied" -> {
+                                if (generation != flowGeneration) return
                                 onError(AppText.get(R.string.oauth_user_denied))
                                 return
                             }
@@ -208,6 +235,7 @@ class OAuthManager(
                 // Ignore transient network errors during polling
             }
         }
+        if (generation != flowGeneration) return
         onError(AppText.get(R.string.oauth_xai_wait_timeout))
     }
 
@@ -221,6 +249,7 @@ class OAuthManager(
         onError: (String) -> Unit
     ) {
         openaiPollingJob?.cancel()
+        val generation = flowGeneration
         openaiPollingJob = managerScope.launch {
             try {
                 val issuer = OPENAI_ISSUER
@@ -237,6 +266,7 @@ class OAuthManager(
                 val (deviceAuthId, userCode, intervalSec) = client.newCall(request).execute().use { response ->
                     val body = response.body?.string().orEmpty()
                     if (!response.isSuccessful) {
+                        if (generation != flowGeneration) return@launch
                         onError(AppText.get(R.string.oauth_openai_code_request_failed, response.code, body))
                         return@launch
                     }
@@ -251,6 +281,8 @@ class OAuthManager(
                     Tuple3(authId, uCode, interval.coerceAtLeast(1L))
                 }
 
+                if (generation != flowGeneration) return@launch
+
                 if (deviceAuthId.isBlank() || userCode.isBlank()) {
                     onError(AppText.get(R.string.oauth_openai_no_device_code))
                     return@launch
@@ -263,8 +295,9 @@ class OAuthManager(
                     onCodeReceived(userCode, verificationUrl)
                 }
                 openExternalBrowser(verificationUrl)
-                pollOpenAiDeviceToken(deviceAuthId, userCode, intervalSec, onTokenReceived, onError)
+                pollOpenAiDeviceToken(deviceAuthId, userCode, intervalSec, generation, onTokenReceived, onError)
             } catch (e: Exception) {
+                if (generation != flowGeneration) return@launch
                 onError(AppText.get(R.string.oauth_openai_request_error, e.localizedMessage ?: ""))
             }
         }
@@ -274,6 +307,7 @@ class OAuthManager(
         deviceAuthId: String,
         userCode: String,
         intervalSec: Long,
+        generation: Int,
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -285,6 +319,7 @@ class OAuthManager(
 
         while (System.currentTimeMillis() - startTime < maxDurationMs) {
             delay(interval * 1000L)
+            if (generation != flowGeneration) return
 
             val reqBody = buildJsonObject {
                 put("device_auth_id", deviceAuthId)
@@ -301,6 +336,7 @@ class OAuthManager(
             try {
                 client.newCall(tokenReq).execute().use { response ->
                     val body = response.body?.string().orEmpty()
+                    if (generation != flowGeneration) return
                     if (response.isSuccessful) {
                         val root = json.parseToJsonElement(body).jsonObject
                         val authCode = root["authorization_code"]?.jsonPrimitive?.content.orEmpty()
@@ -311,8 +347,12 @@ class OAuthManager(
                         }
                         val exchanged = exchangeOpenAiAuthorizationCode(authCode, codeVerifier)
                         exchanged.onSuccess { result ->
-                            withContext(Dispatchers.Main) { onTokenReceived(result) }
+                            withContext(Dispatchers.Main) {
+                                // A reset (or a newer sign-in) while the exchange was in flight wins.
+                                if (generation == flowGeneration) onTokenReceived(result)
+                            }
                         }.onFailure { err ->
+                            if (generation != flowGeneration) return
                             onError(err.message ?: AppText.get(R.string.oauth_openai_token_exchange_failed))
                         }
                         return
@@ -328,6 +368,7 @@ class OAuthManager(
                 // Ignore transient network errors during polling
             }
         }
+        if (generation != flowGeneration) return
         onError(AppText.get(R.string.oauth_openai_wait_timeout))
     }
 

@@ -105,14 +105,14 @@ internal fun openTinkPreferences(
 }
 
 private const val TAG = "TinkPreferences"
-private const val TINK_PREFS_NAME = "oot_tink_prefs"
-private const val KEYSET_PREFS_NAME = "oot_tink_keyset"
+internal const val TINK_PREFS_NAME = "oot_tink_prefs"
+internal const val KEYSET_PREFS_NAME = "oot_tink_keyset"
 private const val KEYSET_ALIAS = "oot_tink_keyset_entry"
-private const val MASTER_KEY_URI = "android-keystore://oot_tink_master_key"
+internal const val TINK_MASTER_KEY_ALIAS = "oot_tink_master_key"
+private const val MASTER_KEY_URI = "android-keystore://$TINK_MASTER_KEY_ALIAS"
 private const val MIGRATED_KEY = "oot_tink_migrated"
 private const val MIGRATED_VALUE = "1"
-// The androidx master key alias is kept on purpose: the credential reset flow (#109) depends on it.
-private const val LEGACY_ENCRYPTED_PREFS_NAME = "oot_secure_prefs"
+internal const val LEGACY_ENCRYPTED_PREFS_NAME = "oot_secure_prefs"
 
 private fun keystoreAead(context: Context): Aead {
     AeadConfig.register()

@@ -13,12 +13,15 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.parkjw.apps.oot.OotApp
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.i18n.AppLanguage
@@ -43,10 +46,6 @@ import org.parkjw.apps.oot.update.openReleasePage
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
-
-    private companion object {
-        var secureStorageNoticeShown = false
-    }
 
     private val app by lazy { applicationContext as OotApp }
     private val updateViewModel: UpdateViewModel by viewModels()
@@ -75,7 +74,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        showSecureStorageNotice()
         checkNotificationPermission()
         handleIncomingIntent(intent)
         updateViewModel.autoCheckOnLaunch(app.preferences.isAutoUpdateCheckEnabled.value)
@@ -96,6 +94,10 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val versionName = remember { context.installedVersionName() }
                 val updateState by updateViewModel.state.collectAsState()
+                val snackbarHostState = remember { SnackbarHostState() }
+                var secureStorageAvailable by remember {
+                    mutableStateOf(app.preferences.isSecureStorageAvailable)
+                }
 
                 LaunchedEffect(updateState) {
                     val ready = updateState as? UpdateUiState.ReadyToInstall ?: return@LaunchedEffect
@@ -209,6 +211,31 @@ class MainActivity : ComponentActivity() {
                             app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                         },
                         onSettingsClick = { showSettings = true },
+                        isSecureStorageAvailable = secureStorageAvailable,
+                        snackbarHostState = snackbarHostState,
+                        onResetSecureStorage = {
+                            lifecycleScope.launch {
+                                // Close the sign-in dialog: its pending callbacks are dropped by the reset.
+                                showAddDialog = false
+                                app.oauthManager.cancelPendingFlows()
+                                app.repository.onAccountsReset()
+                                val reset = withContext(Dispatchers.IO) {
+                                    app.preferences.resetSecureStorage()
+                                }
+                                // Again after the reset: a refresh started in the gap read the old accounts.
+                                app.repository.onAccountsReset()
+                                secureStorageAvailable = app.preferences.isSecureStorageAvailable
+                                if (reset) showAddDialog = true
+                                app.repository.refreshAll()
+                                app.notificationManager.updateNotification(app.repository.vendorUsages.value)
+                                snackbarHostState.showSnackbar(
+                                    getString(
+                                        if (reset) R.string.secure_storage_reset_done
+                                        else R.string.secure_storage_reset_failed,
+                                    ),
+                                )
+                            }
+                        },
                     )
                 }
 
@@ -222,23 +249,32 @@ class MainActivity : ComponentActivity() {
                             app.oauthManager.openExternalBrowser(url)
                         },
                         onStartXaiDeviceFlow = { onCodeReceived, onTokenReceived, onError ->
+                            val generation = app.preferences.resetGeneration()
                             app.oauthManager.startXaiDeviceFlow(
                                 onCodeReceived = onCodeReceived,
-                                onTokenReceived = onTokenReceived,
+                                onTokenReceived = { result ->
+                                    if (generation == app.preferences.resetGeneration()) onTokenReceived(result)
+                                },
                                 onError = onError
                             )
                         },
                         onStartOpenAiDeviceFlow = { onCodeReceived, onTokenReceived, onError ->
+                            val generation = app.preferences.resetGeneration()
                             app.oauthManager.startOpenAiDeviceFlow(
                                 onCodeReceived = onCodeReceived,
-                                onTokenReceived = onTokenReceived,
+                                onTokenReceived = { result ->
+                                    if (generation == app.preferences.resetGeneration()) onTokenReceived(result)
+                                },
                                 onError = onError
                             )
                         },
                         onExchangeClaudeCode = { code, onTokenReceived, onError ->
                             lifecycleScope.launch {
+                                val generation = app.preferences.resetGeneration()
                                 val result = app.oauthManager.exchangeClaudeAuthCode(code)
-                                result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: getString(R.string.token_exchange_failed)) }
+                                if (generation == app.preferences.resetGeneration()) {
+                                    result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: getString(R.string.token_exchange_failed)) }
+                                }
                             }
                         },
                         onSaveAccount = { newAccount ->
@@ -275,6 +311,7 @@ class MainActivity : ComponentActivity() {
         val uri: Uri = intent?.data ?: return
         if (uri.scheme == "oot" && uri.host == "oauth") {
             lifecycleScope.launch {
+                val generation = app.preferences.resetGeneration()
                 val result = app.oauthManager.handleOAuthCallback(uri)
                 result.onSuccess { tokenResult ->
                     val newAccount = ProviderAccount(
@@ -286,7 +323,8 @@ class MainActivity : ComponentActivity() {
                         refreshToken = tokenResult.refreshToken,
                         tokenExpiresAt = tokenResult.expiresAt
                     )
-                    app.preferences.saveAccount(newAccount)
+                    // A reset while the callback was in flight cleared the accounts: do not put this one back.
+                    if (!app.preferences.saveAccountIfCurrent(newAccount, generation)) return@onSuccess
                     app.repository.refreshAll()
                     app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                     Toast.makeText(
@@ -303,12 +341,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun showSecureStorageNotice() {
-        if (app.preferences.isSecureStorageAvailable || secureStorageNoticeShown) return
-        secureStorageNoticeShown = true
-        Toast.makeText(this, R.string.secure_storage_unavailable, Toast.LENGTH_LONG).show()
     }
 
     private fun checkNotificationPermission() {

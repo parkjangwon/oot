@@ -45,6 +45,20 @@ class TokenSyncRepository(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    // Bumped on a secure-storage reset: refreshes that started before it must not repopulate the cleared state.
+    @Volatile
+    private var generation = 0
+
+    /** Drop cached usage/backoff and ignore refreshes that started before a secure-storage reset. */
+    @Synchronized
+    fun onAccountsReset() {
+        generation++
+        refreshScheduler.clear()
+        _statuses.value = emptyList()
+        _vendorUsages.value = emptyList()
+        _isRefreshing.value = false
+    }
+
     /** Save the user's drag order and reorder cached usages to match (no network). */
     fun applyAccountOrder(accountIds: List<String>) {
         preferences.setAccountOrder(accountIds)
@@ -59,6 +73,7 @@ class TokenSyncRepository(
     }
 
     suspend fun refreshAll(): List<TokenStatus> = coroutineScope {
+        val startGeneration = generation
         _isRefreshing.value = true
         val activeAccounts = preferences.accounts.value.filter { it.isEnabled && it.provider.isSelectable }
         val intervalMs = preferences.refreshIntervalMinutes.value.coerceAtLeast(1) * 60_000L
@@ -66,12 +81,15 @@ class TokenSyncRepository(
 
         val deferreds = activeAccounts.map { account ->
             async {
+                // A reset after this refresh started removed every account: send no request and write nothing.
+                if (startGeneration != generation) return@async null
                 if (!refreshScheduler.shouldFetch(account.id)) {
                     // Backoff: the previous values are shown again, so they must be marked stale.
                     return@async previous[account.id]?.asStale() ?: skippedBackoffStatus(account)
                 }
                 val updatedAccount = if (account.authType == AuthType.OAUTH && account.isTokenExpired) {
                     val refreshed = oauthManager.refreshTokenIfNeeded(account)
+                    if (startGeneration != generation) return@async null
                     // Removed while the token refresh was in flight: no usage call with the rotated token.
                     if (refreshed != account && !preferences.updateAccountIfPresent(refreshed)) {
                         return@async null
@@ -80,7 +98,9 @@ class TokenSyncRepository(
                 } else {
                     account
                 }
+                if (startGeneration != generation) return@async null
                 val status = fetchAccountStatus(updatedAccount)
+                if (startGeneration != generation) return@async null
                 if (status.isRateLimited) {
                     refreshScheduler.onRateLimited(
                         account.id,
@@ -95,6 +115,8 @@ class TokenSyncRepository(
         }
 
         val results = deferreds.awaitAll().filterNotNull()
+        // The reset already cleared the state: do not overwrite it (and leave _isRefreshing as onAccountsReset set it).
+        if (startGeneration != generation) return@coroutineScope emptyList()
         // Order by what is saved now, not at the start: the user may have dragged while requests were in flight.
         val byId = results.associateBy { it.accountId }
         val ordered = preferences.accounts.value.mapNotNull { byId[it.id] }

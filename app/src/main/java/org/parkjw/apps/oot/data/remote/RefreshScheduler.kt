@@ -24,6 +24,10 @@ class RefreshScheduler(
 
     fun notBeforeMs(key: String): Long? = entries[key]?.notBeforeMs
 
+    fun clear() {
+        entries.clear()
+    }
+
     fun onSuccess(key: String) {
         entries.remove(key)
     }
