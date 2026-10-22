@@ -15,9 +15,9 @@
     <string name="dashboard_close">닫기</string>
     <string name="dashboard_move_up">위로 이동</string>
     <string name="dashboard_move_down">아래로 이동</string>
-    <string name="dashboard_legacy_unsupported_desc">지원 안 함 · 이 프로바이더는 더 이상 지원하지 않으므로 삭제할 수 있습니다.</string>
+    <string name="dashboard_legacy_unsupported_desc">지원 안 함 · 더 이상 지원하지 않는 프로바이더라 삭제할 수 있어요.</string>
     <string name="dashboard_empty_title">등록된 프로바이더가 없어요</string>
-    <string name="dashboard_empty_subtitle">Claude, GLM, xAI, OpenRouter, OpenAI 프로바이더를 추가해 남은 한도와 잔액을 확인하세요.</string>
+    <string name="dashboard_empty_subtitle">Claude, GLM, xAI, OpenRouter, OpenAI 프로바이더를 추가해 남은 한도와 잔액을 확인해 보세요.</string>
     <string name="dashboard_error_unauthorized">다시 로그인 필요</string>
     <string name="dashboard_error_scope_missing">권한 범위 부족</string>
     <string name="dashboard_error_rate_limited">요청 제한 (429)</string>

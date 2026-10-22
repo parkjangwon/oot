@@ -194,8 +194,7 @@ fun AddAccountDialog(
                         ) {
                             Text(
                                 text = stringResource(R.string.add_account_xai_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
+                                style = MaterialTheme.typography.titleSmall
                             )
                             Text(
                                 text = stringResource(R.string.add_account_xai_desc),
@@ -392,8 +391,7 @@ fun AddAccountDialog(
                         ) {
                             Text(
                                 text = stringResource(R.string.add_account_claude_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
+                                style = MaterialTheme.typography.titleSmall
                             )
                             Text(
                                 text = stringResource(R.string.add_account_claude_desc),
