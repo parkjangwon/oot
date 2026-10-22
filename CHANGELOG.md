@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-10-22
+
+### Changed
+- Korean copy in the add-account dialog, card and toast error messages, the unsupported-provider card and the dashboard empty state uses 해요체; English copy got the same plain, short tone. A test keeps 합니다체 out of the Korean strings (#85).
+- The add-account dialog has no emojis any more (helper lines, xAI and Claude box titles); a test keeps emojis out of all strings (#86).
+- Docs: synced copy of the design system v1.0 (`docs/DESIGN.md`) and the oot-specific rules (`docs/DESIGN-EXCEPTIONS.md`), linked from the README (#87).
+
 ## [1.3.0] - 2026-10-22
 
 ### Added
