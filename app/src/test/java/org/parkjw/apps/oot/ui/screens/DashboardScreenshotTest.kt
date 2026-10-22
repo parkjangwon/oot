@@ -305,6 +305,9 @@ class DashboardScreenshotTest {
             }
         }
         composeRule.onNodeWithText("$7.60 left of $20.00 key limit").assertExists()
+        // Badges describe the quota left (#80).
+        composeRule.onNodeWithText("Low").assertExists()
+        composeRule.onNodeWithText("Critical").assertExists()
         composeRule.onNodeWithText("Add provider").assertExists()
         composeRule.onAllNodesWithText("5-hour")[0].assertExists()
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(

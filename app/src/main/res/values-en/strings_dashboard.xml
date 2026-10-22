@@ -1,8 +1,8 @@
 <resources>
     <string name="dashboard_least_remaining">Lowest remaining</string>
     <string name="dashboard_resets_in">resets %1$s</string>
-    <string name="dashboard_level_danger">Danger</string>
-    <string name="dashboard_level_warn">Warning</string>
+    <string name="dashboard_level_danger">Critical</string>
+    <string name="dashboard_level_warn">Low</string>
     <string name="dashboard_unsupported">Not supported</string>
     <string name="dashboard_sync_waiting">Waiting to sync</string>
     <string name="dashboard_key_limit_missing">No key limit</string>
