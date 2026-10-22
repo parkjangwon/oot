@@ -12,7 +12,7 @@
     <string name="add_account_open_opencode_go">OpenCode 키 페이지 열기</string>
     <string name="add_account_paste">붙여넣기</string>
     <string name="add_account_exchanging">토큰 교환 중...</string>
-    <string name="add_account_xai_title">🔑 xAI Device Flow 로그인 (RFC 8628)</string>
+    <string name="add_account_xai_title">xAI 기기 로그인 (RFC 8628)</string>
     <string name="add_account_xai_desc">SuperGrok / X 계정으로 외부 브라우저에서 인증하고 주간 사용량과 한도를 확인해요.</string>
     <string name="add_account_xai_start">xAI Device 인증 시작</string>
     <string name="add_account_auth_code_value">인증 코드: %1$s</string>
@@ -23,7 +23,7 @@
     <string name="add_account_openai_desc">ChatGPT 기기 코드로 로그인하면 Codex와 같은 5시간·주간 사용 한도를 보여 줘요.</string>
     <string name="add_account_openai_signin">ChatGPT로 로그인</string>
     <string name="add_account_openai_waiting">브라우저에서 코드 입력 후 승인될 때까지 대기 중...</string>
-    <string name="add_account_claude_title">🌐 Claude 브라우저 로그인 (5h/주간 쿼터 모니터링)</string>
+    <string name="add_account_claude_title">Claude 브라우저 로그인 (5h/주간 한도)</string>
     <string name="add_account_claude_desc">Claude Pro/Max 계정으로 로그인하면 5시간 롤링 세션, 주간 사용량, 리셋 시간을 자동으로 가져와요.</string>
     <string name="add_account_claude_login_browser">외부 브라우저로 Claude 로그인</string>
     <string name="add_account_claude_code_label">인증 코드 (code#state)</string>

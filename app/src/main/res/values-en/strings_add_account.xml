@@ -12,7 +12,7 @@
     <string name="add_account_open_opencode_go">Open the OpenCode Go keys page</string>
     <string name="add_account_paste">Paste</string>
     <string name="add_account_exchanging">Getting token…</string>
-    <string name="add_account_xai_title">🔑 Sign in with xAI Device Flow (RFC 8628)</string>
+    <string name="add_account_xai_title">xAI device sign-in (RFC 8628)</string>
     <string name="add_account_xai_desc">Sign in with your SuperGrok or X account in your browser to check weekly usage and limits.</string>
     <string name="add_account_xai_start">Start xAI device sign-in</string>
     <string name="add_account_auth_code_value">Auth code: %1$s</string>
@@ -23,7 +23,7 @@
     <string name="add_account_openai_desc">Sign in with a ChatGPT device code to see the same 5-hour and weekly limits as Codex.</string>
     <string name="add_account_openai_signin">Sign in with ChatGPT</string>
     <string name="add_account_openai_waiting">Waiting for you to enter the code and approve it in the browser…</string>
-    <string name="add_account_claude_title">🌐 Claude browser sign-in (5-hour and weekly quota)</string>
+    <string name="add_account_claude_title">Claude browser sign-in (5-hour and weekly limits)</string>
     <string name="add_account_claude_desc">Sign in with your Claude Pro/Max account to get the 5-hour rolling session, weekly usage, and reset time automatically.</string>
     <string name="add_account_claude_login_browser">Sign in to Claude in your browser</string>
     <string name="add_account_claude_code_label">Auth code (code#state)</string>
