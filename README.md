@@ -86,6 +86,8 @@ All trademarks and logos are the property of their respective owners and are use
 
 Release builds are signed in CI and cut from tags: a tag `vX.Y.Z` must match `version` in `gradle.properties`.
 
+**Design:** [docs/DESIGN.md](docs/DESIGN.md) (team design system, synced copy) with oot-specific rules in [docs/DESIGN-EXCEPTIONS.md](docs/DESIGN-EXCEPTIONS.md).
+
 ## Privacy & security
 
 Tokens and API keys are stored locally in encrypted storage (`EncryptedSharedPreferences`, Android Keystore). The app contains no analytics or telemetry — it only talks to the vendors you add and to GitHub Releases for update checks.
