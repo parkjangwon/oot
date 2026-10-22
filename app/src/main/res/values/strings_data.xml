@@ -36,7 +36,6 @@
     <string name="data_working_normal_named">정상 작동 중 (%1$s)</string>
     <string name="data_status_ok">정상</string>
     <string name="data_window_percent_left">%1$s %2$d%% 남음</string>
-    <string name="data_label_left">%1$s: %2$s%% 남음</string>
     <string name="data_window_used">%1$s 사용: %2$d%%</string>
     <string name="data_window_left">%1$s: %2$d%% 남음</string>
 
@@ -90,12 +89,6 @@
     <string name="data_reset_in_hours_minutes">%1$d시간 %2$d분 후 리셋</string>
     <string name="data_reset_in_minutes">%1$d분 후 리셋</string>
     <string name="data_reset_at">리셋됨 (%1$s)</string>
-    <string name="data_antigravity_sign_in_required">Google 로그인 필요</string>
-    <string name="data_antigravity_api_key_unsupported">Google 로그인 필요 (API 키 미지원)</string>
-    <string name="data_antigravity_google_label">Google 모델</string>
-    <string name="data_antigravity_third_party_label">타사 모델</string>
-    <string name="data_antigravity_no_quota">한도 정보를 찾지 못했어요</string>
-    <string name="data_antigravity_http_error_reason">조회 실패 (HTTP %1$d %2$s)</string>
 
     <!-- Rate-limit backoff -->
     <string name="data_previous_value">(이전 값)</string>

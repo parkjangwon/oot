@@ -62,7 +62,6 @@ Screenshots use sample data only.
 | <img src="docs/screenshots/vendors/vendor-deepseek.png" alt="" width="20" align="center"> **DeepSeek** | API key | Remaining balance (USD or CNY) |
 | <img src="docs/screenshots/vendors/vendor-ollama-cloud.png" alt="" width="20" align="center"> **Ollama Cloud** | API key | Session and monthly usage as % left, with reset times |
 | <img src="docs/screenshots/vendors/vendor-opencode-go.png" alt="" width="20" align="center"> **OpenCode Go** | API key | Subscription usage windows as % left, with reset times |
-| <img src="docs/screenshots/vendors/vendor-antigravity.png" alt="" width="20" align="center"> **Google Antigravity** | Google sign-in (OAuth) | Google-model and third-party-model quota as % left; the notification shows the Google-model value |
 
 OpenAI and Z.ai are shown with a letter tile because their brand terms do not allow using the logo without permission.
 

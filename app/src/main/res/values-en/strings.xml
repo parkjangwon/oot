@@ -46,7 +46,6 @@
     <string name="window_weekly">Weekly</string>
     <string name="window_monthly">Monthly</string>
     <string name="window_session">Session</string>
-    <string name="key_limit_amount">Key limit %1$s</string>
 
     <string name="notification_window_5h">5H</string>
     <string name="notification_window_7d">7D</string>
@@ -68,7 +67,6 @@
     <string name="provider_desc_openai">ChatGPT / OpenAI usage and rate limits</string>
     <string name="provider_desc_xai">X bundle / xAI Grok subscription and API limits</string>
     <string name="provider_desc_zai">Z.ai GLM Coding Plan quota</string>
-    <string name="provider_desc_antigravity">Google DeepMind Antigravity / Gemini agent quota</string>
     <string name="provider_desc_deepseek">DeepSeek API credit balance</string>
     <string name="provider_desc_ollama_cloud">Ollama Cloud subscription usage and credits</string>
     <string name="provider_desc_opencode_go">OpenCode Go subscription usage</string>

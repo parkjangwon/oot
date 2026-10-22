@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - A dashboard reset time under a minute no longer reads '곧 리셋 리셋' (#74).
 
+### Removed
+- Google Antigravity provider: its quota is only available through Google's private API, which this app's own OAuth client cannot use (#53). A saved Antigravity account is dropped on update; other providers keep their order and settings (#73).
+
 ## [1.2.1] - 2026-10-22
 
 ### Added

@@ -6,7 +6,6 @@ import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.level
-import org.parkjw.apps.oot.data.remote.ANTIGRAVITY_GOOGLE_WINDOW_ID
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
@@ -72,7 +71,6 @@ object NotificationContent {
         ProviderType.OPENAI -> "OpenAI"
         ProviderType.XAI -> "xAI"
         ProviderType.ZAI -> "GLM"
-        ProviderType.ANTIGRAVITY -> "Antigravity"
         ProviderType.DEEPSEEK -> "DeepSeek"
         ProviderType.OLLAMA_CLOUD -> "Ollama"
         ProviderType.OPENCODE_GO -> "OpenCode Go"
@@ -84,7 +82,6 @@ object NotificationContent {
         ProviderType.OPENAI -> "O"
         ProviderType.XAI -> "X"
         ProviderType.ZAI -> "Z"
-        ProviderType.ANTIGRAVITY -> "A"
         ProviderType.DEEPSEEK -> "D"
         ProviderType.OLLAMA_CLOUD -> "OL"
         ProviderType.OPENCODE_GO -> "OG"
@@ -130,14 +127,6 @@ object NotificationContent {
             window.id == "seven_day" || window.id == "weekly" -> "${strings.window7d} "
             window.label == "primary" || window.label.isBlank() -> ""
             else -> "${window.label.substringBefore(' ')} "
-        }
-
-    // Antigravity shows only its Google-model window, whatever the other window holds.
-    private fun notificationWindow(usage: VendorUsage): UsageWindow? =
-        if (usage.providerType == ProviderType.ANTIGRAVITY) {
-            usage.windows.firstOrNull { it.id == ANTIGRAVITY_GOOGLE_WINDOW_ID } ?: usage.representative
-        } else {
-            usage.representative
         }
 
     // OpenRouter card view: amount = min(account balance, key remaining);
@@ -188,7 +177,7 @@ object NotificationContent {
                     openRouterLevel(or.keyPercent)
                 )
             }
-            when (val remaining = notificationWindow(usage)?.remaining) {
+            when (val remaining = usage.representative?.remaining) {
                 null ->
                     CollapsedItem(p, mark(p), strings.vendorNeedsCheck(shortName(p)), null, true, Level.OK)
                 is Remaining.Balance ->
@@ -218,7 +207,7 @@ object NotificationContent {
             if (usage.error != null) {
                 return@map ExpandedItem(p, itemMark, name, strings.needsCheck, null, true, Level.OK)
             }
-            val representative = notificationWindow(usage)
+            val representative = usage.representative
                 ?: return@map ExpandedItem(p, itemMark, name, strings.needsCheck, null, true, Level.OK)
             openRouterView(usage)?.let { or ->
                 return@map ExpandedItem(
@@ -261,7 +250,7 @@ object NotificationContent {
             val openRouter = openRouterView(usage)
             val label = when {
                 openRouter != null -> formatBalance(openRouter.amountLeft, openRouter.currency)
-                else -> when (val remaining = notificationWindow(usage)?.remaining) {
+                else -> when (val remaining = usage.representative?.remaining) {
                     is Remaining.Balance -> formatBalance(remaining.amountLeft, remaining.currency)
                     is Remaining.Percent -> formatPercent(remaining)
                     null -> strings.needsCheck

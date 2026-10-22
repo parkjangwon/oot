@@ -24,7 +24,6 @@ object VendorLogo {
         ProviderType.CLAUDE -> Spec(R.drawable.ic_vendor_claude, R.drawable.ic_vendor_claude_mono, tintWithOnSurface = false)
         ProviderType.OPENROUTER -> Spec(R.drawable.ic_vendor_openrouter, R.drawable.ic_vendor_openrouter_mono, tintWithOnSurface = false, wide = true, night = R.drawable.ic_vendor_openrouter_night)
         ProviderType.XAI -> Spec(R.drawable.ic_vendor_xai, R.drawable.ic_vendor_xai_mono, tintWithOnSurface = false, night = R.drawable.ic_vendor_xai_night)
-        ProviderType.ANTIGRAVITY -> Spec(R.drawable.ic_vendor_antigravity, R.drawable.ic_vendor_antigravity_mono, tintWithOnSurface = false, night = R.drawable.ic_vendor_antigravity_night)
         ProviderType.DEEPSEEK -> Spec(R.drawable.ic_vendor_deepseek, R.drawable.ic_vendor_deepseek_mono, tintWithOnSurface = false, wide = true)
         ProviderType.OLLAMA_CLOUD -> Spec(R.drawable.ic_vendor_ollama, R.drawable.ic_vendor_ollama_mono, tintWithOnSurface = true)
         ProviderType.OPENCODE_GO -> Spec(R.drawable.ic_vendor_opencode, R.drawable.ic_vendor_opencode_mono, tintWithOnSurface = false, night = R.drawable.ic_vendor_opencode_night)

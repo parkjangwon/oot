@@ -11,18 +11,9 @@
     <string name="oauth_openai_token_response_incomplete">The OpenAI device token response was incomplete.</string>
     <string name="oauth_openai_token_exchange_failed">OpenAI token exchange failed</string>
     <string name="oauth_openai_token_exchange_failed_code">OpenAI token exchange failed (%1$d): %2$s</string>
-    <string name="oauth_google_token_exchange_failed">Google token exchange failed</string>
-    <string name="oauth_google_token_exchange_failed_code">Google token exchange failed (%1$d)</string>
     <string name="oauth_openai_auth_failed">OpenAI device authentication failed (%1$d): %2$s</string>
     <string name="oauth_openai_wait_timeout">Timed out waiting for OpenAI sign-in (15 minutes).</string>
     <string name="oauth_missing_access_token">The response has no access_token.</string>
-    <string name="oauth_loopback_port_error">Couldn\'t open the local sign-in port (%1$d). Please try again in a moment.</string>
-    <string name="oauth_no_browser">No browser is available to open Google sign-in.</string>
-    <string name="oauth_loopback_timeout">Sign-in timed out. Please try again.</string>
-    <string name="oauth_antigravity_no_session">Couldn\'t find the Antigravity sign-in session. Please sign in again.</string>
-    <string name="oauth_stale_login_url">This URL is from an earlier sign-in. Please paste the URL from the sign-in window you just opened.</string>
-    <string name="oauth_invalid_grant">The authorization code expired or was already used. Please sign in again.</string>
-    <string name="oauth_invalid_client">The Antigravity sign-in configuration (client secret) isn\'t correct.</string>
     <string name="oauth_callback_denied">OAuth authorization denied: %1$s</string>
     <string name="oauth_invalid_callback">Invalid OAuth callback data.</string>
     <string name="oauth_invalid_state">The session state is expired or doesn\'t match.</string>
@@ -30,13 +21,4 @@
     <string name="oauth_token_exchange_failed_code">Token exchange failed (%1$d): %2$s</string>
     <string name="oauth_claude_no_session">Couldn\'t find the Claude sign-in session. Please try browser sign-in again.</string>
     <string name="oauth_claude_token_exchange_failed">Claude token exchange failed (%1$d): %2$s</string>
-    <string name="oauth_antigravity_not_configured">This build doesn\'t include Antigravity sign-in setup</string>
-    <string name="oauth_google_login_cancelled">Google sign-in was cancelled.</string>
-    <string name="oauth_google_login_failed">Google sign-in failed (%1$s).</string>
-    <string name="oauth_page_success_title">Antigravity connected</string>
-    <string name="oauth_page_success_body">Google sign-in worked. Go back to the OOT app.</string>
-    <string name="oauth_page_denied_title">Sign-in didn\'t complete</string>
-    <string name="oauth_page_denied_body">Please return to the OOT app and try again.</string>
-    <string name="oauth_page_unexpected_title">This request can\'t be handled</string>
-    <string name="oauth_page_unexpected_body">Please start sign-in again from the OOT app.</string>
 </resources>

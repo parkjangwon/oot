@@ -45,8 +45,6 @@ jobs:
           OOT_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           OOT_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           OOT_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-          OOT_ANTIGRAVITY_CLIENT_ID: ${{ secrets.OOT_ANTIGRAVITY_CLIENT_ID }}
-          OOT_ANTIGRAVITY_CLIENT_SECRET: ${{ secrets.OOT_ANTIGRAVITY_CLIENT_SECRET }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           ./gradlew printVersion assembleRelease --console=plain

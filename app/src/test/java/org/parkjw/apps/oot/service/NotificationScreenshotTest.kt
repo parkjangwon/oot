@@ -69,15 +69,6 @@ class NotificationScreenshotTest {
                 UsageWindow("credit", "credit", Remaining.Balance(12.40)),
                 UsageWindow("key", "$20.00", Remaining.Balance(7.60))
             )
-        ),
-        VendorUsage(
-            accountId = "demo-antigravity",
-            providerType = ProviderType.ANTIGRAVITY,
-            displayName = "antigravity-very-long-demo-account-name@example.com",
-            windows = listOf(
-                UsageWindow("google", "Google 모델", Remaining.Percent(62.0), resetIn(2 * 60)),
-                UsageWindow("third_party", "타사 모델", Remaining.Percent(18.0), resetIn(75))
-            )
         )
     )
 
@@ -159,10 +150,10 @@ class NotificationScreenshotTest {
     @Test
     fun hiddenVendorsLeaveEveryNotificationForm() {
         val hiddenClaude = buildNotification(hidden = setOf("demo-claude"))
-        assertEquals("GLM 98% · xAI 14% · OpenRouter $7.60 · Antigravity 62%", hiddenClaude.contentText())
+        assertEquals("GLM 98% · xAI 14% · OpenRouter $7.60", hiddenClaude.contentText())
         val expanded = applyToNewActivity(hiddenClaude.bigContentView!!)
-        assertEquals(View.VISIBLE, expanded.findViewById<View>(R.id.row3).visibility)
-        assertEquals(View.GONE, expanded.findViewById<View>(R.id.row4).visibility)
+        assertEquals(View.VISIBLE, expanded.findViewById<View>(R.id.row2).visibility)
+        assertEquals(View.GONE, expanded.findViewById<View>(R.id.row3).visibility)
 
         // Every vendor off: says so and points to Settings, not "nothing registered".
         val allHidden = buildNotification(hidden = allIds())
@@ -221,7 +212,7 @@ class NotificationScreenshotTest {
     @Test
     fun englishNotificationText() {
         val notification = buildNotification(language = AppLanguage.ENGLISH)
-        assertEquals("Claude 62% · GLM 98% · xAI 14% · OpenRouter $7.60 · Antigravity 62%", notification.contentText())
+        assertEquals("Claude 62% · GLM 98% · xAI 14% · OpenRouter $7.60", notification.contentText())
         assertEquals("Refresh", notification.actions.single().title.toString())
         val expanded = applyToNewActivity(notification.bigContentView!!)
         val claude = expanded.findViewById<android.widget.TextView>(R.id.text0).text.toString()

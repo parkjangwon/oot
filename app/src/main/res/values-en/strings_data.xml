@@ -36,7 +36,6 @@
     <string name="data_working_normal_named">Working normally (%1$s)</string>
     <string name="data_status_ok">OK</string>
     <string name="data_window_percent_left">%1$s %2$d%% left</string>
-    <string name="data_label_left">%1$s: %2$s%% left</string>
     <string name="data_window_used">%1$s used: %2$d%%</string>
     <string name="data_window_left">%1$s: %2$d%% left</string>
 
@@ -90,12 +89,6 @@
     <string name="data_reset_in_hours_minutes">Resets in %1$dh %2$dm</string>
     <string name="data_reset_in_minutes">Resets in %1$dm</string>
     <string name="data_reset_at">Reset (%1$s)</string>
-    <string name="data_antigravity_sign_in_required">Google sign-in required</string>
-    <string name="data_antigravity_api_key_unsupported">Google sign-in required (API keys not supported)</string>
-    <string name="data_antigravity_google_label">Google models</string>
-    <string name="data_antigravity_third_party_label">Third-party models</string>
-    <string name="data_antigravity_no_quota">Couldn\'t find quota info</string>
-    <string name="data_antigravity_http_error_reason">Couldn\'t load usage (HTTP %1$d %2$s)</string>
 
     <!-- Rate-limit backoff -->
     <string name="data_previous_value">(previous)</string>

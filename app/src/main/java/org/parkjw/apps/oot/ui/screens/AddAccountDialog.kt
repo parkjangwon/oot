@@ -46,16 +46,7 @@ fun AddAccountDialog(
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
     ) -> Unit,
-    onStartAntigravityOAuth: (
-        onTokenReceived: (OAuthTokenResult) -> Unit,
-        onError: (String) -> Unit
-    ) -> Unit,
     onExchangeClaudeCode: (
-        code: String,
-        onTokenReceived: (OAuthTokenResult) -> Unit,
-        onError: (String) -> Unit
-    ) -> Unit,
-    onExchangeAntigravityCode: (
         code: String,
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
@@ -91,12 +82,6 @@ fun AddAccountDialog(
     var isClaudeExchanging by remember { mutableStateOf(false) }
     var claudeErrorMessage by remember { mutableStateOf<String?>(null) }
     var showClaudeCodeInput by remember { mutableStateOf(false) }
-
-    // Antigravity OAuth state
-    var antigravityAuthCode by remember { mutableStateOf("") }
-    var isAntigravityExchanging by remember { mutableStateOf(false) }
-    var antigravityErrorMessage by remember { mutableStateOf<String?>(null) }
-    var showAntigravityCodeInput by remember { mutableStateOf(false) }
 
     val clipboardManager = LocalClipboardManager.current
     val scrollState = rememberScrollState()
@@ -155,8 +140,6 @@ fun AddAccountDialog(
                                     xaiErrorMessage = null
                                     showClaudeCodeInput = false
                                     claudeErrorMessage = null
-                                    showAntigravityCodeInput = false
-                                    antigravityErrorMessage = null
                                     isProviderDropdownExpanded = false
                                 }
                             )
@@ -190,7 +173,6 @@ fun AddAccountDialog(
                             ProviderType.CLAUDE -> stringResource(R.string.add_account_open_claude)
                             ProviderType.OPENAI -> stringResource(R.string.add_account_open_openai)
                             ProviderType.XAI -> stringResource(R.string.add_account_open_xai)
-                            ProviderType.ANTIGRAVITY -> stringResource(R.string.add_account_open_antigravity)
                             ProviderType.DEEPSEEK -> stringResource(R.string.add_account_open_deepseek)
                             ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_open_ollama_cloud)
                             ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_open_opencode_go)
@@ -199,129 +181,6 @@ fun AddAccountDialog(
                 }
 
                 // Provider-Specific OAuth / Device Flow Sections
-                if (selectedProvider == ProviderType.ANTIGRAVITY) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.add_account_antigravity_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = stringResource(R.string.add_account_antigravity_desc),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-
-                            Button(
-                                onClick = {
-                                    showAntigravityCodeInput = true
-                                    antigravityErrorMessage = null
-                                    onStartAntigravityOAuth(
-                                        { tokenResult ->
-                                            val newAccount = ProviderAccount(
-                                                id = UUID.randomUUID().toString(),
-                                                provider = ProviderType.ANTIGRAVITY,
-                                                name = accountName.ifBlank { "Google Antigravity" },
-                                                authType = AuthType.OAUTH,
-                                                accessToken = tokenResult.accessToken,
-                                                refreshToken = tokenResult.refreshToken,
-                                                tokenExpiresAt = tokenResult.expiresAt
-                                            )
-                                            onSaveAccount(newAccount)
-                                        },
-                                        { errorMsg ->
-                                            antigravityErrorMessage = errorMsg
-                                        }
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.add_account_google_login_browser))
-                            }
-
-                            AnimatedVisibility(visible = showAntigravityCodeInput) {
-                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(
-                                        text = stringResource(R.string.add_account_antigravity_paste_hint),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    OutlinedTextField(
-                                        value = antigravityAuthCode,
-                                        onValueChange = { antigravityAuthCode = it },
-                                        label = { Text(stringResource(R.string.add_account_auth_code_or_url_label)) },
-                                        placeholder = { Text(stringResource(R.string.add_account_antigravity_code_placeholder)) },
-                                        singleLine = true,
-                                        trailingIcon = {
-                                            IconButton(onClick = {
-                                                val text = clipboardManager.getText()?.text
-                                                if (!text.isNullOrBlank()) {
-                                                    antigravityAuthCode = text.trim()
-                                                }
-                                            }) {
-                                                Icon(Icons.Filled.ContentPaste, contentDescription = stringResource(R.string.add_account_paste))
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-
-                                    Button(
-                                        onClick = {
-                                            isAntigravityExchanging = true
-                                            antigravityErrorMessage = null
-                                            onExchangeAntigravityCode(
-                                                antigravityAuthCode,
-                                                { tokenResult ->
-                                                    isAntigravityExchanging = false
-                                                    val newAccount = ProviderAccount(
-                                                        id = UUID.randomUUID().toString(),
-                                                        provider = ProviderType.ANTIGRAVITY,
-                                                        name = accountName.ifBlank { "Google Antigravity" },
-                                                        authType = AuthType.OAUTH,
-                                                        accessToken = tokenResult.accessToken,
-                                                        refreshToken = tokenResult.refreshToken,
-                                                        tokenExpiresAt = tokenResult.expiresAt
-                                                    )
-                                                    onSaveAccount(newAccount)
-                                                },
-                                                { errorMsg ->
-                                                    isAntigravityExchanging = false
-                                                    antigravityErrorMessage = errorMsg
-                                                }
-                                            )
-                                        },
-                                        enabled = antigravityAuthCode.isNotBlank() && !isAntigravityExchanging,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        if (isAntigravityExchanging) {
-                                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(stringResource(R.string.add_account_exchanging))
-                                        } else {
-                                            Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(stringResource(R.string.add_account_register_token))
-                                        }
-                                    }
-
-                                    antigravityErrorMessage?.let {
-                                        Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
                 if (selectedProvider == ProviderType.XAI) {
                     Card(
                         colors = CardDefaults.cardColors(
@@ -637,17 +496,16 @@ fun AddAccountDialog(
                         label = { Text(stringResource(R.string.add_account_api_key_label)) },
                         placeholder = {
                             Text(
-                            when (selectedProvider) {
-                                ProviderType.ZAI -> stringResource(R.string.add_account_key_placeholder_zai)
-                                ProviderType.OPENROUTER -> "sk-or-v1-..."
-                                ProviderType.CLAUDE -> stringResource(R.string.add_account_key_placeholder_claude)
-                                ProviderType.OPENAI -> stringResource(R.string.add_account_key_placeholder_openai)
-                                ProviderType.XAI -> stringResource(R.string.add_account_key_placeholder_xai)
-                                ProviderType.ANTIGRAVITY -> stringResource(R.string.add_account_key_placeholder_antigravity)
-                                ProviderType.DEEPSEEK -> "sk-..."
-                                ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_key_placeholder_ollama_cloud)
-                                ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_key_placeholder_opencode_go)
-                            }
+                                when (selectedProvider) {
+                                    ProviderType.ZAI -> stringResource(R.string.add_account_key_placeholder_zai)
+                                    ProviderType.OPENROUTER -> "sk-or-v1-..."
+                                    ProviderType.CLAUDE -> stringResource(R.string.add_account_key_placeholder_claude)
+                                    ProviderType.OPENAI -> stringResource(R.string.add_account_key_placeholder_openai)
+                                    ProviderType.XAI -> stringResource(R.string.add_account_key_placeholder_xai)
+                                    ProviderType.DEEPSEEK -> "sk-..."
+                                    ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_key_placeholder_ollama_cloud)
+                                    ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_key_placeholder_opencode_go)
+                                }
                             )
                         },
                         visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
@@ -676,13 +534,12 @@ fun AddAccountDialog(
                     )
 
                     Text(
-                        text =                         when (selectedProvider) {
+                        text = when (selectedProvider) {
                             ProviderType.ZAI -> stringResource(R.string.add_account_helper_zai)
                             ProviderType.OPENROUTER -> stringResource(R.string.add_account_helper_openrouter)
                             ProviderType.CLAUDE -> stringResource(R.string.add_account_helper_claude)
                             ProviderType.OPENAI -> stringResource(R.string.add_account_helper_openai)
                             ProviderType.XAI -> stringResource(R.string.add_account_helper_xai)
-                            ProviderType.ANTIGRAVITY -> stringResource(R.string.add_account_helper_antigravity)
                             ProviderType.DEEPSEEK -> stringResource(R.string.add_account_helper_deepseek)
                             ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_helper_ollama_cloud)
                             ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_helper_opencode_go)
