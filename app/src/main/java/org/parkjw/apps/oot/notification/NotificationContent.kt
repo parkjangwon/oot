@@ -87,9 +87,44 @@ object NotificationContent {
     private fun windowLabel(window: UsageWindow): String =
         if (window.label == "primary" || window.label.isBlank()) "" else "${window.label} "
 
+    // OpenRouter card view: amount = min(account balance, key remaining);
+    // bar percent only when the key has a limit (parsed back from the "키 한도 $N.NN" label).
+    data class OpenRouterView(val amountLeft: Double, val currency: String, val keyPercent: Int?)
+
+    fun keyLimitAmount(label: String): Double? =
+        Regex("""\d+(\.\d+)?""").find(label)?.value?.toDoubleOrNull()
+
+    fun openRouterView(usage: VendorUsage): OpenRouterView? {
+        if (usage.providerType != ProviderType.OPENROUTER) return null
+        val credit = usage.windows.firstOrNull { it.id == "credit" }?.remaining as? Remaining.Balance
+            ?: return null
+        val keyWindow = usage.windows.firstOrNull { it.id == "key" }
+        val key = keyWindow?.remaining as? Remaining.Balance
+        val amount = key?.let { minOf(credit.amountLeft, it.amountLeft) } ?: credit.amountLeft
+        val limit = keyWindow?.let { keyLimitAmount(it.label) }
+        val percent = if (key != null && limit != null && limit > 0) {
+            ((key.amountLeft / limit) * 100).roundToInt().coerceIn(0, 100)
+        } else {
+            null
+        }
+        return OpenRouterView(amount, credit.currency, percent)
+    }
+
+    private fun openRouterLevel(percent: Int?): Level =
+        percent?.let { Remaining.Percent(it.toDouble()).level } ?: Level.OK
+
     // User order as given; errored vendors stay in place ("확인 필요").
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int): List<CollapsedItem> =
         usages.take(maxItems.coerceAtLeast(0)).map { usage ->
+            openRouterView(usage)?.let { or ->
+                return@map CollapsedItem(
+                    mark(usage.providerType),
+                    formatBalance(or.amountLeft, or.currency),
+                    or.keyPercent,
+                    false,
+                    openRouterLevel(or.keyPercent)
+                )
+            }
             when (val remaining = usage.representative?.remaining) {
                 null ->
                     CollapsedItem(mark(usage.providerType), "${shortName(usage.providerType)} 확인 필요", null, true, Level.OK)
@@ -116,6 +151,16 @@ object NotificationContent {
             }
             val representative = usage.representative
                 ?: return@map ExpandedItem(itemMark, name, "확인 필요", null, true, Level.OK)
+            openRouterView(usage)?.let { or ->
+                return@map ExpandedItem(
+                    itemMark,
+                    name,
+                    "${formatBalance(or.amountLeft, or.currency)} 남음",
+                    or.keyPercent,
+                    false,
+                    openRouterLevel(or.keyPercent)
+                )
+            }
             when (val remaining = representative.remaining) {
                 is Remaining.Balance ->
                     ExpandedItem(itemMark, name, "${formatBalance(remaining.amountLeft, remaining.currency)} 남음", null, false, Level.OK)
@@ -142,10 +187,14 @@ object NotificationContent {
     // Text-only fallback (option C): user order, e.g. "Claude 62% · GLM 98% · OpenRouter $12.40"
     fun textFallback(usages: List<VendorUsage>): String =
         usages.joinToString(" · ") { usage ->
-            val label = when (val remaining = usage.representative?.remaining) {
-                is Remaining.Balance -> formatBalance(remaining.amountLeft, remaining.currency)
-                is Remaining.Percent -> formatPercent(remaining)
-                null -> "확인 필요"
+            val openRouter = openRouterView(usage)
+            val label = when {
+                openRouter != null -> formatBalance(openRouter.amountLeft, openRouter.currency)
+                else -> when (val remaining = usage.representative?.remaining) {
+                    is Remaining.Balance -> formatBalance(remaining.amountLeft, remaining.currency)
+                    is Remaining.Percent -> formatPercent(remaining)
+                    null -> "확인 필요"
+                }
             }
             "${shortName(usage.providerType)} $label"
         }

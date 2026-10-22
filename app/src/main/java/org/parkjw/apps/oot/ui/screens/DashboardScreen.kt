@@ -646,13 +646,30 @@ fun VendorCard(
                                     )
                                 }
                                 is Remaining.Balance -> {
-                                    BalanceRow(
-                                        amountLeft = rem.amountLeft,
-                                        currency = rem.currency,
-                                        subtitle = window.balanceSubtitle(),
-                                    )
+                                    if (window.id == "key") {
+                                        KeyLimitRow(
+                                            label = window.label,
+                                            remaining = rem.amountLeft,
+                                            currency = rem.currency,
+                                        )
+                                    } else {
+                                        BalanceRow(
+                                            amountLeft = rem.amountLeft,
+                                            currency = rem.currency,
+                                            subtitle = window.balanceSubtitle(),
+                                        )
+                                    }
                                 }
                             }
+                        }
+                        if (usage.providerType == ProviderType.OPENROUTER &&
+                            usage.windows.none { it.id == "key" }
+                        ) {
+                            Text(
+                                text = "키 한도 없음",
+                                style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
@@ -780,6 +797,60 @@ fun BalanceRow(
                 text = withNumericSpans(subtitle, numericSpan),
                 style = MaterialTheme.typography.bodySmall.copy(lineBreak = WordWrapFriendly),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+// OpenRouter key limit row: '키 한도 $20.00 중 $7.60 남음' with a bar (20%/5% levels).
+// The limit is parsed back from the window label produced by OpenRouterCodec.
+private val keyLimitAmountRegex = Regex("""\d+(\.\d+)?""")
+
+fun keyLimitFromLabel(label: String): Double? =
+    keyLimitAmountRegex.find(label)?.value?.toDoubleOrNull()
+
+@Composable
+fun KeyLimitRow(
+    label: String,
+    remaining: Double,
+    currency: String,
+    modifier: Modifier = Modifier,
+) {
+    val limit = keyLimitFromLabel(label)
+    val pctInt = limit?.takeIf { it > 0 }
+        ?.let { ((remaining / it) * 100).roundToInt().coerceIn(0, 100) }
+    val numberColor = when {
+        pctInt == null -> MaterialTheme.colorScheme.onSurfaceVariant
+        pctInt <= 5 -> MaterialTheme.colorScheme.error
+        pctInt <= 20 -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val numericSpan = SpanStyle(
+        fontFamily = OotMonoFamily,
+        letterSpacing = (-0.2).sp,
+    )
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = withNumericSpans(
+                "$label 중 ${NotificationContent.formatBalance(remaining, currency)} 남음",
+                numericSpan,
+            ),
+            style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
+            color = numberColor,
+        )
+
+        if (pctInt != null) {
+            OotProgressBar(
+                progress = (pctInt / 100f).coerceIn(0f, 1f),
+                level = progressLevel(pctInt),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(OotShapeTokens.pill),
             )
         }
     }
