@@ -1,6 +1,7 @@
 package org.parkjw.apps.oot.data.remote
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -13,7 +14,7 @@ import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.i18n.AppText
 import java.time.Instant
-import java.util.Locale
+import kotlin.math.roundToInt
 
 data class OpenAiWindowUsage(
     val id: String,
@@ -41,7 +42,9 @@ fun openAiErrorText(error: VendorError): String = when (error) {
 
 /**
  * Parses ChatGPT `GET /backend-api/wham/usage` body (Codex backend-client RateLimitStatusPayload).
- * primary_window -> five_hour; secondary_window -> seven_day (labels come from resources in the UI).
+ * Window labels come from `limit_window_seconds` (18000 -> 5h, 604800 -> 7d), falling back to the
+ * position (primary -> five_hour, secondary -> seven_day) when it is absent.
+ * A null or absent window is skipped; returns null when no window can be read.
  * Only fields confirmed in codex-backend-openapi-models RateLimitWindowSnapshot:
  * used_percent, limit_window_seconds, reset_after_seconds, reset_at (unix seconds).
  */
@@ -51,19 +54,16 @@ fun parseOpenAiWhamUsage(body: String, json: Json = Json): List<OpenAiWindowUsag
     } catch (_: Exception) {
         return null
     }
-    val rateLimit = root["rate_limit"]?.jsonObject ?: return null
-    val windows = mutableListOf<OpenAiWindowUsage>()
-
-    parseWindow(rateLimit["primary_window"]?.jsonObject, id = "five_hour", label = "5h")
-        ?.let { windows.add(it) }
-    parseWindow(rateLimit["secondary_window"]?.jsonObject, id = "seven_day", label = "7d")
-        ?.let { windows.add(it) }
-
+    val rateLimit = root["rate_limit"] as? JsonObject ?: return null
+    val windows = listOfNotNull(
+        parseWindow(rateLimit["primary_window"] as? JsonObject, id = "five_hour", label = "5h"),
+        parseWindow(rateLimit["secondary_window"] as? JsonObject, id = "seven_day", label = "7d")
+    )
     return windows.takeIf { it.isNotEmpty() }
 }
 
 private fun parseWindow(
-    obj: kotlinx.serialization.json.JsonObject?,
+    obj: JsonObject?,
     id: String,
     label: String
 ): OpenAiWindowUsage? {
@@ -74,51 +74,53 @@ private fun parseWindow(
     val resetAtSec = obj["reset_at"]?.jsonPrimitive?.longOrNull
         ?: obj["reset_at"]?.jsonPrimitive?.intOrNull?.toLong()
     val resetsAt = resetAtSec?.let { Instant.ofEpochSecond(it) }
+    val windowSeconds = obj["limit_window_seconds"]?.jsonPrimitive?.longOrNull
+        ?: obj["limit_window_seconds"]?.jsonPrimitive?.intOrNull?.toLong()
+    val (windowId, windowLabel) = when (windowSeconds) {
+        18_000L -> "five_hour" to "5h"
+        604_800L -> "seven_day" to "7d"
+        else -> id to label
+    }
     return OpenAiWindowUsage(
-        id = id,
-        label = label,
+        id = windowId,
+        label = windowLabel,
         usedPercent = used.toDouble().coerceIn(0.0, 100.0),
         resetsAt = resetsAt
     )
 }
 
 fun openAiOAuthSuccessStatus(account: ProviderAccount, windows: List<OpenAiWindowUsage>): TokenStatus {
-    val fiveHour = windows.firstOrNull { it.id == "five_hour" }
-    val weekly = windows.firstOrNull { it.id == "seven_day" }
-    val fiveUsed = fiveHour?.usedPercent ?: 0.0
-    val weekUsed = weekly?.usedPercent ?: 0.0
-    val fiveLeft = (100.0 - fiveUsed).coerceIn(0.0, 100.0)
-    val weekLeft = (100.0 - weekUsed).coerceIn(0.0, 100.0)
+    // Build everything from the windows the response actually had; a missing window is not 0% used.
+    val usageWindows = windows.map { w ->
+        UsageWindow(
+            id = w.id,
+            label = w.label,
+            remaining = Remaining.Percent((100.0 - w.usedPercent).coerceIn(0.0, 100.0)),
+            resetsAt = w.resetsAt
+        )
+    }
+    val remainingText = usageWindows.joinToString(" | ") { window ->
+        val left = (window.remaining as Remaining.Percent).percentLeft
+        AppText.get(R.string.data_window_left, window.label, left.roundToInt())
+    }
+    val primary = windows.firstOrNull { it.id == "five_hour" } ?: windows.first()
+    val worstUsed = windows.maxOf { it.usedPercent }
 
     return TokenStatus(
         accountId = account.id,
         provider = account.provider,
         accountName = account.name,
-        remainingFormatted = AppText.get(
-            R.string.data_claude_usage_left,
-            String.format(Locale.US, "%.0f", fiveLeft),
-            String.format(Locale.US, "%.0f", weekLeft)
-        ),
-        totalLimitFormatted = AppText.get(
-            R.string.data_usage_detail_no_reset,
-            String.format(Locale.US, "%.0f", fiveUsed),
-            String.format(Locale.US, "%.0f", weekUsed)
-        ),
-        usagePercent = fiveUsed.toFloat(),
-        statusSummary = AppText.get(
-            R.string.data_claude_summary,
-            String.format(Locale.US, "%.0f", fiveLeft),
-            String.format(Locale.US, "%.0f", weekLeft)
-        ),
-        isWarning = fiveUsed > 80.0 || weekUsed > 80.0,
-        isCritical = fiveUsed > 95.0 || weekUsed > 95.0,
-        windows = listOfNotNull(
-            fiveHour?.let {
-                UsageWindow(it.id, it.label, Remaining.Percent(fiveLeft), it.resetsAt)
-            },
-            weekly?.let {
-                UsageWindow(it.id, it.label, Remaining.Percent(weekLeft), it.resetsAt)
-            }
-        )
+        remainingFormatted = remainingText,
+        totalLimitFormatted = windows.joinToString(" | ") {
+            AppText.get(R.string.data_window_used, it.label, it.usedPercent.roundToInt())
+        },
+        usagePercent = primary.usedPercent.toFloat(),
+        statusSummary = usageWindows.joinToString(" | ") { window ->
+            val left = (window.remaining as Remaining.Percent).percentLeft
+            AppText.get(R.string.data_window_percent_left, window.label, left.roundToInt())
+        },
+        isWarning = worstUsed > 80.0,
+        isCritical = worstUsed > 95.0,
+        windows = usageWindows
     )
 }

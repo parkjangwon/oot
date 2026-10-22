@@ -1,6 +1,14 @@
 package org.parkjw.apps.oot.data.remote
 
+import android.app.Application
+import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
@@ -14,6 +22,7 @@ import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorError
+import org.parkjw.apps.oot.data.oauth.OAuthManager
 import java.time.Instant
 
 
@@ -88,7 +97,29 @@ class ClaudeUsageCodecTest {
     fun `usage json with missing fields fails to parse`() {
         assertNull(parseClaudeUsage("not json", json))
         assertNull(parseClaudeUsage("""{"five_hour": {}}""", json))
-        assertNull(parseClaudeUsage("""{"five_hour": {"utilization": 1.0}}""", json))
+        assertNull(parseClaudeUsage("""{"five_hour": {"utilization": null}}""", json))
+    }
+
+    @Test
+    fun `null windows do not throw and parse as no windows`() {
+        assertNull(parseClaudeUsage("""{"five_hour":null,"seven_day":null}""", json))
+        assertNull(parseClaudeUsage("""{"five_hour":null}""", json))
+    }
+
+    @Test
+    fun `single five-hour window parses without the weekly window`() {
+        val windows = parseClaudeUsage("""{"five_hour":{"utilization":10.0},"seven_day":null}""", json)!!
+        assertEquals(1, windows.size)
+        assertEquals("five_hour", windows.single().id)
+        assertEquals(10.0, windows.single().utilization, 0.001)
+    }
+
+    @Test
+    fun `single weekly window parses without the five-hour window`() {
+        val windows = parseClaudeUsage("""{"five_hour":null,"seven_day":{"utilization":20.0}}""", json)!!
+        assertEquals(1, windows.size)
+        assertEquals("seven_day", windows.single().id)
+        assertEquals(20.0, windows.single().utilization, 0.001)
     }
 
     @Test
@@ -155,5 +186,51 @@ class ClaudeUsageCodecTest {
         assertFalse(summary.contains(token))
         assertFalse(summary.contains("Bearer"))
         assertFalse(summary.contains("Authorization"))
+    }
+
+    // -- API-level: a bad payload must become a parse-error status, not an exception --
+
+    private val context: Application = ApplicationProvider.getApplicationContext()
+
+    private fun clientReturning(body: String) = OkHttpClient.Builder().addInterceptor { chain ->
+        Response.Builder()
+            .request(chain.request())
+            .protocol(Protocol.HTTP_1_1)
+            .code(200)
+            .message("OK")
+            .body(body.toResponseBody("application/json".toMediaType()))
+            .build()
+    }.build()
+
+    private fun oauthAccount() = ProviderAccount(
+        id = "claude-oauth-fake",
+        provider = ProviderType.CLAUDE,
+        name = "Claude OAuth",
+        authType = AuthType.OAUTH,
+        accessToken = "sk-ant-oat01-fake-000"
+    )
+
+    private fun api(client: OkHttpClient) =
+        ClaudeApi(client, json, OAuthManager(context, client, json)) { true }
+
+    @Test
+    fun `api returns a parse error status when parsing throws`() = runBlocking {
+        val client = clientReturning("""{"five_hour":{"utilization":[]},"seven_day":null}""")
+
+        val status = api(client).fetchStatus(oauthAccount())
+
+        assertTrue(status.isError)
+        assertEquals(claudeErrorText(VendorError.Parse), status.errorMessage)
+    }
+
+    @Test
+    fun `api keeps only the five-hour window when the weekly window is null`() = runBlocking {
+        val client = clientReturning("""{"five_hour":{"utilization":10.0},"seven_day":null}""")
+
+        val status = api(client).fetchStatus(oauthAccount())
+
+        assertFalse(status.isError)
+        assertEquals(listOf("five_hour"), status.windows.map { it.id })
+        assertFalse(status.remainingFormatted.contains("|"))
     }
 }

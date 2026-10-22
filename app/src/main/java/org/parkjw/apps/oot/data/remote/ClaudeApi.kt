@@ -19,6 +19,7 @@ import org.parkjw.apps.oot.i18n.AppText
 import java.io.IOException
 import java.time.Instant
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class ClaudeApi(
     private val client: OkHttpClient,
@@ -150,7 +151,12 @@ class ClaudeApi(
             when {
                 resp.isSuccessful -> {
                     val body = resp.body?.string().orEmpty()
-                    val windows = parseClaudeUsage(body, json)
+                    val windows = try {
+                        parseClaudeUsage(body, json)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "usage parse threw endpoint=/api/oauth/usage error=${e.javaClass.simpleName}")
+                        null
+                    }
                     if (windows == null) {
                         Log.w(TAG, "usage parse failed endpoint=/api/oauth/usage error=Parse bytes=${body.toByteArray().size}")
                         return errorStatus(account, claudeErrorText(VendorError.Parse))
@@ -205,27 +211,26 @@ class ClaudeApi(
     }
 
     private fun successStatus(account: ProviderAccount, windows: List<ClaudeWindowUsage>): TokenStatus {
-        val fiveHour = windows.firstOrNull { it.id == "five_hour" }
-        val weekly = windows.firstOrNull { it.id == "seven_day" }
-        val fiveHourPct = fiveHour?.utilization ?: 0.0
-        val weeklyPct = weekly?.utilization ?: 0.0
-        val fiveHourRemaining = (100.0 - fiveHourPct).coerceIn(0.0, 100.0)
-        val weeklyRemaining = (100.0 - weeklyPct).coerceIn(0.0, 100.0)
-        val fiveHourResetText = formatReset(fiveHour?.resetsAt)
-        val weeklyResetText = formatReset(weekly?.resetsAt)
-
-        val remainingText = AppText.get(
-            R.string.data_claude_usage_left,
-            String.format(Locale.US, "%.0f", fiveHourRemaining),
-            String.format(Locale.US, "%.0f", weeklyRemaining)
-        )
-        val limitText = buildString {
-            append(AppText.get(R.string.data_used_5h, String.format(Locale.US, "%.0f", fiveHourPct)))
-            if (fiveHourResetText.isNotBlank()) append(" ($fiveHourResetText)")
-            append(" | ")
-            append(AppText.get(R.string.data_used_weekly, String.format(Locale.US, "%.0f", weeklyPct)))
-            if (weeklyResetText.isNotBlank()) append(" ($weeklyResetText)")
+        // Build everything from the windows the response actually had; a missing window is not 0% used.
+        val usageWindows = windows.map { w ->
+            UsageWindow(
+                id = w.id,
+                label = w.label,
+                remaining = Remaining.Percent((100.0 - w.utilization).coerceIn(0.0, 100.0)),
+                resetsAt = w.resetsAt
+            )
         }
+        val remainingText = usageWindows.joinToString(" | ") { window ->
+            val left = (window.remaining as Remaining.Percent).percentLeft
+            AppText.get(R.string.data_window_left, window.label, left.roundToInt())
+        }
+        val limitText = windows.joinToString(" | ") { w ->
+            val resetSuffix = formatReset(w.resetsAt).takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
+            AppText.get(R.string.data_window_used, w.label, w.utilization.roundToInt()) + resetSuffix
+        }
+        val primary = windows.firstOrNull { it.id == "five_hour" } ?: windows.first()
+        val primaryResetText = formatReset(primary.resetsAt)
+        val worstPct = windows.maxOf { it.utilization }
 
         return TokenStatus(
             accountId = account.id,
@@ -233,19 +238,15 @@ class ClaudeApi(
             accountName = account.name,
             remainingFormatted = remainingText,
             totalLimitFormatted = limitText,
-            usagePercent = fiveHourPct.toFloat(),
-            resetTimeFormatted = if (fiveHourResetText.isNotBlank()) "5h $fiveHourResetText" else null,
-            statusSummary = AppText.get(
-                R.string.data_claude_summary,
-                String.format(Locale.US, "%.0f", fiveHourRemaining),
-                String.format(Locale.US, "%.0f", weeklyRemaining)
-            ),
-            isWarning = fiveHourPct > 80.0 || weeklyPct > 80.0,
-            isCritical = fiveHourPct > 95.0 || weeklyPct > 95.0,
-            windows = listOf(
-                UsageWindow("five_hour", "5h", Remaining.Percent(fiveHourRemaining), fiveHour?.resetsAt),
-                UsageWindow("seven_day", "7d", Remaining.Percent(weeklyRemaining), weekly?.resetsAt)
-            )
+            usagePercent = primary.utilization.toFloat(),
+            resetTimeFormatted = if (primaryResetText.isNotBlank()) "${primary.label} $primaryResetText" else null,
+            statusSummary = usageWindows.joinToString(" | ") { window ->
+                val left = (window.remaining as Remaining.Percent).percentLeft
+                AppText.get(R.string.data_window_percent_left, window.label, left.roundToInt())
+            },
+            isWarning = worstPct > 80.0,
+            isCritical = worstPct > 95.0,
+            windows = usageWindows
         )
     }
 

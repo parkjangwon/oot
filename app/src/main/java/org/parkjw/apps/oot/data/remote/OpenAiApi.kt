@@ -68,8 +68,11 @@ class OpenAiApi(
             when {
                 resp.isSuccessful -> {
                     val body = resp.body?.string().orEmpty()
-                    val windows = parseOpenAiWhamUsage(body, json)
-                        ?: return errorStatus(account, openAiErrorText(VendorError.Parse))
+                    val windows = try {
+                        parseOpenAiWhamUsage(body, json)
+                    } catch (_: Exception) {
+                        null
+                    } ?: return errorStatus(account, openAiErrorText(VendorError.Parse))
                     return openAiOAuthSuccessStatus(account, windows)
                 }
                 resp.code == 401 -> {
