@@ -2,6 +2,10 @@ package org.parkjw.apps.oot.ui.screens
 
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -46,14 +50,14 @@ class StorageResetTest {
     fun `notice card shows while storage is unavailable`() {
         setDashboard(available = false)
 
-        composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").assertExists()
+        composeRule.onNodeWithText("저장소 초기화하고 계정 다시 추가").assertExists()
     }
 
     @Test
     fun `notice card is hidden when storage is available`() {
         setDashboard(available = true)
 
-        composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").assertDoesNotExist()
+        composeRule.onNodeWithText("저장소 초기화하고 계정 다시 추가").assertDoesNotExist()
     }
 
     @Test
@@ -61,7 +65,7 @@ class StorageResetTest {
         var reset = false
         setDashboard(available = false, onReset = { reset = true })
 
-        composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").performClick()
+        composeRule.onNodeWithText("저장소 초기화하고 계정 다시 추가").performClick()
         composeRule.onNodeWithText("저장소를 초기화할까요?").assertExists()
         composeRule.onNodeWithText("초기화").performClick()
 
@@ -74,7 +78,7 @@ class StorageResetTest {
         var reset = false
         setDashboard(available = false, onReset = { reset = true })
 
-        composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").performClick()
+        composeRule.onNodeWithText("저장소 초기화하고 계정 다시 추가").performClick()
         composeRule.onNodeWithText("취소").performClick()
 
         assertFalse(reset)
@@ -82,10 +86,21 @@ class StorageResetTest {
     }
 
     @Test
+    fun `reset button is a polite live region while idle`() {
+        setDashboard(available = false)
+
+        composeRule.onNodeWithText("저장소 초기화하고 계정 다시 추가")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+    }
+
+    @Test
     fun `reset button shows the resetting label and is disabled while reset is in progress`() {
         setDashboard(available = false, isResettingSecureStorage = true)
 
-        composeRule.onNodeWithText("초기화하는 중…").assertExists().assertIsNotEnabled()
-        composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").assertDoesNotExist()
+        composeRule.onNodeWithText("초기화하는 중…")
+            .assertExists()
+            .assertIsNotEnabled()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        composeRule.onNodeWithText("저장소 초기화하고 계정 다시 추가").assertDoesNotExist()
     }
 }

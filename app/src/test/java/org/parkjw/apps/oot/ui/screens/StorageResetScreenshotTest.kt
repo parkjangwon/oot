@@ -94,6 +94,38 @@ class StorageResetScreenshotTest {
     )
 
     @Test
+    @Config(qualifiers = "ko-w320dp-h1300dp-notnight-xxhdpi")
+    fun dashboardNoticeNarrowKorean() = capture(
+        darkTheme = false,
+        fileName = "storage-reset-dashboard-320-ko.png",
+    )
+
+    @Test
+    @Config(qualifiers = "en-w320dp-h1300dp-notnight-xxhdpi")
+    fun dashboardNoticeNarrowEnglish() = capture(
+        darkTheme = false,
+        fileName = "storage-reset-dashboard-320-en.png",
+        english = true,
+    )
+
+    @Test
+    @Config(qualifiers = "ko-w320dp-h1300dp-notnight-xxhdpi")
+    fun resettingStateNarrowKorean() = capture(
+        darkTheme = false,
+        fileName = "storage-reset-dashboard-320-resetting-ko.png",
+        resetting = true,
+    )
+
+    @Test
+    @Config(qualifiers = "en-w320dp-h1300dp-notnight-xxhdpi")
+    fun resettingStateNarrowEnglish() = capture(
+        darkTheme = false,
+        fileName = "storage-reset-dashboard-320-resetting-en.png",
+        english = true,
+        resetting = true,
+    )
+
+    @Test
     @Config(qualifiers = "ko-w412dp-h1300dp-notnight-xxhdpi")
     fun resetDialogLight() = captureDialog(
         darkTheme = false,
@@ -171,9 +203,11 @@ class StorageResetScreenshotTest {
         if (resetting) composeRule.mainClock.advanceTimeBy(450)
         composeRule.onNodeWithText("Claude").assertExists()
         when {
-            resetting -> composeRule.onNodeWithText("초기화하는 중…").assertExists()
+            resetting -> composeRule.onNodeWithText(
+                if (english) "Resetting…" else "초기화하는 중…",
+            ).assertExists()
             english -> composeRule.onNodeWithText("Reset storage and add accounts again").assertExists()
-            else -> composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").assertExists()
+            else -> composeRule.onNodeWithText("저장소 초기화하고 계정 다시 추가").assertExists()
         }
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
             File(roborazziSystemPropertyOutputDirectory(), fileName),
@@ -183,7 +217,7 @@ class StorageResetScreenshotTest {
     private fun captureDialog(darkTheme: Boolean, fileName: String, english: Boolean = false) {
         setDashboard(darkTheme)
         composeRule.onNodeWithText(
-            if (english) "Reset storage and add accounts again" else "저장소 초기화하고 다시 로그인",
+            if (english) "Reset storage and add accounts again" else "저장소 초기화하고 계정 다시 추가",
         ).performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText(

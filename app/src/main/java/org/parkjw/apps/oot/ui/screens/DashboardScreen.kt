@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -79,13 +80,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -125,6 +129,13 @@ import java.time.Instant
 import kotlin.math.roundToInt
 
 private val WordWrapFriendly = LineBreak.Paragraph
+
+// Wraps Korean at phrase boundaries (no "있/어요" splits) and balances lines on narrow screens.
+private val PhraseWrap = LineBreak(
+    strategy = LineBreak.Strategy.Balanced,
+    strictness = LineBreak.Strictness.Strict,
+    wordBreak = LineBreak.WordBreak.Phrase,
+)
 private val ReorderPlacementSpec = tween<IntOffset>(150)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -1396,7 +1407,7 @@ fun SecureStorageNoticeCard(
             ) {
                 Text(
                     text = stringResource(R.string.secure_storage_unavailable),
-                    style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
+                    style = MaterialTheme.typography.bodyMedium.copy(lineBreak = PhraseWrap),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 OutlinedButton(
@@ -1408,7 +1419,9 @@ fun SecureStorageNoticeCard(
                         disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     ),
                     border = BorderStroke(1.dp, MaterialTheme.extendedColors.hairlineStrong),
-                    modifier = Modifier.height(40.dp),
+                    modifier = Modifier
+                        .heightIn(min = 40.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                 ) {
                     if (resetting) {
                         CircularProgressIndicator(
@@ -1429,7 +1442,8 @@ fun SecureStorageNoticeCard(
                                 R.string.secure_storage_reset_action
                             },
                         ),
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelLarge.copy(lineBreak = PhraseWrap),
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
