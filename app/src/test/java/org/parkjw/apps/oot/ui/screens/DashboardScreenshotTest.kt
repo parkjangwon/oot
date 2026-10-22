@@ -27,7 +27,7 @@ import java.time.Instant
 @OptIn(ExperimentalRoborazziApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "w412dp-h1300dp-xxhdpi")
 class DashboardScreenshotTest {
 
     @get:Rule
@@ -190,7 +190,7 @@ class DashboardScreenshotTest {
     }
 
     @Test
-    @Config(qualifiers = "w412dp-h1100dp-notnight-xxhdpi")
+    @Config(qualifiers = "w412dp-h1300dp-notnight-xxhdpi")
     fun dashboardLight() {
         composeRule.setContent {
             OotTheme(darkTheme = false) {
@@ -211,7 +211,7 @@ class DashboardScreenshotTest {
     }
 
     @Test
-    @Config(qualifiers = "w412dp-h1100dp-night-xxhdpi")
+    @Config(qualifiers = "w412dp-h1300dp-night-xxhdpi")
     fun dashboardDark() {
         composeRule.setContent {
             OotTheme(darkTheme = true) {
