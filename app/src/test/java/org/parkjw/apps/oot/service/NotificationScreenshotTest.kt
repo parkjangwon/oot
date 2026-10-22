@@ -56,7 +56,7 @@ class NotificationScreenshotTest {
             providerType = ProviderType.XAI,
             displayName = "xai-demo@example.com",
             windows = listOf(
-                UsageWindow("weekly", "주간", Remaining.Percent(14.0), resetIn(2 * 24 * 60))
+                UsageWindow("weekly", "주간", Remaining.Percent(14.0), resetIn(2 * 24 * 60 + 3 * 60))
             )
         ),
         VendorUsage(
