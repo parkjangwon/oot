@@ -5,6 +5,7 @@
     <string name="notification_channel_desc">등록한 AI 프로바이더의 남은 한도와 잔액을 상태 표시줄에 계속 보여 줘요.</string>
     <string name="settings_section_update">업데이트</string>
     <string name="settings_title">설정</string>
+    <string name="settings_back">뒤로 가기</string>
     <string name="settings_section_notifications">알림</string>
     <string name="settings_section_notification_visibility">알림에 표시</string>
     <string name="settings_section_info">정보</string>

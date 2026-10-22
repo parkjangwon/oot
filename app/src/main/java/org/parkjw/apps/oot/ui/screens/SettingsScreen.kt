@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.dp
 import org.parkjw.apps.oot.R
@@ -94,7 +96,7 @@ fun SettingsScreen(
                     IconButton(onClick = onBack, colors = ootIconButtonColors()) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_title),
+                            contentDescription = stringResource(R.string.settings_back),
                         )
                     }
                 },
@@ -315,12 +317,14 @@ private fun SectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(
-            start = OotSpacing.screenHorizontal,
-            end = OotSpacing.screenHorizontal,
-            top = OotSpacing.lg,
-            bottom = OotSpacing.xs,
-        ),
+        modifier = Modifier
+            .semantics { heading() }
+            .padding(
+                start = OotSpacing.screenHorizontal,
+                end = OotSpacing.screenHorizontal,
+                top = OotSpacing.lg,
+                bottom = OotSpacing.xs,
+            ),
     )
 }
 
