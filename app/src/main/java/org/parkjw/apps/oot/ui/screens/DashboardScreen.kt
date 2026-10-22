@@ -991,7 +991,7 @@ fun VendorMark(
         } else {
             val monogram = when (provider) {
                 ProviderType.CLAUDE -> "C"
-                ProviderType.ZAI -> "G"
+                ProviderType.ZAI -> "Z"
                 ProviderType.XAI -> "X"
                 ProviderType.OPENROUTER -> "R"
                 ProviderType.OPENAI -> "O"
