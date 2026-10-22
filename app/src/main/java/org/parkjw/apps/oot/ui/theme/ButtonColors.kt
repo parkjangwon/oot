@@ -14,7 +14,11 @@ fun ootTextButtonColors(
 @Composable
 fun ootOutlinedButtonColors(
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
-) = ButtonDefaults.outlinedButtonColors(contentColor = contentColor)
+    disabledContentColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+) = ButtonDefaults.outlinedButtonColors(
+    contentColor = contentColor,
+    disabledContentColor = disabledContentColor,
+)
 
 @Composable
 fun ootIconButtonColors(
