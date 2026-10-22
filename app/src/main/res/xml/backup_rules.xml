@@ -9,7 +9,7 @@
     <exclude
         domain="sharedpref"
         path="oot_secure_prefs.xml" />
-    <!-- Older plaintext credential store, kept out as well. -->
+    <!-- Credential file name used by older versions, kept out as well. -->
     <exclude
         domain="sharedpref"
         path="oot_fallback_prefs.xml" />
