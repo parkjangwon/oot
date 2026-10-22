@@ -138,24 +138,13 @@ class OpenRouterApi(
             }
 
             val windows = OpenRouterCodec.windows(credits, key)
-            if (windows.isEmpty()) {
-                return@withContext TokenStatus(
-                    accountId = account.id,
-                    provider = ProviderType.OPENROUTER,
-                    accountName = account.name,
-                    remainingFormatted = AppText.get(R.string.data_fetch_failed),
-                    statusSummary = AppText.get(R.string.data_comm_failed),
-                    isError = true,
-                    errorMessage = AppText.get(R.string.data_openrouter_server_error)
-                )
-            }
-
             // /credits can be forbidden for a non-management key, so either window can be the only one.
             val credit = windows.firstOrNull { it.id == "credit" }?.remaining as? Remaining.Balance
             val keyWindow = windows.firstOrNull { it.id == "key" }
             val keyBalance = keyWindow?.remaining as? Remaining.Balance
             // Ticker/persistence value: the smaller of account balance and key remaining.
-            val displayAmount = listOfNotNull(credit?.amountLeft, keyBalance?.amountLeft).min()
+            val displayAmount = listOfNotNull(credit?.amountLeft, keyBalance?.amountLeft).minOrNull()
+                ?: return@withContext loadErrorStatus(account)
             val displayText = AppText.get(R.string.remaining_left, OpenRouterCodec.formatUsd(displayAmount))
 
             TokenStatus(
@@ -182,4 +171,14 @@ class OpenRouterApi(
             )
         }
     }
+
+    private fun loadErrorStatus(account: ProviderAccount) = TokenStatus(
+        accountId = account.id,
+        provider = ProviderType.OPENROUTER,
+        accountName = account.name,
+        remainingFormatted = AppText.get(R.string.data_fetch_failed),
+        statusSummary = AppText.get(R.string.data_comm_failed),
+        isError = true,
+        errorMessage = AppText.get(R.string.data_openrouter_server_error)
+    )
 }

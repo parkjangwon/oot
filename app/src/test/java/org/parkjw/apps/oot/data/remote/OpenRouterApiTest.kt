@@ -45,10 +45,11 @@ class OpenRouterApiTest {
     private fun client(keyBody: String, creditsCode: Int, creditsBody: String): OkHttpClient =
         OkHttpClient.Builder().addInterceptor { chain ->
             val request = chain.request()
-            val (code, body) = if (request.url.encodedPath.endsWith("/key")) {
-                200 to keyBody
-            } else {
-                creditsCode to creditsBody
+            val path = request.url.encodedPath
+            val (code, body) = when {
+                path.endsWith("/key") -> 200 to keyBody
+                path.endsWith("/credits") -> creditsCode to creditsBody
+                else -> throw AssertionError("Unexpected request: $path")
             }
             response(request, code, body)
         }.build()
