@@ -3,6 +3,7 @@ package org.parkjw.apps.oot.data.remote
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -10,8 +11,62 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
+import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
+import org.parkjw.apps.oot.data.model.UsageWindow
 import java.util.Locale
+
+// Pure codec for the public OpenRouter API responses (GET /key, GET /credits).
+// No Android or network types so it is unit-testable on the JVM.
+object OpenRouterCodec {
+    data class KeyData(
+        val label: String?,
+        val limit: Double?,
+        val limitRemaining: Double?,
+        val usage: Double
+    )
+
+    data class CreditsData(val totalCredits: Double, val totalUsage: Double)
+
+    fun parseKey(body: String): KeyData? = try {
+        val data = Json.parseToJsonElement(body).jsonObject["data"]?.jsonObject ?: return null
+        KeyData(
+            label = data["label"]?.jsonPrimitive?.contentOrNull,
+            limit = data["limit"]?.jsonPrimitive?.doubleOrNull,
+            limitRemaining = data["limit_remaining"]?.jsonPrimitive?.doubleOrNull,
+            usage = data["usage"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+        )
+    } catch (_: Exception) {
+        null
+    }
+
+    fun parseCredits(body: String): CreditsData? = try {
+        val data = Json.parseToJsonElement(body).jsonObject["data"]?.jsonObject ?: return null
+        CreditsData(
+            totalCredits = data["total_credits"]?.jsonPrimitive?.doubleOrNull ?: return null,
+            totalUsage = data["total_usage"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+        )
+    } catch (_: Exception) {
+        null
+    }
+
+    fun accountBalance(credits: CreditsData): Double =
+        (credits.totalCredits - credits.totalUsage).coerceAtLeast(0.0)
+
+    fun formatUsd(amount: Double): String = "$${String.format(Locale.US, "%.2f", amount)}"
+
+    // "credit" window = account balance; "key" window only when the key has a limit.
+    fun windows(credits: CreditsData?, key: KeyData?): List<UsageWindow> = buildList {
+        credits?.let {
+            add(UsageWindow("credit", "credit", Remaining.Balance(accountBalance(it))))
+        }
+        key?.let { k ->
+            val limit = k.limit?.takeIf { it > 0.0 } ?: return@buildList
+            val remaining = k.limitRemaining ?: (limit - k.usage).coerceAtLeast(0.0)
+            add(UsageWindow("key", "키 한도 ${formatUsd(limit)}", Remaining.Balance(remaining)))
+        }
+    }
+}
 
 class OpenRouterApi(
     private val client: OkHttpClient,
@@ -32,23 +87,19 @@ class OpenRouterApi(
         }
 
         val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.OPENROUTER.baseUrl
-        val creditsUrl = "$baseUrl/credits"
-        val keyUrl = "$baseUrl/auth/key"
         val authHeader = "Bearer $credential"
 
         try {
-            var keyLimit: Double? = null
-            var keyUsage: Double = 0.0
-            var keyFetched = false
+            var key: OpenRouterCodec.KeyData? = null
+            var credits: OpenRouterCodec.CreditsData? = null
 
-            // 1. Fetch /auth/key for key-specific limit & usage
             val keyRequest = Request.Builder()
-                .url(keyUrl)
+                .url("$baseUrl/key")
                 .addHeader("Authorization", authHeader)
                 .build()
 
             client.newCall(keyRequest).execute().use { response ->
-                if (!response.isSuccessful && response.code == 401) {
+                if (response.code == 401) {
                     return@withContext TokenStatus(
                         accountId = account.id,
                         provider = ProviderType.OPENROUTER,
@@ -59,41 +110,25 @@ class OpenRouterApi(
                         errorMessage = "유효하지 않은 OpenRouter API 키입니다."
                     )
                 }
-
                 if (response.isSuccessful) {
-                    val body = response.body?.string().orEmpty()
-                    val root = json.parseToJsonElement(body).jsonObject
-                    val data = root["data"]?.jsonObject
-
-                    keyLimit = data?.get("limit")?.jsonPrimitive?.doubleOrNull
-                    keyUsage = data?.get("usage")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                    keyFetched = true
+                    key = response.body?.string()?.let { OpenRouterCodec.parseKey(it) }
                 }
             }
 
-            // 2. Fetch /credits for total account balance & credits
+            // /credits may need a management key; 401/403 fall back to key data only.
             val creditsRequest = Request.Builder()
-                .url(creditsUrl)
+                .url("$baseUrl/credits")
                 .addHeader("Authorization", authHeader)
                 .build()
 
-            var totalCredits = 0.0
-            var totalUsage = 0.0
-            var creditsFetched = false
-
             client.newCall(creditsRequest).execute().use { response ->
                 if (response.isSuccessful) {
-                    val body = response.body?.string().orEmpty()
-                    val root = json.parseToJsonElement(body).jsonObject
-                    val data = root["data"]?.jsonObject
-
-                    totalCredits = data?.get("total_credits")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                    totalUsage = data?.get("total_usage")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                    creditsFetched = true
+                    credits = response.body?.string()?.let { OpenRouterCodec.parseCredits(it) }
                 }
             }
 
-            if (!keyFetched && !creditsFetched) {
+            val windows = OpenRouterCodec.windows(credits, key)
+            if (windows.isEmpty()) {
                 return@withContext TokenStatus(
                     accountId = account.id,
                     provider = ProviderType.OPENROUTER,
@@ -105,58 +140,25 @@ class OpenRouterApi(
                 )
             }
 
-            // Total remaining account credits
-            val totalRemaining = (totalCredits - totalUsage).coerceAtLeast(0.0)
-            val totalPercent = if (totalCredits > 0) ((totalUsage / totalCredits) * 100).toFloat().coerceIn(0f, 100f) else null
-
-            // Key limit calculations
-            val hasKeyLimit = (keyLimit != null && keyLimit!! > 0)
-            val keyRemaining = if (hasKeyLimit) (keyLimit!! - keyUsage).coerceAtLeast(0.0) else null
-            val keyPercent = if (hasKeyLimit) ((keyUsage / keyLimit!!) * 100).toFloat().coerceIn(0f, 100f) else null
-
-            // Format main display text: Show current remaining credits and key limit/usage
-            val remainingDisplay = if (hasKeyLimit) {
-                String.format(Locale.US, "잔여 크레딧: $%.2f (키 남음: $%.2f)", totalRemaining, keyRemaining)
-            } else {
-                String.format(Locale.US, "잔여 크레딧: $%.2f", totalRemaining)
-            }
-
-            val limitDisplay = if (hasKeyLimit) {
-                String.format(
-                    Locale.US,
-                    "키 한도: $%.2f (사용: $%.2f, %.1f%%)",
-                    keyLimit,
-                    keyUsage,
-                    keyPercent ?: 0f
-                )
-            } else {
-                String.format(
-                    Locale.US,
-                    "키 한도: 무제한 (현재까지 $%.2f 사용)",
-                    keyUsage
-                )
-            }
-
-            // Summary ticker for status bar collapsed view
-            val tickerSummary = if (hasKeyLimit) {
-                String.format(Locale.US, "OR: $%.2f (키 $%.2f)", totalRemaining, keyRemaining)
-            } else {
-                String.format(Locale.US, "OR: $%.2f", totalRemaining)
-            }
-
-            val isWarn = (totalRemaining < 2.0 && totalRemaining > 0) || (keyPercent != null && keyPercent > 80f)
-            val isCrit = (totalRemaining < 0.5 && totalRemaining > 0) || (keyPercent != null && keyPercent > 95f)
+            val credit = windows.first { it.id == "credit" }.remaining as Remaining.Balance
+            val keyWindow = windows.firstOrNull { it.id == "key" }
+            val keyBalance = keyWindow?.remaining as? Remaining.Balance
+            // Ticker/persistence value: the smaller of account balance and key remaining.
+            val displayAmount = keyBalance?.let { minOf(credit.amountLeft, it.amountLeft) }
+                ?: credit.amountLeft
+            val displayText = "${OpenRouterCodec.formatUsd(displayAmount)} 남음"
 
             TokenStatus(
                 accountId = account.id,
                 provider = ProviderType.OPENROUTER,
                 accountName = account.name,
-                remainingFormatted = remainingDisplay,
-                totalLimitFormatted = limitDisplay,
-                usagePercent = keyPercent ?: totalPercent,
-                statusSummary = tickerSummary,
-                isWarning = isWarn,
-                isCritical = isCrit
+                remainingFormatted = displayText,
+                totalLimitFormatted = keyWindow?.label,
+                usagePercent = null,
+                statusSummary = displayText,
+                isWarning = false,
+                isCritical = false,
+                windows = windows
             )
         } catch (e: Exception) {
             TokenStatus(

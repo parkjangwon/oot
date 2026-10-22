@@ -35,7 +35,7 @@ class DashboardScreenshotTest {
 
     private val fixedNow: Instant = Instant.parse("2026-10-21T12:00:00Z")
 
-    private val fakeVendorUsages: List<VendorUsage> = listOf(
+    private fun fakeVendorUsages(openRouterKeyLimit: Boolean): List<VendorUsage> = listOf(
         VendorUsage(
             accountId = "claude-1",
             providerType = ProviderType.CLAUDE,
@@ -52,6 +52,25 @@ class DashboardScreenshotTest {
                     label = "주간",
                     remaining = Remaining.Percent(81.0),
                     resetsAt = fixedNow.plus(Duration.ofDays(3)),
+                ),
+            ),
+        ),
+        VendorUsage(
+            accountId = "openai-oauth-1",
+            providerType = ProviderType.OPENAI,
+            displayName = "OpenAI",
+            windows = listOf(
+                UsageWindow(
+                    id = "five_hour",
+                    label = "5시간",
+                    remaining = Remaining.Percent(62.0),
+                    resetsAt = fixedNow.plus(Duration.ofHours(2).plusMinutes(15)),
+                ),
+                UsageWindow(
+                    id = "seven_day",
+                    label = "주간",
+                    remaining = Remaining.Percent(88.0),
+                    resetsAt = fixedNow.plus(Duration.ofDays(4)),
                 ),
             ),
         ),
@@ -91,13 +110,24 @@ class DashboardScreenshotTest {
             accountId = "openrouter-1",
             providerType = ProviderType.OPENROUTER,
             displayName = "OpenRouter",
-            windows = listOf(
-                UsageWindow(
-                    id = "credit",
-                    label = "키 한도 $20.00",
-                    remaining = Remaining.Balance(12.40, "USD"),
-                ),
-            ),
+            windows = buildList {
+                add(
+                    UsageWindow(
+                        id = "credit",
+                        label = "credit",
+                        remaining = Remaining.Balance(12.40, "USD"),
+                    )
+                )
+                if (openRouterKeyLimit) {
+                    add(
+                        UsageWindow(
+                            id = "key",
+                            label = "키 한도 $20.00",
+                            remaining = Remaining.Balance(7.60, "USD"),
+                        )
+                    )
+                }
+            },
         ),
         VendorUsage(
             accountId = "deepseek-1",
@@ -162,7 +192,7 @@ class DashboardScreenshotTest {
         composeRule.setContent {
             OotTheme(darkTheme = false) {
                 DashboardScreen(
-                    vendorUsages = fakeVendorUsages,
+                    vendorUsages = fakeVendorUsages(openRouterKeyLimit = true),
                     now = fixedNow,
                     modifier = Modifier.testTag("dashboard_root"),
                 )
@@ -170,6 +200,8 @@ class DashboardScreenshotTest {
         }
         composeRule.onNodeWithText("Claude").assertExists()
         composeRule.onNodeWithText("$12.40").assertExists()
+        composeRule.onNodeWithText("키 한도 $20.00 중 $7.60 남음").assertExists()
+        composeRule.onNodeWithText("프로바이더 추가").assertExists()
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
             File(roborazziSystemPropertyOutputDirectory(), "dashboard-light.png"),
         )
@@ -180,7 +212,7 @@ class DashboardScreenshotTest {
         composeRule.setContent {
             OotTheme(darkTheme = true) {
                 DashboardScreen(
-                    vendorUsages = fakeVendorUsages,
+                    vendorUsages = fakeVendorUsages(openRouterKeyLimit = true),
                     now = fixedNow,
                     modifier = Modifier.testTag("dashboard_root"),
                 )
@@ -188,8 +220,82 @@ class DashboardScreenshotTest {
         }
         composeRule.onNodeWithText("Claude").assertExists()
         composeRule.onNodeWithText("$12.40").assertExists()
+        composeRule.onNodeWithText("키 한도 $20.00 중 $7.60 남음").assertExists()
+        composeRule.onNodeWithText("프로바이더 추가").assertExists()
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
             File(roborazziSystemPropertyOutputDirectory(), "dashboard-dark.png"),
+        )
+    }
+
+    @Test
+    fun dashboardOpenRouterNoKeyLimitLight() {
+        composeRule.setContent {
+            OotTheme(darkTheme = false) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages(openRouterKeyLimit = false),
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("$12.40").assertExists()
+        composeRule.onNodeWithText("키 한도 없음").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-openrouter-nolimit-light.png"),
+        )
+    }
+
+    @Test
+    fun dashboardOpenRouterNoKeyLimitDark() {
+        composeRule.setContent {
+            OotTheme(darkTheme = true) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages(openRouterKeyLimit = false),
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("$12.40").assertExists()
+        composeRule.onNodeWithText("키 한도 없음").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-openrouter-nolimit-dark.png"),
+        )
+    }
+
+    @Test
+    fun dashboardDraggingLight() {
+        composeRule.setContent {
+            OotTheme(darkTheme = false) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages(openRouterKeyLimit = true),
+                    now = fixedNow,
+                    previewDraggingAccountId = "glm-1",
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("GLM").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-dragging-light.png"),
+        )
+    }
+
+    @Test
+    fun dashboardDraggingDark() {
+        composeRule.setContent {
+            OotTheme(darkTheme = true) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages(openRouterKeyLimit = true),
+                    now = fixedNow,
+                    previewDraggingAccountId = "glm-1",
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("GLM").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-dragging-dark.png"),
         )
     }
 }

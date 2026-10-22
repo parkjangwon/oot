@@ -58,6 +58,11 @@ fun AddAccountDialog(
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
     ) -> Unit,
+    onStartOpenAiDeviceFlow: (
+        onCodeReceived: (userCode: String, verificationUrl: String) -> Unit,
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit,
     onSaveAccount: (ProviderAccount) -> Unit
 ) {
     var selectedProvider by remember { mutableStateOf(ProviderType.ZAI) }
@@ -72,6 +77,12 @@ fun AddAccountDialog(
     var xaiUserCode by remember { mutableStateOf<String?>(null) }
     var xaiVerificationUrl by remember { mutableStateOf<String?>(null) }
     var xaiErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    // OpenAI ChatGPT Device Flow state
+    var isOpenAiWaiting by remember { mutableStateOf(false) }
+    var openAiUserCode by remember { mutableStateOf<String?>(null) }
+    var openAiVerificationUrl by remember { mutableStateOf<String?>(null) }
+    var openAiErrorMessage by remember { mutableStateOf<String?>(null) }
 
     // Claude OAuth Code exchange state
     var claudeAuthCode by remember { mutableStateOf("") }
@@ -94,7 +105,7 @@ fun AddAccountDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         title = {
             Text(
-                text = "AI 계정 연동",
+                text = "프로바이더 연결",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -115,7 +126,7 @@ fun AddAccountDialog(
                         value = selectedProvider.displayName,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("제공자 (Provider)") },
+                        label = { Text("프로바이더") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isProviderDropdownExpanded) },
                         modifier = Modifier
                             .menuAnchor()
@@ -155,7 +166,7 @@ fun AddAccountDialog(
                 OutlinedTextField(
                     value = accountName,
                     onValueChange = { accountName = it },
-                    label = { Text("계정 별칭") },
+                    label = { Text("표시 이름") },
                     placeholder = { Text(selectedProvider.displayName) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -406,6 +417,105 @@ fun AddAccountDialog(
                     }
                 }
 
+                if (selectedProvider == ProviderType.OPENAI) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "ChatGPT로 로그인 (5h/주간 한도)",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Sign in with ChatGPT device 코드로 연동하면 Codex와 같은 5시간·주간 사용 한도를 표시합니다.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+
+                            if (!isOpenAiWaiting) {
+                                Button(
+                                    onClick = {
+                                        isOpenAiWaiting = true
+                                        openAiErrorMessage = null
+                                        onStartOpenAiDeviceFlow(
+                                            { code, url ->
+                                                openAiUserCode = code
+                                                openAiVerificationUrl = url
+                                            },
+                                            { tokenResult ->
+                                                val newAccount = ProviderAccount(
+                                                    id = UUID.randomUUID().toString(),
+                                                    provider = ProviderType.OPENAI,
+                                                    name = accountName.ifBlank { "OpenAI (ChatGPT)" },
+                                                    authType = AuthType.OAUTH,
+                                                    accessToken = tokenResult.accessToken,
+                                                    refreshToken = tokenResult.refreshToken,
+                                                    tokenExpiresAt = tokenResult.expiresAt,
+                                                    chatgptAccountId = tokenResult.chatgptAccountId,
+                                                    accountEmail = tokenResult.accountEmail
+                                                )
+                                                onSaveAccount(newAccount)
+                                            },
+                                            { errorMsg ->
+                                                openAiErrorMessage = errorMsg
+                                                isOpenAiWaiting = false
+                                            }
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Filled.VpnKey, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("ChatGPT로 로그인")
+                                }
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    if (openAiUserCode != null) {
+                                        Text(
+                                            text = "인증 코드: $openAiUserCode",
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = "(코드가 클립보드에 복사되었습니다)",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                    Text(
+                                        text = "브라우저에서 코드 입력 후 승인될 때까지 대기 중...",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    openAiVerificationUrl?.let { url ->
+                                        TextButton(onClick = { onOpenExternalBrowser(url) }) {
+                                            Text("인증 브라우저 다시 열기")
+                                        }
+                                    }
+                                }
+                            }
+
+                            openAiErrorMessage?.let {
+                                Text(
+                                    text = it,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+
                 if (selectedProvider == ProviderType.CLAUDE) {
                     Card(
                         colors = CardDefaults.cardColors(
@@ -564,7 +674,7 @@ fun AddAccountDialog(
                             ProviderType.ZAI -> "💡 공식 모니터링 엔드포인트(api.z.ai/api/monitor/usage/quota/limit)를 통해 남은 5시간/주간 쿼터와 크레딧을 정확히 측정합니다."
                             ProviderType.OPENROUTER -> "💡 OpenRouter API 키를 등록하면 실시간 남은 달러($) 잔액과 키 한도를 확인합니다."
                             ProviderType.CLAUDE -> "💡 Anthropic Console API 키(sk-ant-...) 또는 OAuth 토큰을 입력해주세요."
-                            ProviderType.OPENAI -> "💡 OpenAI API 키(sk-...)를 입력하면 모델 레이트 리밋과 잔여량을 조회합니다."
+                            ProviderType.OPENAI -> "💡 ChatGPT 로그인(5h/주간) 또는 API 키(sk-...)로 레이트 리밋을 조회합니다."
                             ProviderType.XAI -> "💡 xAI Console API 키 또는 Grok OAuth 토큰으로 주간 한도를 모니터링합니다."
                             ProviderType.ANTIGRAVITY -> "💡 Antigravity 사용량은 Google 로그인으로만 조회할 수 있어요. Gemini API Key로는 조회되지 않습니다."
                             ProviderType.DEEPSEEK -> "💡 DeepSeek API 키를 등록하면 남은 API 크레딧 잔액을 확인합니다."
