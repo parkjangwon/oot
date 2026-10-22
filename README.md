@@ -81,3 +81,5 @@ Tokens and API keys are stored locally in encrypted storage (`EncryptedSharedPre
 ## License
 
 No license has been chosen yet.
+
+Vendor logos are trademarks of their respective owners. See [docs/third-party-logos.md](docs/third-party-logos.md).
