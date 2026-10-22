@@ -150,12 +150,12 @@ class OpenRouterApi(
                 )
             }
 
-            val credit = windows.first { it.id == "credit" }.remaining as Remaining.Balance
+            // /credits can be forbidden for a non-management key, so either window can be the only one.
+            val credit = windows.firstOrNull { it.id == "credit" }?.remaining as? Remaining.Balance
             val keyWindow = windows.firstOrNull { it.id == "key" }
             val keyBalance = keyWindow?.remaining as? Remaining.Balance
             // Ticker/persistence value: the smaller of account balance and key remaining.
-            val displayAmount = keyBalance?.let { minOf(credit.amountLeft, it.amountLeft) }
-                ?: credit.amountLeft
+            val displayAmount = listOfNotNull(credit?.amountLeft, keyBalance?.amountLeft).min()
             val displayText = AppText.get(R.string.remaining_left, OpenRouterCodec.formatUsd(displayAmount))
 
             TokenStatus(
