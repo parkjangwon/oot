@@ -99,6 +99,7 @@ class MainActivity : ComponentActivity() {
                 var secureStorageAvailable by remember {
                     mutableStateOf(app.preferences.isSecureStorageAvailable)
                 }
+                var resetInProgress by remember { mutableStateOf(false) }
 
                 LaunchedEffect(updateState) {
                     val ready = updateState as? UpdateUiState.ReadyToInstall ?: return@LaunchedEffect
@@ -213,29 +214,37 @@ class MainActivity : ComponentActivity() {
                         },
                         onSettingsClick = { showSettings = true },
                         isSecureStorageAvailable = secureStorageAvailable,
+                        isResettingSecureStorage = resetInProgress,
                         snackbarHostState = snackbarHostState,
                         onResetSecureStorage = {
-                            lifecycleScope.launch {
-                                // Close the sign-in dialog: its pending callbacks are dropped by the reset.
-                                showAddDialog = false
-                                app.oauthManager.cancelPendingFlows()
-                                app.repository.onAccountsReset()
-                                val reset = withContext(Dispatchers.IO) {
-                                    app.preferences.resetSecureStorage()
+                            if (!resetInProgress) {
+                                resetInProgress = true
+                                lifecycleScope.launch {
+                                    try {
+                                        // Close the sign-in dialog: its pending callbacks are dropped by the reset.
+                                        showAddDialog = false
+                                        app.oauthManager.cancelPendingFlows()
+                                        app.repository.onAccountsReset()
+                                        val reset = withContext(Dispatchers.IO) {
+                                            app.preferences.resetSecureStorage()
+                                        }
+                                        // Again after the reset: a refresh started in the gap read the old accounts.
+                                        app.repository.onAccountsReset()
+                                        secureStorageAvailable = app.preferences.isSecureStorageAvailable
+                                        resetCount++
+                                        if (reset) showAddDialog = true
+                                        app.repository.refreshAll()
+                                        app.notificationManager.updateNotification(app.repository.vendorUsages.value)
+                                        snackbarHostState.showSnackbar(
+                                            getString(
+                                                if (reset) R.string.secure_storage_reset_done
+                                                else R.string.secure_storage_reset_failed,
+                                            ),
+                                        )
+                                    } finally {
+                                        resetInProgress = false
+                                    }
                                 }
-                                // Again after the reset: a refresh started in the gap read the old accounts.
-                                app.repository.onAccountsReset()
-                                secureStorageAvailable = app.preferences.isSecureStorageAvailable
-                                resetCount++
-                                if (reset) showAddDialog = true
-                                app.repository.refreshAll()
-                                app.notificationManager.updateNotification(app.repository.vendorUsages.value)
-                                snackbarHostState.showSnackbar(
-                                    getString(
-                                        if (reset) R.string.secure_storage_reset_done
-                                        else R.string.secure_storage_reset_failed,
-                                    ),
-                                )
                             }
                         },
                     )

@@ -2,6 +2,7 @@ package org.parkjw.apps.oot.ui.screens
 
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -23,12 +24,17 @@ class StorageResetTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private fun setDashboard(available: Boolean, onReset: () -> Unit = {}) {
+    private fun setDashboard(
+        available: Boolean,
+        isResettingSecureStorage: Boolean = false,
+        onReset: () -> Unit = {},
+    ) {
         composeRule.setContent {
             OotTheme {
                 DashboardScreen(
                     vendorUsages = emptyList(),
                     isSecureStorageAvailable = available,
+                    isResettingSecureStorage = isResettingSecureStorage,
                     snackbarHostState = remember { SnackbarHostState() },
                     onResetSecureStorage = onReset,
                 )
@@ -73,5 +79,12 @@ class StorageResetTest {
 
         assertFalse(reset)
         composeRule.onNodeWithText("저장소를 초기화할까요?").assertDoesNotExist()
+    }
+
+    @Test
+    fun `reset button is disabled while reset is in progress`() {
+        setDashboard(available = false, isResettingSecureStorage = true)
+
+        composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").assertIsNotEnabled()
     }
 }
