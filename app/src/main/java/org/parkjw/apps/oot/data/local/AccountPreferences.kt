@@ -40,7 +40,8 @@ class AccountPreferences(context: Context) {
         val savedOrder = decodeIdList(secureStorage.getString(KEY_ACCOUNT_ORDER, "[]") ?: "[]")
         val ordered = applyAccountOrder(decoded.accounts, savedOrder)
         _accounts.value = ordered
-        persistOrder(ordered.map { it.id })
+        // Skip the (synchronous) write when nothing changed: that is every launch after the first.
+        if (ordered.map { it.id } != savedOrder) persistOrder(ordered.map { it.id })
         if (decoded.droppedCount > 0) persistAccounts(ordered)
 
         val savedHidden = decodeIdList(secureStorage.getString(KEY_NOTIFICATION_HIDDEN, "[]") ?: "[]").toSet()
@@ -53,6 +54,7 @@ class AccountPreferences(context: Context) {
         _isAutoUpdateCheckEnabled.value = secureStorage.getString(KEY_AUTO_UPDATE_CHECK, "true")?.toBooleanStrictOrNull() ?: true
     }
 
+    @Synchronized
     fun saveAccount(account: ProviderAccount) {
         val current = _accounts.value.toMutableList()
         val index = current.indexOfFirst { it.id == account.id }
@@ -66,6 +68,7 @@ class AccountPreferences(context: Context) {
         persistOrder(current.map { it.id })
     }
 
+    @Synchronized
     fun deleteAccount(accountId: String) {
         val current = _accounts.value.filter { it.id != accountId }
         _accounts.value = current
@@ -74,6 +77,7 @@ class AccountPreferences(context: Context) {
         setShownInNotification(accountId, true) // drops the hidden id with its account
     }
 
+    @Synchronized
     fun setAccountOrder(accountIds: List<String>) {
         val ordered = applyAccountOrder(_accounts.value, accountIds)
         _accounts.value = ordered
@@ -81,6 +85,7 @@ class AccountPreferences(context: Context) {
         persistOrder(ordered.map { it.id })
     }
 
+    @Synchronized
     fun toggleAccount(accountId: String, isEnabled: Boolean) {
         val current = _accounts.value.map {
             if (it.id == accountId) it.copy(isEnabled = isEnabled) else it
@@ -119,9 +124,10 @@ class AccountPreferences(context: Context) {
         }
     }
 
+    // commit, not apply: a drag must survive a force-stop right after it. It also flushes the accounts write queued before it.
     private fun persistOrder(accountIds: List<String>) {
         try {
-            secureStorage.putString(KEY_ACCOUNT_ORDER, json.encodeToString(accountIds))
+            secureStorage.putStringNow(KEY_ACCOUNT_ORDER, json.encodeToString(accountIds))
         } catch (e: Exception) {
             e.printStackTrace()
         }

@@ -178,6 +178,10 @@ class MainActivity : ComponentActivity() {
                                 app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                             }
                         },
+                        onReorderVendors = { accountIds ->
+                            app.repository.applyAccountOrder(accountIds)
+                            app.notificationManager.updateNotification(app.repository.vendorUsages.value)
+                        },
                         onSettingsClick = { showSettings = true },
                     )
                 }
