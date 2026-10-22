@@ -174,7 +174,7 @@ class DashboardScreenshotTest {
         composeRule.setContent {
             OotTheme(darkTheme = darkTheme) {
                 DashboardScreen(
-                    vendorUsages = fakeVendorUsages + antigravityUsage,
+                    vendorUsages = fakeVendorUsages(openRouterKeyLimit = true) + antigravityUsage,
                     now = fixedNow,
                     modifier = Modifier.testTag("dashboard_root"),
                 )
