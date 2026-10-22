@@ -56,6 +56,7 @@
     <string name="notification_action_refresh">Refresh</string>
 
     <string name="exit_prompt">Press back again to exit</string>
+    <string name="secure_storage_unavailable">Secure storage could not be opened. Account changes may be lost when the app restarts.</string>
     <string name="toast_provider_added">%1$s added</string>
     <string name="toast_oauth_connected">%1$s connected</string>
     <string name="toast_auth_error">Sign-in failed: %1$s</string>

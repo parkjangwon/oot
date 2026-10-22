@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 // A restart is a new AccountPreferences over the same app storage (#61).
-// Robolectric has no Keystore, so SecureStorage uses its plain fallback file. Fake keys only.
+// Robolectric has no AndroidKeyStore, so the test helper stands in for the encrypted file. Fake keys only.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class AccountPreferencesPersistenceTest {
@@ -38,9 +38,9 @@ class AccountPreferencesPersistenceTest {
     )
 
     private fun prefsWith(vararg ids: String) =
-        AccountPreferences(context).also { prefs -> ids.forEach { prefs.saveAccount(account(it)) } }
+        testAccountPreferences(context).also { prefs -> ids.forEach { prefs.saveAccount(account(it)) } }
 
-    private fun restart() = AccountPreferences(context)
+    private fun restart() = testAccountPreferences(context)
 
     private fun AccountPreferences.ids() = accounts.value.map { it.id }
 
@@ -148,7 +148,7 @@ class AccountPreferencesPersistenceTest {
 
     @Test
     fun `a saved Antigravity account is dropped on load and the rest keep order and toggles`() {
-        val prefs = context.getSharedPreferences("oot_fallback_prefs", Application.MODE_PRIVATE)
+        val prefs = testEncryptedPrefs(context)
         val rawAccounts = """
             [
               {"id":"c","provider":"ZAI","name":"c","authType":"API_KEY","apiKey":"k","isEnabled":false},
@@ -163,7 +163,7 @@ class AccountPreferencesPersistenceTest {
             .putString("oot_notification_hidden", """["x","a"]""")
             .commit()
 
-        val loaded = AccountPreferences(context)
+        val loaded = testAccountPreferences(context)
         assertEquals(listOf("b", "c", "a"), loaded.ids())
         assertFalse(loaded.accounts.value.first { it.id == "c" }.isEnabled)
         assertTrue(loaded.accounts.value.first { it.id == "b" }.isEnabled)

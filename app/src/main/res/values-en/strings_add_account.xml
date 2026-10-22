@@ -25,7 +25,7 @@
     <string name="add_account_openai_waiting">Waiting for you to enter the code and approve it in the browser…</string>
     <string name="add_account_claude_title">Claude browser sign-in (5-hour and weekly limits)</string>
     <string name="add_account_claude_desc">Sign in with your Claude Pro/Max account to get the 5-hour rolling session, weekly usage, and reset time automatically.</string>
-    <string name="add_account_claude_login_browser">Sign in to Claude in your browser</string>
+    <string name="add_account_claude_login_browser">Sign in to Claude</string>
     <string name="add_account_claude_code_label">Auth code (code#state)</string>
     <string name="add_account_claude_code_placeholder">Paste the code shown in the browser</string>
     <string name="add_account_issue_register_token">Get a token and add</string>
