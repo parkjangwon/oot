@@ -152,7 +152,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 
     implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
 
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
