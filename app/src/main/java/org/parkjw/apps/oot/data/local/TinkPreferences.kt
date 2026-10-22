@@ -3,6 +3,7 @@ package org.parkjw.apps.oot.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.google.crypto.tink.Aead
@@ -74,31 +75,36 @@ internal fun openTinkPreferences(
     }
     val legacy = openLegacy(context) ?: return store
     val entries = mutableMapOf<String, String>()
-    var unreadable = false
-    for (key in legacy.all.filterValues { it is String }.keys) {
+    // The real store decrypts every entry in getAll, so one bad entry can fail here too.
+    val legacyKeys = runCatching { legacy.all.filterValues { it is String }.keys }.getOrNull()
+    var unreadable = legacyKeys == null
+    for (key in legacyKeys.orEmpty()) {
         // A value already in the Tink store (earlier partial run) is newer than the old copy: keep it.
-        if (store.getString(key, null) != null) continue
+        // A throwing read counts as not present, so the old value is copied over it.
+        if (runCatching { store.getString(key, null) }.getOrNull() != null) continue
         try {
             legacy.getString(key, null)?.let { entries[key] = it }
         } catch (e: Exception) {
             unreadable = true
+            // Key name only, never the value. The credential reset flow (#109) is the recovery path.
+            Log.w(TAG, "could not read old credential entry: $key")
         }
     }
     val editor = store.edit()
     entries.forEach { (key, value) -> editor.putString(key, value) }
-    if (!unreadable) editor.putString(MIGRATED_KEY, MIGRATED_VALUE)
     check(editor.commit()) { "could not write the migrated credentials" }
-    if (!entries.all { (key, value) -> store.getString(key, null) == value }) {
-        // No marker may survive unverified data: the next launch must migrate again.
-        runCatching { store.edit().remove(MIGRATED_KEY).commit() }
-        error("migrated credentials did not verify")
+    check(entries.all { (key, value) -> store.getString(key, null) == value }) {
+        "migrated credentials did not verify"
     }
     // Without the marker the old store stays, so nothing is lost; SecureStorage falls back to UNAVAILABLE.
     check(!unreadable) { "an old credential entry could not be read" }
+    // The marker is its own commit after the verified data: a crash before it leaves the old store intact.
+    check(store.edit().putString(MIGRATED_KEY, MIGRATED_VALUE).commit()) { "could not write the migration marker" }
     deleteLegacy(context)
     return store
 }
 
+private const val TAG = "TinkPreferences"
 private const val TINK_PREFS_NAME = "oot_tink_prefs"
 private const val KEYSET_PREFS_NAME = "oot_tink_keyset"
 private const val KEYSET_ALIAS = "oot_tink_keyset_entry"

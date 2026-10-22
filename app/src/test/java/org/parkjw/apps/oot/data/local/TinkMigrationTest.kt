@@ -143,30 +143,53 @@ class TinkMigrationTest {
     }
 
     @Test
-    fun `a failing marker removal still raises the verification error`() {
+    fun `a crash between the data commit and the marker keeps the old store and re-runs safely`() {
         seedOld()
-        val flaky = object : Aead {
-            override fun encrypt(plaintext: ByteArray, associatedData: ByteArray) = aead.encrypt(plaintext, associatedData)
-            override fun decrypt(ciphertext: ByteArray, associatedData: ByteArray) = "wrong".toByteArray()
-        }
-        val ctx = object : ContextWrapper(context) {
+        val before = HashMap(oldStore().all)
+        val crashing = object : ContextWrapper(context) {
             override fun getSharedPreferences(name: String, mode: Int): SharedPreferences {
                 val base = super.getSharedPreferences(name, mode)
                 if (name != "oot_tink_prefs") return base
                 return object : SharedPreferences by base {
-                    override fun edit(): SharedPreferences.Editor = object : SharedPreferences.Editor by base.edit() {
-                        override fun remove(key: String): SharedPreferences.Editor = throw IllegalStateException("remove failed")
+                    override fun edit(): SharedPreferences.Editor {
+                        val inner = base.edit()
+                        return object : SharedPreferences.Editor by inner {
+                            override fun putString(key: String, value: String?): SharedPreferences.Editor {
+                                if (key == "oot_tink_migrated") throw IllegalStateException("process died")
+                                inner.putString(key, value)
+                                return this
+                            }
+                        }
                     }
                 }
             }
         }
 
         try {
-            openTinkPreferences(ctx, openAead = { flaky }, openLegacy = { oldStore() }, deleteLegacy = {})
-            fail("expected the migration to fail")
+            openTinkPreferences(crashing, openAead = { aead }, openLegacy = { oldStore() }, deleteLegacy = {})
+            fail("expected the simulated crash")
         } catch (e: IllegalStateException) {
-            assertEquals("migrated credentials did not verify", e.message)
+            assertEquals("process died", e.message)
         }
+        assertEquals(before, HashMap(oldStore().all))
+        assertFalse(tinkFile().contains("oot_tink_migrated"))
+
+        val store = open()
+
+        assertTrue(store.getString("oot_accounts", null)!!.contains("sk-test-000"))
+        assertEquals("30", store.getString("oot_refresh_interval", null))
+        assertTrue(oldStore().all.isEmpty())
+    }
+
+    @Test
+    fun `a corrupt value already in the Tink store counts as not present`() {
+        seedOld()
+        tinkFile().edit().putString("oot_refresh_interval", "not-a-sealed-value").commit()
+
+        val store = open()
+
+        assertEquals("30", store.getString("oot_refresh_interval", null))
+        assertTrue(oldStore().all.isEmpty())
     }
 
     @Test

@@ -90,7 +90,7 @@ Release builds are signed in CI and cut from tags: a tag `vX.Y.Z` must match `ve
 
 ## Privacy & security
 
-Tokens and API keys are stored locally in encrypted storage (`EncryptedSharedPreferences`, Android Keystore). The app contains no analytics or telemetry — it only talks to the vendors you add and to GitHub Releases for update checks.
+Tokens and API keys are stored locally in encrypted storage (Tink AEAD with AES-256-GCM, keyset wrapped by the Android Keystore). The app contains no analytics or telemetry — it only talks to the vendors you add and to GitHub Releases for update checks.
 
 ## License
 
