@@ -1,6 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="ko">
     <string name="app_name" translatable="false">OOT</string>
-    <string name="app_full_name" translatable="false">OOT: Out of Tokens</string>
     <string name="notification_channel_name">AI 토큰·한도 모니터</string>
     <string name="notification_channel_desc">등록한 AI 프로바이더의 남은 한도와 잔액을 상태 표시줄에 계속 보여 줘요.</string>
     <string name="settings_section_update">업데이트</string>
