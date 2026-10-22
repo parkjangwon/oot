@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
                 val isRefreshing by app.repository.isRefreshing.collectAsState()
 
                 var showAddDialog by remember { mutableStateOf(false) }
+                var resetCount by remember { mutableStateOf(0) }
                 // Saveable so a language change (which recreates the activity) stays on Settings.
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 val context = LocalContext.current
@@ -225,6 +226,7 @@ class MainActivity : ComponentActivity() {
                                 // Again after the reset: a refresh started in the gap read the old accounts.
                                 app.repository.onAccountsReset()
                                 secureStorageAvailable = app.preferences.isSecureStorageAvailable
+                                resetCount++
                                 if (reset) showAddDialog = true
                                 app.repository.refreshAll()
                                 app.notificationManager.updateNotification(app.repository.vendorUsages.value)
@@ -239,7 +241,8 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                if (showAddDialog) {
+                // Keyed on the reset count so a dialog reopened after a reset never keeps pre-reset state.
+                if (showAddDialog) key(resetCount) {
                     AddAccountDialog(
                         onDismiss = { showAddDialog = false },
                         onStartOAuth = { provider ->

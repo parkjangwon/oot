@@ -11,6 +11,7 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,6 +27,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
@@ -114,7 +116,7 @@ class TokenSyncResetTest {
             val request = chain.request()
             if (request.url.encodedPath.endsWith("/v1/oauth/token")) {
                 entered.countDown()
-                gate.await(10, TimeUnit.SECONDS)
+                assertTrue(gate.await(10, TimeUnit.SECONDS))
                 fakeResponse(request, 200, """{"access_token":"at-new","refresh_token":"rt-new","expires_in":3600}""")
             } else {
                 usageRequests.incrementAndGet()
@@ -125,10 +127,47 @@ class TokenSyncResetTest {
 
         val refresh = thread { runBlocking { repo.refreshAll() } }
         assertTrue(entered.await(10, TimeUnit.SECONDS))
+        prefs.resetSecureStorage()
         repo.onAccountsReset()
         gate.countDown()
         refresh.join(10_000)
 
+        assertFalse(refresh.isAlive)
+        assertEquals(0, usageRequests.get())
+        assertTrue(repo.vendorUsages.value.isEmpty())
+    }
+
+    @Test
+    fun `a refresh that read accounts before a reset sends no usage request for a fresh token`() {
+        val prefs = testAccountPreferences(context).also { it.saveAccount(xaiAccount()) }
+        val entered = CountDownLatch(1)
+        val gate = CountDownLatch(1)
+        val armed = AtomicBoolean(false)
+        // The scheduler is consulted after the accounts were read and before the fetch: park there.
+        val scheduler = RefreshScheduler(clock = {
+            if (armed.get()) {
+                entered.countDown()
+                assertTrue(gate.await(10, TimeUnit.SECONDS))
+            }
+            Long.MAX_VALUE
+        })
+        scheduler.onRateLimited("xai", 0L, null)
+        armed.set(true)
+        val usageRequests = AtomicInteger()
+        val client = client { chain ->
+            usageRequests.incrementAndGet()
+            fakeResponse(chain.request(), 503, "{}")
+        }
+        val repo = TokenSyncRepository(prefs, OAuthManager(context, client, json), client, json, scheduler)
+
+        val refresh = thread { runBlocking { repo.refreshAll() } }
+        assertTrue(entered.await(10, TimeUnit.SECONDS))
+        prefs.resetSecureStorage()
+        repo.onAccountsReset()
+        gate.countDown()
+        refresh.join(10_000)
+
+        assertFalse(refresh.isAlive)
         assertEquals(0, usageRequests.get())
         assertTrue(repo.vendorUsages.value.isEmpty())
     }
@@ -155,7 +194,7 @@ class TokenSyncResetTest {
             val request = chain.request()
             if (request.url.encodedPath.endsWith("/v1/oauth/token")) {
                 entered.countDown()
-                gate.await(10, TimeUnit.SECONDS)
+                assertTrue(gate.await(10, TimeUnit.SECONDS))
                 fakeResponse(request, 200, """{"access_token":"at-new","refresh_token":"rt-new","expires_in":3600}""")
             } else {
                 usageRequests.incrementAndGet()
@@ -172,6 +211,7 @@ class TokenSyncResetTest {
         gate.countDown()
         refresh.join(10_000)
 
+        assertFalse(refresh.isAlive)
         assertEquals(0, usageRequests.get())
         assertTrue(repo.vendorUsages.value.isEmpty())
     }
