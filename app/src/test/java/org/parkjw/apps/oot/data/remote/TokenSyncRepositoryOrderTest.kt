@@ -27,6 +27,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
 // What the foreground service, the worker and the notification see after a drag and a "restart" (#61).
@@ -167,6 +168,191 @@ class TokenSyncRepositoryOrderTest {
 
         assertEquals(listOf("or", "glm", "ds"), repo.usageIds())
     }
+
+    // #96: the refreshed copy (with new tokens) must not re-add an account deleted while the refresh was in flight.
+    @Test
+    fun `a token refresh for a provider deleted mid-refresh does not bring it back after a restart`() {
+        val prefs = testAccountPreferences(context).also {
+            it.saveAccount(
+                ProviderAccount(
+                    id = "claude",
+                    provider = ProviderType.CLAUDE,
+                    name = "claude",
+                    authType = AuthType.OAUTH,
+                    accessToken = "at-old",
+                    refreshToken = "rt-old",
+                    tokenExpiresAt = 1L,
+                ),
+            )
+        }
+        val entered = CountDownLatch(1)
+        val gate = CountDownLatch(1)
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            val response = if (request.url.encodedPath.endsWith("/v1/oauth/token")) {
+                entered.countDown()
+                gate.await(10, TimeUnit.SECONDS)
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(
+                        """{"access_token":"at-new","refresh_token":"rt-new","expires_in":3600}"""
+                            .toResponseBody("application/json".toMediaType()),
+                    )
+                    .build()
+            } else {
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(503)
+                    .message("fake")
+                    .body("{}".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+            response
+        }.build()
+        val repo = repository(prefs, client)
+
+        val refresh = thread { runBlocking { repo.refreshAll() } }
+        assertTrue(entered.await(10, TimeUnit.SECONDS))
+        prefs.deleteAccount("claude")
+        gate.countDown()
+        refresh.join(10_000)
+
+        assertEquals(emptyList<String>(), repo.usageIds())
+        assertEquals(emptyList<String>(), testAccountPreferences(context).accounts.value.map { it.id })
+    }
+
+    // #96: a provider deleted while its token refresh is in flight is not asked for usage with the rotated token.
+    @Test
+    fun `a provider deleted during a token refresh is not asked for usage`() {
+        val prefs = testAccountPreferences(context).also {
+            it.saveAccount(
+                ProviderAccount(
+                    id = "claude",
+                    provider = ProviderType.CLAUDE,
+                    name = "claude",
+                    authType = AuthType.OAUTH,
+                    accessToken = "at-old",
+                    refreshToken = "rt-old",
+                    tokenExpiresAt = 1L,
+                ),
+            )
+        }
+        val entered = CountDownLatch(1)
+        val gate = CountDownLatch(1)
+        val usageRequests = AtomicInteger()
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            val response = if (request.url.encodedPath.endsWith("/v1/oauth/token")) {
+                entered.countDown()
+                gate.await(10, TimeUnit.SECONDS)
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(
+                        """{"access_token":"at-new","refresh_token":"rt-new","expires_in":3600}"""
+                            .toResponseBody("application/json".toMediaType()),
+                    )
+                    .build()
+            } else {
+                usageRequests.incrementAndGet()
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(503)
+                    .message("fake")
+                    .body("{}".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+            response
+        }.build()
+        val repo = repository(prefs, client)
+
+        val refresh = thread { runBlocking { repo.refreshAll() } }
+        assertTrue(entered.await(10, TimeUnit.SECONDS))
+        prefs.deleteAccount("claude")
+        gate.countDown()
+        refresh.join(10_000)
+
+        assertEquals(0, usageRequests.get())
+        assertEquals(emptyList<String>(), repo.usageIds())
+        assertEquals(emptyList<String>(), testAccountPreferences(context).accounts.value.map { it.id })
+    }
+
+    // #96: an OpenAI 401 refresh that finishes after the delete must not retry usage with the new token.
+    @Test
+    fun `an OpenAI 401 refresh for a provider deleted mid-refresh does not retry usage`() {
+        val prefs = testAccountPreferences(context).also {
+            it.saveAccount(
+                ProviderAccount(
+                    id = "openai",
+                    provider = ProviderType.OPENAI,
+                    name = "openai",
+                    authType = AuthType.OAUTH,
+                    accessToken = "at-old",
+                    refreshToken = "rt-old",
+                    tokenExpiresAt = Long.MAX_VALUE,
+                ),
+            )
+        }
+        val entered = CountDownLatch(1)
+        val gate = CountDownLatch(1)
+        val usageRequests = AtomicInteger()
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            val response = when {
+                request.url.encodedPath.endsWith("/oauth/token") -> {
+                    entered.countDown()
+                    gate.await(10, TimeUnit.SECONDS)
+                    Response.Builder()
+                        .request(request)
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body(
+                            """{"access_token":"at-new","refresh_token":"rt-new","expires_in":3600}"""
+                                .toResponseBody("application/json".toMediaType()),
+                        )
+                        .build()
+                }
+                request.url.encodedPath.endsWith("/wham/usage") -> {
+                    usageRequests.incrementAndGet()
+                    Response.Builder()
+                        .request(request)
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(401)
+                        .message("Unauthorized")
+                        .body("{}".toResponseBody("application/json".toMediaType()))
+                        .build()
+                }
+                else -> Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(503)
+                    .message("fake")
+                    .body("{}".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+            response
+        }.build()
+        val repo = repository(prefs, client)
+
+        val refresh = thread { runBlocking { repo.refreshAll() } }
+        assertTrue(entered.await(10, TimeUnit.SECONDS))
+        prefs.deleteAccount("openai")
+        gate.countDown()
+        refresh.join(10_000)
+
+        assertEquals(1, usageRequests.get())
+        assertEquals(emptyList<String>(), repo.usageIds())
+        assertEquals(emptyList<String>(), testAccountPreferences(context).accounts.value.map { it.id })
+    }
+
     // The "알림에 표시" toggle (#56) goes through the same committed storage and must survive the same restart.
     @Test
     fun `after a restart the notification keeps the drag order and leaves out hidden providers`() {
