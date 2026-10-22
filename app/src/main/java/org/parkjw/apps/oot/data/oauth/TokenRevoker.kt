@@ -4,8 +4,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.FormBody
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
@@ -41,7 +45,13 @@ class TokenRevoker(
         fun http(client: OkHttpClient): (String, Map<String, String>) -> Unit {
             val short = client.newBuilder().callTimeout(TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS).build()
             return { url, form ->
-                val body = FormBody.Builder().apply { form.forEach { (k, v) -> add(k, v) } }.build()
+                // OpenAI's own client sends JSON; other providers use the RFC 7009 form encoding.
+                val body = if (url.startsWith(OAuthManager.OPENAI_ISSUER)) {
+                    JsonObject(form.mapValues { JsonPrimitive(it.value) }).toString()
+                        .toRequestBody("application/json".toMediaType())
+                } else {
+                    FormBody.Builder().apply { form.forEach { (k, v) -> add(k, v) } }.build()
+                }
                 short.newCall(Request.Builder().url(url).post(body).build()).execute().close()
             }
         }

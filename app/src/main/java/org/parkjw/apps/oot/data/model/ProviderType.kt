@@ -48,7 +48,8 @@ enum class ProviderType(
         dashboardUrl = "https://platform.openai.com/api-keys",
         oauthAuthEndpoint = "https://auth.openai.com/authorize",
         oauthTokenEndpoint = "https://auth.openai.com/oauth/token",
-        defaultScopes = listOf("openid", "profile", "model.request")
+        defaultScopes = listOf("openid", "profile", "model.request"),
+        oauthRevocationEndpoint = "https://auth.openai.com/oauth/revoke"
     ),
     XAI(
         displayName = "xAI (Grok)",
@@ -59,7 +60,8 @@ enum class ProviderType(
         dashboardUrl = "https://console.x.ai",
         oauthAuthEndpoint = "https://accounts.x.ai/oauth2/device",
         oauthTokenEndpoint = "https://auth.x.ai/oauth2/token",
-        defaultScopes = listOf("openid", "profile", "email", "offline_access", "grok-cli:access", "api:access")
+        defaultScopes = listOf("openid", "profile", "email", "offline_access", "grok-cli:access", "api:access"),
+        oauthRevocationEndpoint = "https://auth.x.ai/oauth2/revoke"
     ),
     ZAI(
         displayName = "Z.ai (GLM)",

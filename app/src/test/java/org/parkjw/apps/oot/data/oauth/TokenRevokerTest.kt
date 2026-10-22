@@ -60,8 +60,10 @@ class TokenRevokerTest {
     }
 
     @Test
-    fun noProviderHasRevocationEndpointYet() {
-        // Only providers with a publicly documented endpoint may be listed; see docs/token-revocation.md.
-        assertTrue(ProviderType.values().all { it.oauthRevocationEndpoint == null })
+    fun onlyDocumentedProvidersHaveRevocationEndpoint() {
+        // Only providers with an officially documented endpoint may be listed; see docs/token-revocation.md.
+        val enabled = ProviderType.values().filter { it.oauthRevocationEndpoint != null }.toSet()
+        assertEquals(setOf(ProviderType.OPENAI, ProviderType.XAI), enabled)
+        assertTrue(enabled.all { it.oauthRevocationEndpoint!!.startsWith("https://") })
     }
 }
