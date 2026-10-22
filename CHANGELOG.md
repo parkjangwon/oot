@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-10-22
+
+### Changed
+- Credentials are only ever stored in the encrypted store. Data kept by older versions is moved into it once on update, so users stay signed in. If the store cannot be opened, the app runs from memory for that session and says so (#98).
+- Backup and device transfer exclude the credential store, so a restored device starts clean and asks you to sign in again instead of getting an unreadable store. Other settings are still backed up (#99).
+- Network traffic is https only. A custom endpoint must be an `https://` address, and an account that already stores an `http://` endpoint shows an error instead of sending requests (#101).
+- The add-account dialog is hidden from screenshots, screen recordings and the recent-apps preview. Key and code fields use a password keyboard without suggestions, and copied sign-in codes are marked sensitive on Android 13+ (#102).
+- The collapsed notification no longer adds '(이전값)' / '(previous)', so the bars keep their width; the expanded notification and the cards still mark stale values. Stale cards draw their usage bars dimmed (#108).
+- The English add-account button reads 'Get a key in Claude Console' and fits on one line (#108).
+
+### Fixed
+- Korean words no longer break in the middle in the add-account dialog (#97).
+- An account removed while its token was being refreshed no longer comes back (#100).
+- xAI weekly usage is read as a percentage: right after a weekly reset it no longer shows 0% left. When a refresh fails, cached values are marked with how old they are, and windows past their reset time are dropped (#106).
+
 ## [1.3.1] - 2026-10-22
 
 ### Changed
