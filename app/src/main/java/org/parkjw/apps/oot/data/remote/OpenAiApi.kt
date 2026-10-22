@@ -89,6 +89,9 @@ class OpenAiApi(
                         allowRefresh = false
                     )
                 }
+                resp.code == 429 -> {
+                    return rateLimitedTokenStatus(account, ProviderType.OPENAI, resp.header("Retry-After"))
+                }
                 else -> {
                     return errorStatus(account, openAiErrorText(mapOpenAiHttpError(resp.code)))
                 }
@@ -109,7 +112,7 @@ class OpenAiApi(
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     if (response.code == 429) {
-                        return@withContext rateLimitedTokenStatus(
+                        return rateLimitedTokenStatus(
                             account,
                             ProviderType.OPENAI,
                             response.header("Retry-After"),
