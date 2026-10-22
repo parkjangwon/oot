@@ -507,11 +507,11 @@ fun AddAccountDialog(
                             Text(
                                 when (selectedProvider) {
                                     ProviderType.ZAI -> stringResource(R.string.add_account_key_placeholder_zai)
-                                    ProviderType.OPENROUTER -> "sk-or-v1-..."
+                                    ProviderType.OPENROUTER -> stringResource(R.string.add_account_key_placeholder_openrouter)
                                     ProviderType.CLAUDE -> stringResource(R.string.add_account_key_placeholder_claude)
                                     ProviderType.OPENAI -> stringResource(R.string.add_account_key_placeholder_openai)
                                     ProviderType.XAI -> stringResource(R.string.add_account_key_placeholder_xai)
-                                    ProviderType.DEEPSEEK -> "sk-..."
+                                    ProviderType.DEEPSEEK -> stringResource(R.string.add_account_key_placeholder_deepseek)
                                     ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_key_placeholder_ollama_cloud)
                                     ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_key_placeholder_opencode_go)
                                 },

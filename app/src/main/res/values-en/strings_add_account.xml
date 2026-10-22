@@ -49,6 +49,8 @@
     <string name="add_account_key_placeholder_xai">xai-… API key</string>
     <string name="add_account_key_placeholder_ollama_cloud">Ollama Cloud API key</string>
     <string name="add_account_key_placeholder_opencode_go">OpenCode Go API key</string>
+    <string name="add_account_key_placeholder_openrouter">sk-or-v1-…</string>
+    <string name="add_account_key_placeholder_deepseek">sk-…</string>
     <string name="add_account_hide_key">Hide key</string>
     <string name="add_account_show_key">Show key</string>
 </resources>
