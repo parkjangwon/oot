@@ -5,6 +5,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import org.parkjw.apps.oot.R
@@ -17,6 +18,11 @@ val OotSansFamily = FontFamily(
 val OotMonoFamily = FontFamily(
     Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
 )
+
+/** Keeps Korean words whole when wrapping (no mid-word breaks, #92). */
+// Phrase word breaking keeps Korean words whole on Android 13+; older versions use default breaking.
+fun TextStyle.ootWordBreak(): TextStyle =
+    copy(lineBreak = LineBreak.Paragraph.copy(wordBreak = LineBreak.WordBreak.Phrase))
 
 val OotNumeric = TextStyle(
     fontFamily = OotMonoFamily,

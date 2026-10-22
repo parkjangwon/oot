@@ -56,6 +56,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.ColorFilter
@@ -96,6 +97,7 @@ import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.level
 import org.parkjw.apps.oot.data.model.toVendorUsage
+import org.parkjw.apps.oot.data.model.withStaleRollover
 import org.parkjw.apps.oot.ui.VendorLogo
 import org.parkjw.apps.oot.ui.theme.ButtonCorner
 import org.parkjw.apps.oot.ui.theme.CardCorner
@@ -258,7 +260,8 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(bottom = OotSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
             ) {
-                val leastItem = findLeastRemainingItem(orderedUsages)
+                val renderedUsages = orderedUsages.map { it.withStaleRollover(now) }
+                val leastItem = findLeastRemainingItem(renderedUsages)
                 if (leastItem != null) {
                     item(key = "summary_line") {
                         QuotaSummaryLine(
@@ -275,7 +278,7 @@ fun DashboardScreen(
                         EmptyAccountsBanner(onAddClick = onAddAccountClick)
                     }
                 } else {
-                    itemsIndexed(orderedUsages, key = { _, u -> u.accountId }) { index, usage ->
+                    itemsIndexed(renderedUsages, key = { _, u -> u.accountId }) { index, usage ->
                         val isDragged = activeDraggingId == usage.accountId
                         VendorCard(
                             usage = usage,
@@ -482,10 +485,10 @@ fun DashboardScreen(
     )
 }
 
-private fun findLeastRemainingItem(usages: List<VendorUsage>): Pair<VendorUsage, UsageWindow>? {
+internal fun findLeastRemainingItem(usages: List<VendorUsage>): Pair<VendorUsage, UsageWindow>? {
     return usages
         .asSequence()
-        .filter { it.error == null }
+        .filter { it.error == null && it.staleSince == null }
         .flatMap { vendor ->
             vendor.windows.asSequence()
                 .filter { it.remaining is Remaining.Percent }
@@ -495,6 +498,9 @@ private fun findLeastRemainingItem(usages: List<VendorUsage>): Pair<VendorUsage,
             (window.remaining as Remaining.Percent).percentLeft
         }
 }
+
+// Carried-over values keep their numbers but their bars fade, so a stale card does not read as current.
+internal fun staleBarAlpha(staleSince: Instant?): Float = if (staleSince != null) 0.6f else 1f
 
 @Composable
 fun QuotaSummaryLine(
@@ -574,6 +580,7 @@ fun VendorCard(
         .minByOrNull { (it.remaining as Remaining.Percent).percentLeft }
         ?.remaining
         ?.level
+    val barAlpha = staleBarAlpha(usage.staleSince)
 
     Surface(
         modifier = modifier
@@ -671,6 +678,7 @@ fun VendorCard(
                                         remainingPercent = rem.percentLeft,
                                         resetsAt = window.resetsAt,
                                         now = now,
+                                        barAlpha = barAlpha,
                                     )
                                 }
                                 is Remaining.Balance -> {
@@ -679,6 +687,7 @@ fun VendorCard(
                                             label = window.label,
                                             remaining = rem.amountLeft,
                                             currency = rem.currency,
+                                            barAlpha = barAlpha,
                                         )
                                     } else {
                                         BalanceRow(
@@ -702,6 +711,21 @@ fun VendorCard(
                     }
                 }
             }
+
+            // Values carried over from a failed refresh are marked so they are not read as current.
+            usage.staleSince?.let { staleSince ->
+                Text(
+                    text = withNumericSpans(
+                        stringResource(
+                            R.string.dashboard_stale_values,
+                            formatTimeAgo(LocalContext.current.resources, staleSince, now),
+                        ),
+                        SpanStyle(fontFamily = OotMonoFamily, letterSpacing = (-0.2).sp),
+                    ),
+                    style = MaterialTheme.typography.bodySmall.copy(lineBreak = WordWrapFriendly),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -713,6 +737,7 @@ fun LimitRow(
     resetsAt: Instant?,
     now: Instant,
     modifier: Modifier = Modifier,
+    barAlpha: Float = 1f,
 ) {
     val pctInt = remainingPercent.roundToInt().coerceIn(0, 100)
     val level = progressLevel(pctInt)
@@ -764,7 +789,8 @@ fun LimitRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(4.dp)
-                .clip(OotShapeTokens.pill),
+                .clip(OotShapeTokens.pill)
+                .alpha(barAlpha),
         )
 
         if (resetText != null) {
@@ -844,6 +870,7 @@ fun KeyLimitRow(
     remaining: Double,
     currency: String,
     modifier: Modifier = Modifier,
+    barAlpha: Float = 1f,
 ) {
     val limit = keyLimitFromLabel(label)
     val pctInt = limit?.takeIf { it > 0 }
@@ -883,7 +910,8 @@ fun KeyLimitRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
-                    .clip(OotShapeTokens.pill),
+                    .clip(OotShapeTokens.pill)
+                    .alpha(barAlpha),
             )
         }
     }
@@ -1269,6 +1297,18 @@ fun vendorErrorShortText(res: Resources, error: VendorError): String = when (err
     is VendorError.Http -> res.getString(R.string.dashboard_error_http, error.code)
     is VendorError.Unknown -> error.message?.takeIf { it.isNotBlank() }
         ?: res.getString(R.string.dashboard_error_unknown)
+}
+
+fun formatTimeAgo(res: Resources, since: Instant, now: Instant): String {
+    val seconds = (now.epochSecond - since.epochSecond).coerceAtLeast(0)
+    val totalMinutes = ((seconds + 30) / 60).coerceAtLeast(1)
+    val days = totalMinutes / (60 * 24)
+    val hours = (totalMinutes % (60 * 24)) / 60
+    return when {
+        days >= 1 -> res.getString(R.string.time_ago_days, days)
+        hours >= 1 -> res.getString(R.string.time_ago_hours, hours)
+        else -> res.getString(R.string.time_ago_minutes, totalMinutes)
+    }
 }
 
 fun formatTimeToReset(res: Resources, resetsAt: Instant?, now: Instant): String? {

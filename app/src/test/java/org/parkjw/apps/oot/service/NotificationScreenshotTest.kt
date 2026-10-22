@@ -147,6 +147,45 @@ class NotificationScreenshotTest {
         captureExpanded(412, "notif-expanded-412-light-3x-claude-hidden.png", hidden = setOf("demo-claude"))
     }
 
+    // 429/backoff still shows the last values: the text fallback and expanded row mark them "(이전값)",
+    // the one-line collapsed row stays bare so it does not ellipsize (#107).
+    private fun staleUsages(): List<VendorUsage> =
+        fakeUsages().map { usage ->
+            if (usage.accountId == "demo-claude") {
+                usage.copy(staleSince = Instant.now().minusSeconds(2 * 3600))
+            } else {
+                usage
+            }
+        }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifCollapsed412Light3xStale() {
+        captureCollapsed(412, "notif-collapsed-412-light-3x-stale.png", usages = staleUsages())
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifExpanded412Light3xStale() {
+        captureExpanded(412, "notif-expanded-412-light-3x-stale.png", usages = staleUsages())
+    }
+
+    @Test
+    fun staleRowsSayPreviousInTheExpandedFormAndText() {
+        val notification = buildNotification(usages = staleUsages())
+        assertEquals(
+            "Claude 62% (이전값) · GLM 98% · xAI 14% · OpenRouter $7.60",
+            notification.contentText(),
+        )
+        val collapsed = applyToNewActivity(notification.contentView!!)
+        assertEquals("62% 남음", collapsed.findViewById<android.widget.TextView>(R.id.label0).text.toString())
+        val expanded = applyToNewActivity(notification.bigContentView!!)
+        assertEquals(
+            "5H 62% 남음 · 1시간 40분 후 (이전값)",
+            expanded.findViewById<android.widget.TextView>(R.id.text0).text.toString(),
+        )
+    }
+
     @Test
     fun hiddenVendorsLeaveEveryNotificationForm() {
         val hiddenClaude = buildNotification(hidden = setOf("demo-claude"))
@@ -259,9 +298,10 @@ class NotificationScreenshotTest {
         widthDp: Int,
         fileName: String,
         hidden: Set<String> = emptySet(),
+        usages: List<VendorUsage> = fakeUsages(),
         language: AppLanguage = AppLanguage.KOREAN,
     ) {
-        val notification = buildNotification(hidden, language = language)
+        val notification = buildNotification(hidden, usages = usages, language = language)
         capture(notification.contentView!!, widthDp, fileName)
     }
 
@@ -269,9 +309,10 @@ class NotificationScreenshotTest {
         widthDp: Int,
         fileName: String,
         hidden: Set<String> = emptySet(),
+        usages: List<VendorUsage> = fakeUsages(),
         language: AppLanguage = AppLanguage.KOREAN,
     ) {
-        val notification = buildNotification(hidden, language = language)
+        val notification = buildNotification(hidden, usages = usages, language = language)
         capture(notification.bigContentView!!, widthDp, fileName)
     }
 

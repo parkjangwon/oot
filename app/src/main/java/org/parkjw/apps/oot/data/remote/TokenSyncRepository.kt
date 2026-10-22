@@ -15,6 +15,7 @@ import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorUsage
+import org.parkjw.apps.oot.data.model.asStale
 import org.parkjw.apps.oot.data.model.toVendorUsage
 import org.parkjw.apps.oot.data.oauth.OAuthManager
 import org.parkjw.apps.oot.i18n.AppText
@@ -29,8 +30,8 @@ class TokenSyncRepository(
     private val openRouterApi = OpenRouterApi(client, json)
     private val xaiApi = XaiApi(client, json)
     private val zaiApi = ZaiApi(client, json)
-    private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.saveAccount(it) }
-    private val openAiApi = OpenAiApi(client, json, oauthManager) { preferences.saveAccount(it) }
+    private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.updateAccountIfPresent(it) }
+    private val openAiApi = OpenAiApi(client, json, oauthManager) { preferences.updateAccountIfPresent(it) }
     private val deepSeekApi = DeepSeekApi(client, json)
     private val ollamaCloudApi = OllamaCloudApi(client, json)
     private val openCodeGoApi = OpenCodeGoApi(client, json)
@@ -66,12 +67,14 @@ class TokenSyncRepository(
         val deferreds = activeAccounts.map { account ->
             async {
                 if (!refreshScheduler.shouldFetch(account.id)) {
-                    return@async previous[account.id] ?: skippedBackoffStatus(account)
+                    // Backoff: the previous values are shown again, so they must be marked stale.
+                    return@async previous[account.id]?.asStale() ?: skippedBackoffStatus(account)
                 }
                 val updatedAccount = if (account.authType == AuthType.OAUTH && account.isTokenExpired) {
                     val refreshed = oauthManager.refreshTokenIfNeeded(account)
-                    if (refreshed != account) {
-                        preferences.saveAccount(refreshed)
+                    // Removed while the token refresh was in flight: no usage call with the rotated token.
+                    if (refreshed != account && !preferences.updateAccountIfPresent(refreshed)) {
+                        return@async null
                     }
                     refreshed
                 } else {
@@ -91,7 +94,7 @@ class TokenSyncRepository(
             }
         }
 
-        val results = deferreds.awaitAll()
+        val results = deferreds.awaitAll().filterNotNull()
         // Order by what is saved now, not at the start: the user may have dragged while requests were in flight.
         val byId = results.associateBy { it.accountId }
         val ordered = preferences.accounts.value.mapNotNull { byId[it.id] }

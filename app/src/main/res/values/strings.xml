@@ -48,6 +48,9 @@
     <string name="time_in_hours_minutes">%1$d시간 %2$d분 후</string>
     <string name="time_in_minutes">%1$d분 후</string>
     <string name="time_reset_soon">곧 리셋</string>
+    <string name="time_ago_minutes">%1$d분</string>
+    <string name="time_ago_hours">%1$d시간</string>
+    <string name="time_ago_days">%1$d일</string>
     <string name="window_five_hour">5시간</string>
     <string name="window_weekly">주간</string>
     <string name="window_monthly">월간</string>
@@ -64,6 +67,7 @@
 
     <!-- Main activity -->
     <string name="exit_prompt">한 번 더 누르면 종료돼요</string>
+    <string name="secure_storage_unavailable">보안 저장소를 열지 못했어요. 지금 바꾼 계정 정보는 앱을 다시 열면 사라질 수 있어요.</string>
     <string name="toast_provider_added">%1$s 프로바이더를 등록했어요.</string>
     <string name="toast_oauth_connected">%1$s 연동을 마쳤어요.</string>
     <string name="toast_auth_error">인증 오류: %1$s</string>

@@ -9,15 +9,23 @@ import androidx.compose.ui.test.onNodeWithText
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.roborazziSystemPropertyOutputDirectory
+import kotlinx.serialization.json.Json
 import org.junit.Rule
 import java.io.File
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.parkjw.apps.oot.data.model.AuthType
+import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
+import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.model.VendorUsage
+import org.parkjw.apps.oot.data.model.toVendorUsage
+import org.parkjw.apps.oot.data.remote.parseXaiBilling
+import org.parkjw.apps.oot.data.remote.rateLimitedTokenStatus
+import org.parkjw.apps.oot.data.remote.toUsageWindows
 import org.parkjw.apps.oot.ui.theme.OotTheme
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -145,6 +153,128 @@ class DashboardScreenshotTest {
             ),
         ),
     )
+
+    // #105: right after a weekly reset xAI reports creditUsagePercent = 1, i.e. 1% used (99% left).
+    private fun xaiRightAfterWeeklyReset(): VendorUsage {
+        val billing = parseXaiBilling(
+            """{"config":{"currentPeriod":{"type":"USAGE_PERIOD_TYPE_WEEKLY","start":"2026-10-21T00:00:00Z","end":"2026-10-28T00:00:00Z"},"creditUsagePercent":1}}""",
+            Json,
+        )!!
+        return VendorUsage(
+            accountId = "xai-1",
+            providerType = ProviderType.XAI,
+            displayName = "xAI",
+            windows = billing.toUsageWindows(),
+        )
+    }
+
+    // The last good Claude snapshot after a 429: its windows are still in the future, but the values are stale.
+    private fun claudeAfterFailedRefresh(): VendorUsage {
+        val account = ProviderAccount(
+            id = "claude-1",
+            provider = ProviderType.CLAUDE,
+            name = "Claude",
+            authType = AuthType.OAUTH,
+            accessToken = "at-test-000",
+        )
+        val cached = TokenStatus(
+            accountId = "claude-1",
+            provider = ProviderType.CLAUDE,
+            accountName = "Claude",
+            remainingFormatted = "62% 남음",
+            statusSummary = "62% 남음",
+            lastUpdated = fixedNow.minus(Duration.ofHours(2)).toEpochMilli(),
+            windows = listOf(
+                UsageWindow(
+                    id = "five_hour",
+                    label = "5h",
+                    remaining = Remaining.Percent(62.0),
+                    resetsAt = fixedNow.plus(Duration.ofHours(1).plusMinutes(40)),
+                ),
+                UsageWindow(
+                    id = "seven_day",
+                    label = "7d",
+                    remaining = Remaining.Percent(81.0),
+                    resetsAt = fixedNow.plus(Duration.ofDays(3)),
+                ),
+            ),
+        )
+        return rateLimitedTokenStatus(
+            account,
+            retryAfterHeader = null,
+            cached = cached,
+            nowMs = fixedNow.toEpochMilli(),
+        ).toVendorUsage(fixedNow)
+    }
+
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1300dp-notnight-xxhdpi")
+    fun xaiAfterWeeklyReset() = captureXaiAfterReset(darkTheme = false, fileName = "xai-after-weekly-reset-light.png")
+
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1300dp-night-xxhdpi")
+    fun xaiAfterWeeklyResetDark() = captureXaiAfterReset(darkTheme = true, fileName = "xai-after-weekly-reset-dark.png")
+
+    private fun captureXaiAfterReset(darkTheme: Boolean, fileName: String) {
+        composeRule.setContent {
+            OotTheme(darkTheme = darkTheme) {
+                DashboardScreen(
+                    vendorUsages = listOf(xaiRightAfterWeeklyReset(), claudeAfterFailedRefresh()),
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("xAI").assertExists()
+        // 1% used, so 99% left and no danger badge.
+        composeRule.onNodeWithText("99% 남음").assertExists()
+        composeRule.onNodeWithText("위험").assertDoesNotExist()
+        composeRule.onNodeWithText("2시간 전 값이에요", substring = true).assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), fileName),
+        )
+    }
+
+    // A failed refresh after a success keeps the last values but marks them stale.
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1300dp-notnight-xxhdpi")
+    fun staleAfterRefreshFailure() =
+        captureStale(darkTheme = false, fileName = "stale-after-refresh-failure-light.png")
+
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1300dp-night-xxhdpi")
+    fun staleAfterRefreshFailureDark() =
+        captureStale(darkTheme = true, fileName = "stale-after-refresh-failure-dark.png")
+
+    @Test
+    @Config(qualifiers = "en-w412dp-h1300dp-notnight-xxhdpi")
+    fun staleAfterRefreshFailureEnglish() =
+        captureStale(darkTheme = false, fileName = "stale-after-refresh-failure-light-en.png", english = true)
+
+    private fun captureStale(darkTheme: Boolean, fileName: String, english: Boolean = false) {
+        composeRule.setContent {
+            OotTheme(darkTheme = darkTheme) {
+                DashboardScreen(
+                    vendorUsages = listOf(claudeAfterFailedRefresh(), xaiRightAfterWeeklyReset()),
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        // The cached snapshot is still shown, with the time of the last successful fetch.
+        if (english) {
+            composeRule.onNodeWithText("62% left").assertExists()
+            composeRule.onNodeWithText("99% left").assertExists()
+            composeRule.onNodeWithText("Values from 2h ago", substring = true).assertExists()
+        } else {
+            composeRule.onNodeWithText("62% 남음").assertExists()
+            composeRule.onNodeWithText("99% 남음").assertExists()
+            composeRule.onNodeWithText("2시간 전 값이에요", substring = true).assertExists()
+        }
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), fileName),
+        )
+    }
 
     // Nothing registered: 해요체 title, same as the notification's empty state.
     @Test

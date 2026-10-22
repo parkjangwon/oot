@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class AccountPreferencesNotificationTest {
 
-    private fun preferences() = AccountPreferences(RuntimeEnvironment.getApplication())
+    private fun preferences() = testAccountPreferences(RuntimeEnvironment.getApplication())
 
     private fun account(id: String) = ProviderAccount(
         id = id,

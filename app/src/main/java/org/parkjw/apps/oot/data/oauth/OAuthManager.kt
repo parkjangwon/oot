@@ -1,6 +1,5 @@
 package org.parkjw.apps.oot.data.oauth
 
-import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -118,7 +117,7 @@ class OAuthManager(
                 // Copy user code to clipboard for convenience
                 withContext(Dispatchers.Main) {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("xAI Verification Code", userCode))
+                    clipboard.setPrimaryClip(sensitiveClip("xAI Verification Code", userCode))
                     onCodeReceived(userCode, verificationUrl)
                 }
 
@@ -260,7 +259,7 @@ class OAuthManager(
                 val verificationUrl = "$issuer/codex/device"
                 withContext(Dispatchers.Main) {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("OpenAI Verification Code", userCode))
+                    clipboard.setPrimaryClip(sensitiveClip("OpenAI Verification Code", userCode))
                     onCodeReceived(userCode, verificationUrl)
                 }
                 openExternalBrowser(verificationUrl)

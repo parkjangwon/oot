@@ -15,6 +15,7 @@ object TestNotificationStrings {
         inHours = "%1\$d시간 후",
         inHoursMinutes = "%1\$d시간 %2\$d분 후",
         inMinutes = "%1\$d분 후",
+        previousValue = "(이전값)",
     )
 
     val EN = NotificationStrings(
@@ -30,5 +31,6 @@ object TestNotificationStrings {
         inHours = "in %1\$dh",
         inHoursMinutes = "in %1\$dh %2\$dm",
         inMinutes = "in %1\$dm",
+        previousValue = "(previous)",
     )
 }

@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 // A restart is a new AccountPreferences over the same app storage (#61).
-// Robolectric has no Keystore, so SecureStorage uses its plain fallback file. Fake keys only.
+// Robolectric has no AndroidKeyStore, so the test helper stands in for the encrypted file. Fake keys only.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class AccountPreferencesPersistenceTest {
@@ -38,9 +38,9 @@ class AccountPreferencesPersistenceTest {
     )
 
     private fun prefsWith(vararg ids: String) =
-        AccountPreferences(context).also { prefs -> ids.forEach { prefs.saveAccount(account(it)) } }
+        testAccountPreferences(context).also { prefs -> ids.forEach { prefs.saveAccount(account(it)) } }
 
-    private fun restart() = AccountPreferences(context)
+    private fun restart() = testAccountPreferences(context)
 
     private fun AccountPreferences.ids() = accounts.value.map { it.id }
 
@@ -89,6 +89,43 @@ class AccountPreferencesPersistenceTest {
     }
 
     @Test
+    fun `a refresh update keeps the order, the name and the enable toggle`() {
+        val prefs = prefsWith("a", "b", "c")
+        prefs.setAccountOrder(listOf("c", "a", "b"))
+        prefs.saveAccount(account("a").copy(name = "Renamed"))
+        prefs.toggleAccount("a", false)
+
+        // The copy a refresh started from still says name "a" and enabled.
+        val refreshed = account("a").copy(accessToken = "at-new", refreshToken = "rt-new", tokenExpiresAt = 123L)
+        assertTrue(prefs.updateAccountIfPresent(refreshed))
+
+        assertEquals(listOf("c", "a", "b"), prefs.ids())
+        val updated = prefs.accounts.value.first { it.id == "a" }
+        assertEquals("Renamed", updated.name)
+        assertFalse(updated.isEnabled)
+        assertEquals("at-new", updated.accessToken)
+        assertEquals(123L, updated.tokenExpiresAt)
+
+        val restarted = restart()
+        assertEquals(listOf("c", "a", "b"), restarted.ids())
+        val stored = restarted.accounts.value.first { it.id == "a" }
+        assertEquals("Renamed", stored.name)
+        assertFalse(stored.isEnabled)
+        assertEquals("at-new", stored.accessToken)
+    }
+
+    @Test
+    fun `a refresh for a deleted provider writes nothing and does not re-add it`() {
+        val prefs = prefsWith("a", "b")
+        prefs.deleteAccount("a")
+
+        assertFalse(prefs.updateAccountIfPresent(account("a").copy(accessToken = "at-new")))
+
+        assertEquals(listOf("b"), prefs.ids())
+        assertEquals(listOf("b"), restart().ids())
+    }
+
+    @Test
     fun `disabling and enabling a provider keeps the order`() {
         val prefs = prefsWith("a", "b", "c")
         prefs.setAccountOrder(listOf("c", "a", "b"))
@@ -111,7 +148,7 @@ class AccountPreferencesPersistenceTest {
 
     @Test
     fun `a saved Antigravity account is dropped on load and the rest keep order and toggles`() {
-        val prefs = context.getSharedPreferences("oot_fallback_prefs", Application.MODE_PRIVATE)
+        val prefs = testEncryptedPrefs(context)
         val rawAccounts = """
             [
               {"id":"c","provider":"ZAI","name":"c","authType":"API_KEY","apiKey":"k","isEnabled":false},
@@ -126,7 +163,7 @@ class AccountPreferencesPersistenceTest {
             .putString("oot_notification_hidden", """["x","a"]""")
             .commit()
 
-        val loaded = AccountPreferences(context)
+        val loaded = testAccountPreferences(context)
         assertEquals(listOf("b", "c", "a"), loaded.ids())
         assertFalse(loaded.accounts.value.first { it.id == "c" }.isEnabled)
         assertTrue(loaded.accounts.value.first { it.id == "b" }.isEnabled)
@@ -155,7 +192,7 @@ class AccountPreferencesPersistenceTest {
             }
         }
         armed.set(true)
-        val refresh = thread { prefs.saveAccount(account("b").copy(accessToken = "at-new")) }
+        val refresh = thread { prefs.updateAccountIfPresent(account("b").copy(accessToken = "at-new")) }
         assertTrue(paused.await(10, TimeUnit.SECONDS))
         val reorder = thread { prefs.setAccountOrder(listOf("c", "b", "a")) }
         Thread.sleep(200) // long enough for an unlocked reorder to finish

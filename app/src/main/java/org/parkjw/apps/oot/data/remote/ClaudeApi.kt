@@ -24,7 +24,7 @@ class ClaudeApi(
     private val client: OkHttpClient,
     private val json: Json,
     private val oauthManager: OAuthManager,
-    private val onAccountRefreshed: (ProviderAccount) -> Unit
+    private val onAccountRefreshed: (ProviderAccount) -> Boolean
 ) {
     // accountId -> last successful usage status, reused when /api/oauth/usage returns 429
     private val lastGoodUsage = HashMap<String, TokenStatus>()
@@ -175,7 +175,10 @@ class ClaudeApi(
                         Log.w(TAG, "token refresh failed -> Unauthorized")
                         return errorStatus(account, claudeErrorText(VendorError.Unauthorized))
                     }
-                    onAccountRefreshed(refreshed)
+                    if (!onAccountRefreshed(refreshed)) {
+                        Log.w(TAG, "account removed during token refresh -> Unauthorized")
+                        return errorStatus(account, claudeErrorText(VendorError.Unauthorized))
+                    }
                     Log.i(TAG, "token refresh ok, retrying usage once")
                     return fetchUsageStatus(
                         refreshed,
