@@ -11,6 +11,7 @@
     <string name="settings_persistent_notification_desc">남은 양을 알림창에 계속 보여 줘요</string>
     <string name="settings_refresh_interval">새로 고침 간격</string>
     <string name="settings_refresh_interval_minutes">%1$d분</string>
+    <string name="settings_refresh_interval_battery_note">짧은 간격은 배터리를 더 써요</string>
     <string name="settings_version">버전</string>
     <string name="settings_source_code">GitHub</string>
     <string name="update_check">업데이트 확인</string>

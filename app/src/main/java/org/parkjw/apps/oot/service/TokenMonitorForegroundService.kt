@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.parkjw.apps.oot.OotApp
@@ -20,6 +21,7 @@ class TokenMonitorForegroundService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
     private var syncJob: Job? = null
+    private var intervalWatchJob: Job? = null
 
     private val app by lazy { applicationContext as OotApp }
 
@@ -38,50 +40,65 @@ class TokenMonitorForegroundService : Service() {
             startForeground(TokenNotificationManager.NOTIFICATION_ID, initialNotification)
         }
 
-        startPeriodicSync()
+        intervalWatchJob = serviceScope.launch {
+            app.preferences.refreshIntervalMinutes.collectLatest { minutes ->
+                applySyncStrategy(minutes)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_REFRESH -> {
-                serviceScope.launch {
-                    app.repository.refreshAll()
-                    app.notificationManager.updateNotification(app.repository.vendorUsages.value)
-                }
+                serviceScope.launch { refreshOnce() }
             }
             ACTION_STOP -> {
+                stopPeriodicSync()
+                TokenRefreshWork.cancel(this)
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
             else -> {
-                // Trigger immediate initial check
-                serviceScope.launch {
-                    app.repository.refreshAll()
-                    app.notificationManager.updateNotification(app.repository.vendorUsages.value)
-                }
+                serviceScope.launch { refreshOnce() }
             }
         }
         return START_STICKY
     }
 
-    private fun startPeriodicSync() {
-        syncJob?.cancel()
-        syncJob = serviceScope.launch {
-            while (isActive) {
-                val intervalMinutes = app.preferences.refreshIntervalMinutes.value.coerceAtLeast(1)
-                delay(intervalMinutes * 60 * 1000L)
-
-                app.repository.refreshAll()
-                app.notificationManager.updateNotification(app.repository.vendorUsages.value)
+    private fun applySyncStrategy(intervalMinutes: Int) {
+        val minutes = intervalMinutes.coerceAtLeast(1)
+        stopPeriodicSync()
+        if (TokenRefreshWork.usesShortInterval(minutes)) {
+            TokenRefreshWork.cancel(this)
+            syncJob = serviceScope.launch {
+                while (isActive) {
+                    delay(minutes * 60_000L)
+                    refreshOnce()
+                }
             }
+        } else {
+            TokenRefreshWork.enqueue(this, minutes)
         }
+    }
+
+    private fun stopPeriodicSync() {
+        syncJob?.cancel()
+        syncJob = null
+    }
+
+    private suspend fun refreshOnce() {
+        app.repository.refreshAll()
+        app.notificationManager.updateNotification(app.repository.vendorUsages.value)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        super.onDestroy()
+        stopPeriodicSync()
+        intervalWatchJob?.cancel()
+        TokenRefreshWork.cancel(this)
         serviceScope.cancel()
+        super.onDestroy()
     }
 
     companion object {

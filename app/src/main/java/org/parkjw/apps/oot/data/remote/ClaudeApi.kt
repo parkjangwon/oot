@@ -174,7 +174,11 @@ class ClaudeApi(
                 }
                 resp.code == 429 -> {
                     Log.w(TAG, "usage 429 rate limited, cached=${lastGoodUsage.containsKey(account.id)}")
-                    return claudeRateLimitedStatus(account, lastGoodUsage[account.id])
+                    return claudeRateLimitedStatus(
+                        account,
+                        lastGoodUsage[account.id],
+                        resp.header("Retry-After"),
+                    )
                 }
                 else -> {
                     val error = mapClaudeHttpError(resp.code)

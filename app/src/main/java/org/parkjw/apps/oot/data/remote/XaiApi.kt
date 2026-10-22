@@ -94,6 +94,13 @@ class XaiApi(
 
             client.newCall(modelsReq).execute().use { response ->
                 if (!response.isSuccessful) {
+                    if (response.code == 429) {
+                        return@withContext rateLimitedTokenStatus(
+                            account,
+                            ProviderType.XAI,
+                            response.header("Retry-After"),
+                        )
+                    }
                     return@withContext TokenStatus(
                         accountId = account.id,
                         provider = ProviderType.XAI,

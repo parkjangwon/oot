@@ -41,7 +41,12 @@ class AntigravityApi(
         }
         when (val outcome = result) {
             is AntigravityQuotaResult.Success -> successStatus(account, outcome.windows)
-            is AntigravityQuotaResult.Failure -> errorStatus(account, claudeErrorText(outcome.error))
+            is AntigravityQuotaResult.Failure ->
+                if (outcome.error == VendorError.RateLimited) {
+                    rateLimitedTokenStatus(account, ProviderType.ANTIGRAVITY, retryAfterHeader = null)
+                } else {
+                    errorStatus(account, claudeErrorText(outcome.error))
+                }
         }
     }
 
