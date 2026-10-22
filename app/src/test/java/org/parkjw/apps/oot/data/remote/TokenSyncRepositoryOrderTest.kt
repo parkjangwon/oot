@@ -15,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.parkjw.apps.oot.data.local.AccountPreferences
+import org.parkjw.apps.oot.data.local.testAccountPreferences
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
@@ -54,7 +55,7 @@ class TokenSyncRepositoryOrderTest {
     )
 
     private fun prefsWithAll() =
-        AccountPreferences(context).also { prefs -> providers.keys.forEach { prefs.saveAccount(account(it)) } }
+        testAccountPreferences(context).also { prefs -> providers.keys.forEach { prefs.saveAccount(account(it)) } }
 
     private fun clientAnswering503(onRequest: () -> Unit = {}) = OkHttpClient.Builder()
         .addInterceptor { chain ->
@@ -84,7 +85,7 @@ class TokenSyncRepositoryOrderTest {
 
         assertEquals(dragged, repo.usageIds())
         assertEquals(dragged, repo.statuses.value.map { it.accountId })
-        assertEquals(dragged, AccountPreferences(context).accounts.value.map { it.id })
+        assertEquals(dragged, testAccountPreferences(context).accounts.value.map { it.id })
     }
 
     @Test
@@ -92,7 +93,7 @@ class TokenSyncRepositoryOrderTest {
         repository(prefsWithAll()).applyAccountOrder(dragged)
 
         // Force-stop and relaunch: the service, the worker and the screen all start from a new AccountPreferences.
-        val restarted = repository(AccountPreferences(context))
+        val restarted = repository(testAccountPreferences(context))
         runBlocking { restarted.refreshAll() }
         val usages = restarted.vendorUsages.value
 
@@ -173,7 +174,7 @@ class TokenSyncRepositoryOrderTest {
         repository(prefs).applyAccountOrder(dragged)
         prefs.setShownInNotification("ds", false)
 
-        val restartedPrefs = AccountPreferences(context)
+        val restartedPrefs = testAccountPreferences(context)
         val restarted = repository(restartedPrefs)
         runBlocking { restarted.refreshAll() }
 
@@ -197,7 +198,7 @@ class TokenSyncRepositoryOrderTest {
         prefs.setShownInNotification("glm", true)
         prefs.saveAccount(ProviderAccount(id = "ds2", provider = ProviderType.DEEPSEEK, name = "ds2", authType = AuthType.API_KEY, apiKey = "sk-test-000"))
 
-        val restartedPrefs = AccountPreferences(context)
+        val restartedPrefs = testAccountPreferences(context)
         val restarted = repository(restartedPrefs)
         runBlocking { restarted.refreshAll() }
 
@@ -210,7 +211,7 @@ class TokenSyncRepositoryOrderTest {
         val prefs = prefsWithAll()
         providers.keys.forEach { prefs.setShownInNotification(it, false) }
 
-        val restartedPrefs = AccountPreferences(context)
+        val restartedPrefs = testAccountPreferences(context)
         val restarted = repository(restartedPrefs)
         runBlocking { restarted.refreshAll() }
 
