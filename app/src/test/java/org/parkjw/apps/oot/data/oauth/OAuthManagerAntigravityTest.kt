@@ -17,6 +17,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.parkjw.apps.oot.data.model.AuthType
@@ -67,7 +68,14 @@ class OAuthManagerAntigravityTest {
 
     private fun startLogin(manager: OAuthManager): android.net.Uri {
         manager.startAntigravityOAuthFlow({ tokens += it }, { errors += it })
-        return shadowOf(context).nextStartedActivity.data!!
+        val started = checkNotNull(shadowOf(context).nextStartedActivity) { "browser not opened, errors=$errors" }
+        return started.data!!
+    }
+
+    // A listener still closing from one test must not take the port away from the next.
+    @After
+    fun waitForPortReleased() {
+        waitFor { portIsFree() }
     }
 
     private fun portIsFree(): Boolean =
@@ -267,8 +275,9 @@ class OAuthManagerAntigravityTest {
         val result = runBlocking { manager.exchangeAntigravityCode("http://127.0.0.1:$port/?state=$state&code=code-test-000") }
         assertEquals("at-new", result.getOrThrow().accessToken)
         assertEquals("code-test-000", requests.single().second["code"])
-        // the pasted login ends the loopback listener
-        assertThrows(ConnectException::class.java) { get("/?state=$state&code=late") }
+        // the pasted login ends the loopback listener; the close lands on the listener's thread, so wait for it
+        waitFor { portIsFree() }
         assertTrue(portIsFree())
+        assertThrows(ConnectException::class.java) { get("/?state=$state&code=late") }
     }
 }
