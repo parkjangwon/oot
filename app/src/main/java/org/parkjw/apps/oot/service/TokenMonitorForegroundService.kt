@@ -118,11 +118,7 @@ class TokenMonitorForegroundService : Service() {
             val intent = Intent(context, TokenMonitorForegroundService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            context.startForegroundService(intent)
         }
 
         fun stopService(context: Context) {
