@@ -13,12 +13,14 @@ import androidx.core.app.NotificationCompat
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.VendorUsage
+import org.parkjw.apps.oot.data.model.withStaleRollover
 import org.parkjw.apps.oot.i18n.AppLanguage
 import org.parkjw.apps.oot.i18n.AppLocale
 import org.parkjw.apps.oot.notification.NotificationContent
 import org.parkjw.apps.oot.notification.notificationStrings
 import org.parkjw.apps.oot.ui.MainActivity
 import org.parkjw.apps.oot.ui.VendorLogo
+import java.time.Instant
 
 class TokenNotificationManager(
     private val appContext: Context,
@@ -66,7 +68,9 @@ class TokenNotificationManager(
     fun buildNotification(allUsages: List<VendorUsage>): Notification {
         val context = context
         val strings = context.notificationStrings()
+        // A reset that passed since the last refresh also expires the cached window here.
         val usages = NotificationContent.visibleUsages(allUsages, hiddenAccountIds())
+            .map { it.withStaleRollover(Instant.now()) }
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }

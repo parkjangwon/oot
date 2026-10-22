@@ -148,6 +148,24 @@ class VendorUsageTest {
     }
 
     @Test
+    fun `stale usage whose reset passes after conversion becomes an error at render time`() {
+        val resetAt = now.plusSeconds(60)
+        val staleSince = now.minus(Duration.ofHours(2)).toEpochMilli()
+        val converted = status(
+            staleSince = staleSince,
+            windows = listOf(UsageWindow("five_hour", "5h", Remaining.Percent(50.0), resetAt)),
+        ).toVendorUsage(now)
+        assertEquals(listOf("five_hour"), converted.windows.map { it.id })
+
+        val rendered = converted.withStaleRollover(now.plusSeconds(120))
+        assertTrue(rendered.windows.isEmpty())
+        assertEquals(VendorError.RateLimited, rendered.error)
+
+        // Fresh values ignore the rollover: their reset is processed by the next refresh.
+        assertNull(converted.copy(staleSince = null).withStaleRollover(now.plusSeconds(120)).error)
+    }
+
+    @Test
     fun `fresh status keeps a window whose reset just passed`() {
         val v = status(
             windows = listOf(

@@ -68,6 +68,17 @@ fun List<VendorUsage>.sortedByRemaining(): List<VendorUsage> =
 
 private val amountRegex = Regex("""\d+(\.\d+)?""")
 
+// A stale snapshot must not keep showing a window whose reset has passed since it was converted.
+fun VendorUsage.withStaleRollover(now: Instant): VendorUsage {
+    if (staleSince == null) return this
+    val shown = windows.filter { it.resetsAt == null || it.resetsAt > now }
+    if (shown.size == windows.size) return this
+    return copy(
+        windows = shown,
+        error = if (shown.isEmpty()) error ?: VendorError.RateLimited else error
+    )
+}
+
 fun TokenStatus.toVendorUsage(now: Instant = Instant.now()): VendorUsage {
     val staleAt = staleSince?.let { Instant.ofEpochMilli(it) }
     if (isError) {

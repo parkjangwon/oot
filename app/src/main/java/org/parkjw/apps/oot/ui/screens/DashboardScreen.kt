@@ -96,6 +96,7 @@ import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.level
 import org.parkjw.apps.oot.data.model.toVendorUsage
+import org.parkjw.apps.oot.data.model.withStaleRollover
 import org.parkjw.apps.oot.ui.VendorLogo
 import org.parkjw.apps.oot.ui.theme.ButtonCorner
 import org.parkjw.apps.oot.ui.theme.CardCorner
@@ -258,7 +259,8 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(bottom = OotSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
             ) {
-                val leastItem = findLeastRemainingItem(orderedUsages)
+                val renderedUsages = orderedUsages.map { it.withStaleRollover(now) }
+                val leastItem = findLeastRemainingItem(renderedUsages)
                 if (leastItem != null) {
                     item(key = "summary_line") {
                         QuotaSummaryLine(
@@ -275,7 +277,7 @@ fun DashboardScreen(
                         EmptyAccountsBanner(onAddClick = onAddAccountClick)
                     }
                 } else {
-                    itemsIndexed(orderedUsages, key = { _, u -> u.accountId }) { index, usage ->
+                    itemsIndexed(renderedUsages, key = { _, u -> u.accountId }) { index, usage ->
                         val isDragged = activeDraggingId == usage.accountId
                         VendorCard(
                             usage = usage,
@@ -482,10 +484,10 @@ fun DashboardScreen(
     )
 }
 
-private fun findLeastRemainingItem(usages: List<VendorUsage>): Pair<VendorUsage, UsageWindow>? {
+internal fun findLeastRemainingItem(usages: List<VendorUsage>): Pair<VendorUsage, UsageWindow>? {
     return usages
         .asSequence()
-        .filter { it.error == null }
+        .filter { it.error == null && it.staleSince == null }
         .flatMap { vendor ->
             vendor.windows.asSequence()
                 .filter { it.remaining is Remaining.Percent }
