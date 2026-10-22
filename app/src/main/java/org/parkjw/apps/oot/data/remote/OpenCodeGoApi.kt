@@ -5,11 +5,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
+import org.parkjw.apps.oot.i18n.AppText
 import kotlin.math.roundToInt
 
 class OpenCodeGoApi(
@@ -21,8 +23,8 @@ class OpenCodeGoApi(
         if (credential.isBlank()) {
             return@withContext errorStatus(
                 account,
-                remainingFormatted = "API 키 없음",
-                errorMessage = "OpenCode Go API 키를 등록해주세요."
+                remainingFormatted = AppText.get(R.string.data_no_api_key),
+                errorMessage = AppText.get(R.string.data_opencodego_key_required)
             )
         }
 
@@ -42,13 +44,13 @@ class OpenCodeGoApi(
                         when {
                             windows == null -> errorStatus(
                                 account,
-                                remainingFormatted = "조회 실패",
-                                errorMessage = "OpenCode Go 응답을 해석하지 못했어요."
+                                remainingFormatted = AppText.get(R.string.data_fetch_failed),
+                                errorMessage = AppText.get(R.string.data_opencodego_parse_failed)
                             )
                             windows.isEmpty() -> errorStatus(
                                 account,
-                                remainingFormatted = "사용량 정보 없음",
-                                errorMessage = "OpenCode Go 사용량 정보가 비어 있어요."
+                                remainingFormatted = AppText.get(R.string.data_no_usage_info),
+                                errorMessage = AppText.get(R.string.data_opencodego_empty_usage)
                             )
                             else -> successStatus(account, windows)
                         }
@@ -60,26 +62,26 @@ class OpenCodeGoApi(
                     )
                     response.code == 401 -> errorStatus(
                         account,
-                        remainingFormatted = "인증 실패 (401)",
-                        errorMessage = "OpenCode Go API 키를 확인해주세요."
+                        remainingFormatted = AppText.get(R.string.data_auth_failed_code, 401),
+                        errorMessage = AppText.get(R.string.data_opencodego_key_invalid)
                     )
                     response.code == 403 -> errorStatus(
                         account,
-                        remainingFormatted = "구독 없음",
-                        errorMessage = "OpenCode Go 구독이 없어요"
+                        remainingFormatted = AppText.get(R.string.data_no_subscription),
+                        errorMessage = AppText.get(R.string.data_opencodego_no_subscription)
                     )
                     else -> errorStatus(
                         account,
                         remainingFormatted = "HTTP ${response.code}",
-                        errorMessage = "OpenCode Go 서버 응답 오류 (${response.code})"
+                        errorMessage = AppText.get(R.string.data_opencodego_server_error, response.code)
                     )
                 }
             }
         } catch (e: Exception) {
             errorStatus(
                 account,
-                remainingFormatted = "네트워크 오류",
-                errorMessage = e.localizedMessage ?: "연결 실패"
+                remainingFormatted = AppText.get(R.string.data_error_network),
+                errorMessage = e.localizedMessage ?: AppText.get(R.string.data_connection_failed)
             )
         }
     }
@@ -87,7 +89,7 @@ class OpenCodeGoApi(
     private fun successStatus(account: ProviderAccount, windows: List<UsageWindow>): TokenStatus {
         val text = windows.joinToString(" | ") { window ->
             val remaining = (window.remaining as Remaining.Percent).percentLeft
-            "${window.label} ${remaining.roundToInt()}% 남음"
+            AppText.get(R.string.data_window_percent_left, window.label, remaining.roundToInt())
         }
         return TokenStatus(
             accountId = account.id,
@@ -108,7 +110,7 @@ class OpenCodeGoApi(
         provider = ProviderType.OPENCODE_GO,
         accountName = account.name,
         remainingFormatted = remainingFormatted,
-        statusSummary = "확인 필요",
+        statusSummary = AppText.get(R.string.status_needs_check),
         isError = true,
         errorMessage = errorMessage
     )

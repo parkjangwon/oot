@@ -2,7 +2,14 @@ package org.parkjw.apps.oot.data.oauth
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+
+// Robolectric: error texts come from string resources (AppText), Korean by default.
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class LoopbackOutcomeTest {
 
     private val state = "state-test-000"

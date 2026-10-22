@@ -41,7 +41,7 @@ class NotificationContentTest {
         val low = vendor(10.0, ProviderType.ZAI)
         val bal = balance(12.4)
         val err = errored()
-        val items = NotificationContent.collapsedItems(listOf(high, bal, err, low), maxItems = 3)
+        val items = NotificationContent.collapsedItems(listOf(high, bal, err, low), maxItems = 3, strings = TestNotificationStrings.KO)
         assertEquals(listOf("Cl", "R", "X"), items.map { it.mark })
         assertTrue(items[2].isError)
     }
@@ -49,13 +49,13 @@ class NotificationContentTest {
     @Test
     fun `collapsed respects max item count`() {
         val usages = listOf(vendor(10.0), vendor(50.0), vendor(80.0))
-        assertEquals(2, NotificationContent.collapsedItems(usages, maxItems = 2).size)
-        assertEquals(3, NotificationContent.collapsedItems(usages, maxItems = 3).size)
+        assertEquals(2, NotificationContent.collapsedItems(usages, maxItems = 2, strings = TestNotificationStrings.KO).size)
+        assertEquals(3, NotificationContent.collapsedItems(usages, maxItems = 3, strings = TestNotificationStrings.KO).size)
     }
 
     @Test
     fun `collapsed percent label and bar value`() {
-        val item = NotificationContent.collapsedItems(listOf(vendor(61.6)), maxItems = 3).single()
+        val item = NotificationContent.collapsedItems(listOf(vendor(61.6)), maxItems = 3, strings = TestNotificationStrings.KO).single()
         assertEquals("Cl", item.mark)
         assertEquals("62% 남음", item.label)
         assertEquals(62, item.percent)
@@ -64,7 +64,7 @@ class NotificationContentTest {
 
     @Test
     fun `collapsed balance label has no bar`() {
-        val item = NotificationContent.collapsedItems(listOf(balance(12.4)), maxItems = 3).single()
+        val item = NotificationContent.collapsedItems(listOf(balance(12.4)), maxItems = 3, strings = TestNotificationStrings.KO).single()
         assertEquals("R", item.mark)
         assertEquals("$12.40", item.label)
         assertNull(item.percent)
@@ -72,7 +72,7 @@ class NotificationContentTest {
 
     @Test
     fun `collapsed error label`() {
-        val item = NotificationContent.collapsedItems(listOf(errored()), maxItems = 3).single()
+        val item = NotificationContent.collapsedItems(listOf(errored()), maxItems = 3, strings = TestNotificationStrings.KO).single()
         assertEquals("X", item.mark)
         assertEquals("xAI 확인 필요", item.label)
         assertNull(item.percent)
@@ -96,17 +96,18 @@ class NotificationContentTest {
 
     @Test
     fun `reset text formats`() {
-        assertEquals("1시간 40분 후", NotificationContent.formatReset(now.plusSeconds(100 * 60), now))
-        assertEquals("2시간 후", NotificationContent.formatReset(now.plusSeconds(120 * 60), now))
-        assertEquals("3일 후", NotificationContent.formatReset(now.plusSeconds(72 * 3600), now))
-        assertEquals("15분 후", NotificationContent.formatReset(now.plusSeconds(15 * 60), now))
-        assertEquals("", NotificationContent.formatReset(now.minusSeconds(60), now))
+        assertEquals("1시간 40분 후", NotificationContent.formatReset(now.plusSeconds(100 * 60), now, strings = TestNotificationStrings.KO))
+        assertEquals("2시간 후", NotificationContent.formatReset(now.plusSeconds(120 * 60), now, strings = TestNotificationStrings.KO))
+        assertEquals("3일 후", NotificationContent.formatReset(now.plusSeconds(72 * 3600), now, strings = TestNotificationStrings.KO))
+        assertEquals("15분 후", NotificationContent.formatReset(now.plusSeconds(15 * 60), now, strings = TestNotificationStrings.KO))
+        assertEquals("", NotificationContent.formatReset(now.minusSeconds(60), now, strings = TestNotificationStrings.KO))
     }
 
     @Test
     fun `text fallback joins vendors in user order`() {
         val text = NotificationContent.textFallback(
-            listOf(balance(12.4), errored(), vendor(62.0), vendor(98.0, ProviderType.ZAI))
+            listOf(balance(12.4), errored(), vendor(62.0), vendor(98.0, ProviderType.ZAI)),
+            strings = TestNotificationStrings.KO
         )
         assertEquals("OpenRouter $12.40 · xAI 확인 필요 · Claude 62% · GLM 98%", text)
     }
@@ -117,7 +118,8 @@ class NotificationContentTest {
         val weekly = UsageWindow("w2", "주간", Remaining.Percent(81.0), null)
         val item = NotificationContent.expandedItems(
             listOf(vendor(62.0, ProviderType.CLAUDE, resetsAt, weekly)),
-            now = now
+            now = now,
+            strings = TestNotificationStrings.KO
         ).single()
         assertEquals("Claude", item.name)
         assertEquals("5H 62% 남음 · 2시간 후", item.text)
@@ -129,7 +131,7 @@ class NotificationContentTest {
     fun `expanded line uses the 5-hour window even when weekly has less remaining`() {
         val weekly = UsageWindow("seven_day", "주간", Remaining.Percent(14.0), now.plusSeconds(3 * 24 * 3600))
         val usage = vendor(62.0, ProviderType.CLAUDE, now.plusSeconds(100 * 60), weekly)
-        val item = NotificationContent.expandedItems(listOf(usage), now = now).single()
+        val item = NotificationContent.expandedItems(listOf(usage), now = now, strings = TestNotificationStrings.KO).single()
         assertEquals("5H 62% 남음 · 1시간 40분 후", item.text)
         assertEquals(62, item.percent)
     }
@@ -137,7 +139,7 @@ class NotificationContentTest {
     @Test
     fun `collapsed item uses the 5-hour window even when weekly has less remaining`() {
         val weekly = UsageWindow("seven_day", "주간", Remaining.Percent(14.0), null)
-        val item = NotificationContent.collapsedItems(listOf(vendor(62.0, ProviderType.CLAUDE, null, weekly)), maxItems = 3).single()
+        val item = NotificationContent.collapsedItems(listOf(vendor(62.0, ProviderType.CLAUDE, null, weekly)), maxItems = 3, strings = TestNotificationStrings.KO).single()
         assertEquals("62% 남음", item.label)
         assertEquals(62, item.percent)
     }
@@ -148,7 +150,7 @@ class NotificationContentTest {
         val weekly = UsageWindow("seven_day", "주간", Remaining.Percent(14.0), weeklyResetsAt)
         val monthly = UsageWindow("monthly", "월간", Remaining.Percent(50.0), now.plusSeconds(20 * 24 * 3600))
         val usage = VendorUsage("id", ProviderType.OPENAI, "acc", listOf(monthly, weekly))
-        val item = NotificationContent.expandedItems(listOf(usage), now = now).single()
+        val item = NotificationContent.expandedItems(listOf(usage), now = now, strings = TestNotificationStrings.KO).single()
         assertEquals("7D 14% 남음 · 3일 후", item.text)
         assertEquals(14, item.percent)
     }
@@ -166,7 +168,7 @@ class NotificationContentTest {
             "id", ProviderType.XAI, "acc",
             listOf(UsageWindow("weekly", "주간", Remaining.Percent(14.0), now.plusSeconds(26 * 3600)))
         )
-        val items = NotificationContent.expandedItems(listOf(glm, xai), now = now)
+        val items = NotificationContent.expandedItems(listOf(glm, xai), now = now, strings = TestNotificationStrings.KO)
         assertEquals("GLM", items[0].name)
         assertEquals("5H 98% 남음 · 3시간 27분 후", items[0].text)
         assertEquals("xAI", items[1].name)
@@ -176,7 +178,7 @@ class NotificationContentTest {
     @Test
     fun `expanded line has no reset suffix when the representative has no reset`() {
         val usage = vendor(62.0, ProviderType.ZAI)
-        assertEquals("5H 62% 남음", NotificationContent.expandedItems(listOf(usage), now = now).single().text)
+        assertEquals("5H 62% 남음", NotificationContent.expandedItems(listOf(usage), now = now, strings = TestNotificationStrings.KO).single().text)
     }
 
     @Test
@@ -190,19 +192,20 @@ class NotificationContentTest {
                 weekly
             )
         )
-        val items = NotificationContent.expandedItems(listOf(usage), now = now)
+        val items = NotificationContent.expandedItems(listOf(usage), now = now, strings = TestNotificationStrings.KO)
         assertEquals("5H 62% 남음 · 2시간 후", items.single().text)
         val weeklyOnly = VendorUsage(
             "id", ProviderType.CLAUDE, "acc",
             listOf(weekly)
         )
-        assertEquals("7D 14% 남음 · 3일 후", NotificationContent.expandedItems(listOf(weeklyOnly), now = now).single().text)
+        assertEquals("7D 14% 남음 · 3일 후", NotificationContent.expandedItems(listOf(weeklyOnly), now = now, strings = TestNotificationStrings.KO).single().text)
     }
 
     @Test
     fun `every expanded non-error line says 남음 and errors do not`() {
         val items = NotificationContent.expandedItems(
-            listOf(vendor(62.0), balance(12.4), errored())
+            listOf(vendor(62.0), balance(12.4), errored()),
+            strings = TestNotificationStrings.KO
         )
         assertEquals(3, items.size)
         assertTrue(items[0].text.endsWith("남음"))
@@ -215,7 +218,7 @@ class NotificationContentTest {
 
     @Test
     fun `expanded error line`() {
-        val item = NotificationContent.expandedItems(listOf(errored())).single()
+        val item = NotificationContent.expandedItems(listOf(errored()), strings = TestNotificationStrings.KO).single()
         assertEquals("xAI", item.name)
         assertEquals("확인 필요", item.text)
         assertNull(item.percent)
@@ -224,7 +227,7 @@ class NotificationContentTest {
 
     @Test
     fun `expanded balance line has no bar`() {
-        val item = NotificationContent.expandedItems(listOf(balance(12.4))).single()
+        val item = NotificationContent.expandedItems(listOf(balance(12.4)), strings = TestNotificationStrings.KO).single()
         assertEquals("OpenRouter", item.name)
         assertEquals("$12.40 남음", item.text)
         assertNull(item.percent)
@@ -244,7 +247,7 @@ class NotificationContentTest {
 
     @Test
     fun `openrouter notification shows smaller of balance and key remaining`() {
-        val item = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(12.4, 7.6))).single()
+        val item = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(12.4, 7.6)), strings = TestNotificationStrings.KO).single()
         assertEquals("$7.60 남음", item.text)
         assertEquals(38, item.percent)
         assertEquals(Level.OK, item.level)
@@ -252,10 +255,10 @@ class NotificationContentTest {
 
     @Test
     fun `openrouter key bar uses warning and danger levels`() {
-        val warn = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(100.0, 3.0))).single()
+        val warn = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(100.0, 3.0)), strings = TestNotificationStrings.KO).single()
         assertEquals(15, warn.percent)
         assertEquals(Level.WARN, warn.level)
-        val danger = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(100.0, 0.4))).single()
+        val danger = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(100.0, 0.4)), strings = TestNotificationStrings.KO).single()
         assertEquals(2, danger.percent)
         assertEquals(Level.DANGER, danger.level)
     }
@@ -266,10 +269,10 @@ class NotificationContentTest {
             "id", ProviderType.OPENROUTER, "acc",
             listOf(UsageWindow("credit", "credit", Remaining.Balance(12.4)))
         )
-        val expanded = NotificationContent.expandedItems(listOf(usage)).single()
+        val expanded = NotificationContent.expandedItems(listOf(usage), strings = TestNotificationStrings.KO).single()
         assertEquals("$12.40 남음", expanded.text)
         assertNull(expanded.percent)
-        val collapsed = NotificationContent.collapsedItems(listOf(usage), 3).single()
+        val collapsed = NotificationContent.collapsedItems(listOf(usage), 3, strings = TestNotificationStrings.KO).single()
         assertEquals("$12.40", collapsed.label)
         assertNull(collapsed.percent)
     }
@@ -280,7 +283,7 @@ class NotificationContentTest {
             "id", ProviderType.OPENAI, "acc",
             listOf(UsageWindow("primary", "primary", Remaining.Percent(40.0)))
         )
-        val item = NotificationContent.expandedItems(listOf(v)).single()
+        val item = NotificationContent.expandedItems(listOf(v), strings = TestNotificationStrings.KO).single()
         assertEquals("40% 남음", item.text)
     }
 
@@ -293,9 +296,9 @@ class NotificationContentTest {
             VendorUsage("id", ProviderType.XAI, "user@example.com", listOf(UsageWindow("w", "주간", Remaining.Percent(14.0))))
         )
         val texts = buildList {
-            add(NotificationContent.textFallback(usages))
-            NotificationContent.collapsedItems(usages, 3).forEach { add(it.label) }
-            NotificationContent.expandedItems(usages).forEach { add(it.text) }
+            add(NotificationContent.textFallback(usages, strings = TestNotificationStrings.KO))
+            NotificationContent.collapsedItems(usages, 3, strings = TestNotificationStrings.KO).forEach { add(it.label) }
+            NotificationContent.expandedItems(usages, strings = TestNotificationStrings.KO).forEach { add(it.text) }
         }
         texts.forEach { text ->
             assertFalse(text.contains("@"))
@@ -319,7 +322,7 @@ class NotificationContentTest {
 
     @Test
     fun `antigravity expanded line shows only the Google window and its reset`() {
-        val item = NotificationContent.expandedItems(listOf(antigravity(62.0, 10.0)), now = now).single()
+        val item = NotificationContent.expandedItems(listOf(antigravity(62.0, 10.0)), now = now, strings = TestNotificationStrings.KO).single()
         assertEquals("Antigravity", item.name)
         assertEquals("Google 62% 남음 · 2시간 후", item.text)
         assertEquals(62, item.percent)
@@ -329,24 +332,24 @@ class NotificationContentTest {
     @Test
     fun `antigravity collapsed and text fallback use the Google window`() {
         val usage = antigravity(62.0, 10.0)
-        val item = NotificationContent.collapsedItems(listOf(usage), maxItems = 3).single()
+        val item = NotificationContent.collapsedItems(listOf(usage), maxItems = 3, strings = TestNotificationStrings.KO).single()
         assertEquals("62% 남음", item.label)
         assertEquals(62, item.percent)
-        assertEquals("Antigravity 62%", NotificationContent.textFallback(listOf(usage)))
+        assertEquals("Antigravity 62%", NotificationContent.textFallback(listOf(usage), strings = TestNotificationStrings.KO))
     }
 
     @Test
     fun `antigravity without a Google window falls back to its lowest window`() {
-        val item = NotificationContent.expandedItems(listOf(antigravity(null, 10.0)), now = now).single()
+        val item = NotificationContent.expandedItems(listOf(antigravity(null, 10.0)), now = now, strings = TestNotificationStrings.KO).single()
         assertEquals("타사 10% 남음 · 30분 후", item.text)
     }
 
     @Test
     fun `notification reset keeps hours after a day`() {
         val now = Instant.parse("2026-10-22T00:00:00Z")
-        assertEquals("2일 3시간 후", NotificationContent.formatNotificationReset(now.plusSeconds((2 * 24 + 3) * 3600L + 30), now))
-        assertEquals("2일 후", NotificationContent.formatNotificationReset(now.plusSeconds(2 * 24 * 3600L + 30), now))
-        assertEquals("2시간 후", NotificationContent.formatNotificationReset(now.plusSeconds(2 * 3600L + 30), now))
+        assertEquals("2일 3시간 후", NotificationContent.formatNotificationReset(now.plusSeconds((2 * 24 + 3) * 3600L + 30), now, strings = TestNotificationStrings.KO))
+        assertEquals("2일 후", NotificationContent.formatNotificationReset(now.plusSeconds(2 * 24 * 3600L + 30), now, strings = TestNotificationStrings.KO))
+        assertEquals("2시간 후", NotificationContent.formatNotificationReset(now.plusSeconds(2 * 3600L + 30), now, strings = TestNotificationStrings.KO))
     }
 
     private fun account(id: String, percent: Double, provider: ProviderType) =
@@ -363,9 +366,9 @@ class NotificationContentTest {
         val visible = NotificationContent.visibleUsages(usages, hiddenAccountIds = setOf("b"))
         assertEquals(listOf("a", "c", "d"), visible.map { it.accountId })
         // The collapsed line fills up with the next account instead of leaving a gap.
-        assertEquals(listOf("Cl", "X", "O"), NotificationContent.collapsedItems(visible, maxItems = 3).map { it.mark })
-        assertEquals(listOf("Claude", "xAI", "OpenAI"), NotificationContent.expandedItems(visible).map { it.name })
-        assertEquals("Claude 90% · xAI 50% · OpenAI 70%", NotificationContent.textFallback(visible))
+        assertEquals(listOf("Cl", "X", "O"), NotificationContent.collapsedItems(visible, maxItems = 3, strings = TestNotificationStrings.KO).map { it.mark })
+        assertEquals(listOf("Claude", "xAI", "OpenAI"), NotificationContent.expandedItems(visible, strings = TestNotificationStrings.KO).map { it.name })
+        assertEquals("Claude 90% · xAI 50% · OpenAI 70%", NotificationContent.textFallback(visible, strings = TestNotificationStrings.KO))
     }
 
     @Test
@@ -383,7 +386,7 @@ class NotificationContentTest {
 
     @Test
     fun `empty notification tells nothing registered apart from everything hidden`() {
-        assertEquals("등록된 프로바이더가 없어요. 앱에서 추가해 주세요.", NotificationContent.emptyStateText(registeredCount = 0))
-        assertEquals("알림에 표시할 프로바이더를 모두 껐어요. 설정에서 켜 주세요.", NotificationContent.emptyStateText(registeredCount = 3))
+        assertEquals("등록된 프로바이더가 없어요. 앱에서 추가해 주세요.", NotificationContent.emptyStateText(registeredCount = 0, strings = TestNotificationStrings.KO))
+        assertEquals("알림에 표시할 프로바이더를 모두 껐어요. 설정에서 켜 주세요.", NotificationContent.emptyStateText(registeredCount = 3, strings = TestNotificationStrings.KO))
     }
 }

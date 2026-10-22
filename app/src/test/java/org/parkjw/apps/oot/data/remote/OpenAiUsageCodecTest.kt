@@ -5,6 +5,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
@@ -12,6 +15,10 @@ import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.VendorError
 import java.time.Instant
 
+
+// Robolectric: error texts come from string resources (AppText), Korean by default.
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class OpenAiUsageCodecTest {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -50,13 +57,13 @@ class OpenAiUsageCodecTest {
         assertEquals(2, windows.size)
 
         val fiveHour = windows.first { it.id == "five_hour" }
-        assertEquals("5시간", fiveHour.label)
+        assertEquals("5h", fiveHour.label)
         assertEquals(38.0, fiveHour.usedPercent, 0.001)
         assertEquals(Instant.ofEpochSecond(1761055200L), fiveHour.resetsAt)
         assertEquals(62.0, 100.0 - fiveHour.usedPercent, 0.001)
 
         val weekly = windows.first { it.id == "seven_day" }
-        assertEquals("주간", weekly.label)
+        assertEquals("7d", weekly.label)
         assertEquals(12.0, weekly.usedPercent, 0.001)
         assertEquals(Instant.ofEpochSecond(1761314400L), weekly.resetsAt)
         assertEquals(88.0, 100.0 - weekly.usedPercent, 0.001)

@@ -25,7 +25,7 @@ object OllamaCloudCodec {
             val until = included["period"]?.jsonObject?.get("until")?.jsonPrimitive?.content
             windows += UsageWindow(
                 id = "monthly",
-                label = "월간",
+                label = "monthly",
                 remaining = Remaining.Percent(((creditBalance / allowanceUsd) * 100).coerceIn(0.0, 100.0)),
                 resetsAt = parseClaudeInstant(until)
             )
@@ -35,7 +35,7 @@ object OllamaCloudCodec {
                 session["remaining_percent"]?.jsonPrimitive?.doubleOrNull?.let { pct ->
                     windows += UsageWindow(
                         id = "session",
-                        label = "세션",
+                        label = "session",
                         remaining = Remaining.Percent(pct.coerceIn(0.0, 100.0)),
                         resetsAt = parseClaudeInstant(session["resets_at"]?.jsonPrimitive?.content)
                     )
@@ -45,7 +45,7 @@ object OllamaCloudCodec {
                 weekly["remaining_percent"]?.jsonPrimitive?.doubleOrNull?.let { pct ->
                     windows += UsageWindow(
                         id = "weekly",
-                        label = "주간",
+                        label = "weekly",
                         remaining = Remaining.Percent(pct.coerceIn(0.0, 100.0)),
                         resetsAt = parseClaudeInstant(weekly["resets_at"]?.jsonPrimitive?.content)
                     )

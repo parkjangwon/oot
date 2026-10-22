@@ -6,9 +6,11 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
+import org.parkjw.apps.oot.i18n.AppText
 import java.time.DateTimeException
 import java.time.Instant
 
@@ -18,9 +20,8 @@ import java.time.Instant
 const val ANTIGRAVITY_GOOGLE_WINDOW_ID = "google"
 const val ANTIGRAVITY_THIRD_PARTY_WINDOW_ID = "third_party"
 
-private const val GOOGLE_LABEL = "Google 모델"
-private const val THIRD_PARTY_LABEL = "타사 모델"
-private const val NO_QUOTA_TEXT = "한도 정보를 찾지 못했어요"
+private fun googleLabel() = AppText.get(R.string.data_antigravity_google_label)
+private fun thirdPartyLabel() = AppText.get(R.string.data_antigravity_third_party_label)
 private const val CLIENT_REJECTED_REASON = "GOOGLE_TOS_NOT_SUPPORTED_BY_CLIENT"
 private val cadenceAliases = listOf("session", "5h", "5-hour", "five hour", "five-hour", "weekly")
 
@@ -48,7 +49,9 @@ fun googleErrorReason(body: String, json: Json = Json): String? {
 fun antigravityHttpError(code: Int, body: String, json: Json = Json): VendorError = when (code) {
     401, 429 -> mapAntigravityHttpError(code)
     else -> VendorError.Unknown(
-        "조회 실패 (HTTP $code" + (googleErrorReason(body, json)?.let { " $it" } ?: "") + ")"
+        googleErrorReason(body, json)
+            ?.let { AppText.get(R.string.data_antigravity_http_error_reason, code, it) }
+            ?: AppText.get(R.string.data_error_http, code)
     )
 }
 
@@ -115,15 +118,15 @@ private fun httpFailure(code: Int): AntigravityQuotaResult.Failure? =
     if (code in 200..299) null else AntigravityQuotaResult.Failure(mapAntigravityHttpError(code))
 
 private fun resultOf(windows: List<UsageWindow>): AntigravityQuotaResult =
-    if (windows.isEmpty()) AntigravityQuotaResult.Failure(VendorError.Unknown(NO_QUOTA_TEXT))
+    if (windows.isEmpty()) AntigravityQuotaResult.Failure(VendorError.Unknown(AppText.get(R.string.data_antigravity_no_quota)))
     else AntigravityQuotaResult.Success(windows)
 
 // One window per side, holding the lowest remaining candidate and its own reset (the earlier reset breaks ties).
 // Ordinary 5-hour / weekly buckets win over model-specific allowances, as in CodexBar.
 private fun windowsOf(candidates: List<Candidate>): List<UsageWindow> =
     listOf(
-        ANTIGRAVITY_GOOGLE_WINDOW_ID to GOOGLE_LABEL,
-        ANTIGRAVITY_THIRD_PARTY_WINDOW_ID to THIRD_PARTY_LABEL
+        ANTIGRAVITY_GOOGLE_WINDOW_ID to googleLabel(),
+        ANTIGRAVITY_THIRD_PARTY_WINDOW_ID to thirdPartyLabel()
     ).mapNotNull { (id, label) ->
         val ofWindow = candidates.filter { it.windowId == id }
         val lowest = ofWindow.filter { it.isCadence }.ifEmpty { ofWindow }

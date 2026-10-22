@@ -5,9 +5,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
+import org.parkjw.apps.oot.i18n.AppText
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -24,10 +26,10 @@ class ZaiApi(
                 accountId = account.id,
                 provider = ProviderType.ZAI,
                 accountName = account.name,
-                remainingFormatted = "API 키 없음",
-                statusSummary = "키 필요",
+                remainingFormatted = AppText.get(R.string.data_no_api_key),
+                statusSummary = AppText.get(R.string.data_key_needed),
                 isError = true,
-                errorMessage = "Z.ai 코딩 플랜 API 키를 등록해주세요."
+                errorMessage = AppText.get(R.string.data_zai_key_required)
             )
         }
 
@@ -57,9 +59,9 @@ class ZaiApi(
                         accountId = account.id,
                         provider = ProviderType.ZAI,
                         accountName = account.name,
-                        remainingFormatted = "Z.ai 코딩 플랜 (${usage.level}) 활성",
-                        totalLimitFormatted = "정상 작동 중",
-                        statusSummary = "Z.ai 정상",
+                        remainingFormatted = AppText.get(R.string.data_zai_plan_active, usage.level),
+                        totalLimitFormatted = AppText.get(R.string.data_working_normal),
+                        statusSummary = AppText.get(R.string.data_zai_ok),
                         isWarning = false
                     )
                 }
@@ -77,10 +79,10 @@ class ZaiApi(
                         accountId = account.id,
                         provider = ProviderType.ZAI,
                         accountName = account.name,
-                        remainingFormatted = "인증 실패 (${response.code})",
-                        statusSummary = "Z.ai 인증 실패",
+                        remainingFormatted = AppText.get(R.string.data_auth_failed_code, response.code),
+                        statusSummary = AppText.get(R.string.data_zai_auth_failed),
                         isError = true,
-                        errorMessage = "Z.ai 코딩 플랜 API 키를 확인해주세요."
+                        errorMessage = AppText.get(R.string.data_zai_key_invalid)
                     )
                 }
 
@@ -89,9 +91,9 @@ class ZaiApi(
                     provider = ProviderType.ZAI,
                     accountName = account.name,
                     remainingFormatted = "HTTP ${response.code}",
-                    statusSummary = "오류 (${response.code})",
+                    statusSummary = AppText.get(R.string.data_error_code, response.code),
                     isError = true,
-                    errorMessage = "Z.ai 서버 응답 오류 (${response.code})"
+                    errorMessage = AppText.get(R.string.data_zai_server_error, response.code)
                 )
             }
         } catch (e: Exception) {
@@ -99,10 +101,10 @@ class ZaiApi(
                 accountId = account.id,
                 provider = ProviderType.ZAI,
                 accountName = account.name,
-                remainingFormatted = "네트워크 오류",
-                statusSummary = "연결 실패",
+                remainingFormatted = AppText.get(R.string.data_error_network),
+                statusSummary = AppText.get(R.string.data_connection_failed),
                 isError = true,
-                errorMessage = e.localizedMessage ?: "연결 실패"
+                errorMessage = e.localizedMessage ?: AppText.get(R.string.data_connection_failed)
             )
         }
     }
@@ -113,14 +115,17 @@ class ZaiApi(
         val maxUsed = windows.maxOf { it.percentUsed }
         val limitText = windows.joinToString(" | ") { w ->
             val reset = w.resetsAt?.let { formatRelativeTime(it.toEpochMilli()) }
-            "${w.label} 사용: ${w.percentUsed.roundToInt()}%" + (reset?.let { " ($it)" } ?: "")
+            AppText.get(R.string.data_window_used, w.label, w.percentUsed.roundToInt()) +
+                (reset?.let { " ($it)" } ?: "")
         } + " [${usage.level.uppercase()}]"
 
         return TokenStatus(
             accountId = account.id,
             provider = ProviderType.ZAI,
             accountName = account.name,
-            remainingFormatted = windows.joinToString(" | ") { "${it.label}: ${it.percentLeft.roundToInt()}% 남음" },
+            remainingFormatted = windows.joinToString(" | ") {
+                AppText.get(R.string.data_window_left, it.label, it.percentLeft.roundToInt())
+            },
             totalLimitFormatted = limitText,
             usagePercent = first.percentUsed.toFloat(),
             resetTimeFormatted = first.resetsAt?.let { "${first.label} ${formatRelativeTime(it.toEpochMilli())}" },
@@ -141,13 +146,13 @@ class ZaiApi(
             val days = hours / 24
 
             when {
-                days > 0 -> "${days}일 ${hours % 24}시간 후 리셋"
-                hours > 0 -> "${hours}시간 ${minutes}분 후 리셋"
-                else -> "${minutes}분 후 리셋"
+                days > 0 -> AppText.get(R.string.data_reset_in_days_hours, days, hours % 24)
+                hours > 0 -> AppText.get(R.string.data_reset_in_hours_minutes, hours, minutes)
+                else -> AppText.get(R.string.data_reset_in_minutes, minutes)
             }
         } else {
             val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-            "리셋됨 (${sdf.format(Date(timestampMs))})"
+            AppText.get(R.string.data_reset_at, sdf.format(Date(timestampMs)))
         }
     }
 }

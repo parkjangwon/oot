@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.local.AccountPreferences
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
@@ -16,6 +17,7 @@ import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.toVendorUsage
 import org.parkjw.apps.oot.data.oauth.OAuthManager
+import org.parkjw.apps.oot.i18n.AppText
 
 class TokenSyncRepository(
     private val preferences: AccountPreferences,
@@ -104,10 +106,10 @@ class TokenSyncRepository(
         accountId = account.id,
         provider = account.provider,
         accountName = account.name,
-        remainingFormatted = "요청 제한 (대기)",
-        statusSummary = "확인 필요",
+        remainingFormatted = AppText.get(R.string.data_rate_limit_waiting),
+        statusSummary = AppText.get(R.string.status_needs_check),
         isError = true,
-        errorMessage = "조회 제한 대기 중",
+        errorMessage = AppText.get(R.string.data_rate_limit_backoff),
         isRateLimited = true,
     )
 

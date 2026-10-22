@@ -29,12 +29,12 @@ class OpenCodeGoCodecTest {
 
         // rolling uses the same id as Claude's 5-hour window
         assertEquals("five_hour", windows[0].id)
-        assertEquals("5시간", windows[0].label)
+        assertEquals("5h", windows[0].label)
         assertEquals(89.0, (windows[0].remaining as Remaining.Percent).percentLeft, 0.001)
         assertEquals(Instant.parse("2026-10-21T18:00:00Z"), windows[0].resetsAt)
 
         assertEquals("monthly", windows[1].id)
-        assertEquals("월간", windows[1].label)
+        assertEquals("monthly", windows[1].label)
         assertEquals(97.0, (windows[1].remaining as Remaining.Percent).percentLeft, 0.001)
     }
 
@@ -46,7 +46,7 @@ class OpenCodeGoCodecTest {
         )!!
         assertEquals(1, windows.size)
         assertEquals("weekly", windows[0].id)
-        assertEquals("주간", windows[0].label)
+        assertEquals("weekly", windows[0].label)
         assertEquals(100.0, (windows[0].remaining as Remaining.Percent).percentLeft, 0.001)
     }
 
@@ -83,9 +83,9 @@ class OpenCodeGoCodecTest {
     }
 
     @Test
-    fun `403 maps to no-subscription error`() {
+    fun `403 maps to an unknown error that OpenCodeGoApi words as no subscription`() {
         assertEquals(
-            VendorError.Unknown("OpenCode Go 구독이 없어요"),
+            VendorError.Unknown(null),
             OpenCodeGoCodec.httpError(403)
         )
         assertTrue(OpenCodeGoCodec.httpError(500) is VendorError.Http)

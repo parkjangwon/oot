@@ -6,12 +6,19 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
 import java.time.Instant
 
 // Fixtures are FAKE: ids, projects and numbers are made up to mirror the documented response shapes.
+
+// Robolectric: error texts come from string resources (AppText), Korean by default.
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class AntigravityUsageCodecTest {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }

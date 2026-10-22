@@ -9,11 +9,13 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
+import org.parkjw.apps.oot.i18n.AppText
 import java.util.Locale
 
 // Pure codec for the public OpenRouter API responses (GET /key, GET /credits).
@@ -63,7 +65,7 @@ object OpenRouterCodec {
         key?.let { k ->
             val limit = k.limit?.takeIf { it > 0.0 } ?: return@buildList
             val remaining = k.limitRemaining ?: (limit - k.usage).coerceAtLeast(0.0)
-            add(UsageWindow("key", "키 한도 ${formatUsd(limit)}", Remaining.Balance(remaining)))
+            add(UsageWindow("key", formatUsd(limit), Remaining.Balance(remaining)))
         }
     }
 }
@@ -79,10 +81,10 @@ class OpenRouterApi(
                 accountId = account.id,
                 provider = ProviderType.OPENROUTER,
                 accountName = account.name,
-                remainingFormatted = "API 키 없음",
-                statusSummary = "키 필요",
+                remainingFormatted = AppText.get(R.string.data_no_api_key),
+                statusSummary = AppText.get(R.string.data_key_needed),
                 isError = true,
-                errorMessage = "OpenRouter API 키를 등록해주세요."
+                errorMessage = AppText.get(R.string.data_openrouter_key_required)
             )
         }
 
@@ -111,10 +113,10 @@ class OpenRouterApi(
                         accountId = account.id,
                         provider = ProviderType.OPENROUTER,
                         accountName = account.name,
-                        remainingFormatted = "인증 실패",
-                        statusSummary = "인증 오류 (401)",
+                        remainingFormatted = AppText.get(R.string.data_auth_failed),
+                        statusSummary = AppText.get(R.string.data_auth_error_code, 401),
                         isError = true,
-                        errorMessage = "유효하지 않은 OpenRouter API 키입니다."
+                        errorMessage = AppText.get(R.string.data_openrouter_key_invalid)
                     )
                 }
                 if (response.isSuccessful) {
@@ -140,10 +142,10 @@ class OpenRouterApi(
                     accountId = account.id,
                     provider = ProviderType.OPENROUTER,
                     accountName = account.name,
-                    remainingFormatted = "조회 실패",
-                    statusSummary = "통신 실패",
+                    remainingFormatted = AppText.get(R.string.data_fetch_failed),
+                    statusSummary = AppText.get(R.string.data_comm_failed),
                     isError = true,
-                    errorMessage = "OpenRouter 서버 응답 오류"
+                    errorMessage = AppText.get(R.string.data_openrouter_server_error)
                 )
             }
 
@@ -153,7 +155,7 @@ class OpenRouterApi(
             // Ticker/persistence value: the smaller of account balance and key remaining.
             val displayAmount = keyBalance?.let { minOf(credit.amountLeft, it.amountLeft) }
                 ?: credit.amountLeft
-            val displayText = "${OpenRouterCodec.formatUsd(displayAmount)} 남음"
+            val displayText = AppText.get(R.string.remaining_left, OpenRouterCodec.formatUsd(displayAmount))
 
             TokenStatus(
                 accountId = account.id,
@@ -172,10 +174,10 @@ class OpenRouterApi(
                 accountId = account.id,
                 provider = ProviderType.OPENROUTER,
                 accountName = account.name,
-                remainingFormatted = "네트워크 오류",
-                statusSummary = "네트워크 실패",
+                remainingFormatted = AppText.get(R.string.data_error_network),
+                statusSummary = AppText.get(R.string.data_network_failed),
                 isError = true,
-                errorMessage = e.localizedMessage ?: "연결 실패"
+                errorMessage = e.localizedMessage ?: AppText.get(R.string.data_connection_failed)
             )
         }
     }

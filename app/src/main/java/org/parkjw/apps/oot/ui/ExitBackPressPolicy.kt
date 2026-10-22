@@ -1,5 +1,7 @@
 package org.parkjw.apps.oot.ui
 
+import org.parkjw.apps.oot.R
+
 class ExitBackPressPolicy(
     private val windowMillis: Long = DEFAULT_WINDOW_MILLIS,
     private val clockMillis: () -> Long = System::currentTimeMillis,
@@ -8,7 +10,7 @@ class ExitBackPressPolicy(
 
     /**
      * Returns `true` when the caller should exit (`finish()`), or `false` when it should show the
-     * exit prompt toast (`EXIT_PROMPT_MESSAGE`).
+     * exit prompt toast (`EXIT_PROMPT_MESSAGE`, a string resource).
      */
     fun onBackPressed(): Boolean {
         val now = clockMillis()
@@ -23,6 +25,6 @@ class ExitBackPressPolicy(
 
     companion object {
         const val DEFAULT_WINDOW_MILLIS: Long = 2_000L
-        const val EXIT_PROMPT_MESSAGE: String = "한 번 더 누르면 종료돼요"
+        val EXIT_PROMPT_MESSAGE: Int = R.string.exit_prompt
     }
 }

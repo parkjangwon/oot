@@ -19,9 +19,9 @@ object OpenCodeGoCodec {
         val root = try { json.parseToJsonElement(body).jsonObject } catch (e: Exception) { return null }
         val usage = root["usage"]?.jsonObject ?: return null
         return listOfNotNull(
-            window(usage["rolling"]?.jsonObject, "five_hour", "5시간"),
-            window(usage["weekly"]?.jsonObject, "weekly", "주간"),
-            window(usage["monthly"]?.jsonObject, "monthly", "월간")
+            window(usage["rolling"]?.jsonObject, "five_hour", "5h"),
+            window(usage["weekly"]?.jsonObject, "weekly", "weekly"),
+            window(usage["monthly"]?.jsonObject, "monthly", "monthly")
         )
     }
 
@@ -37,7 +37,8 @@ object OpenCodeGoCodec {
 
     fun httpError(code: Int): VendorError = when (code) {
         401 -> VendorError.Unauthorized
-        403 -> VendorError.Unknown("OpenCode Go 구독이 없어요")
+        // OpenCodeGoCodec runs in plain JVM tests; the API layer sets the 403 message from resources.
+        403 -> VendorError.Unknown(null)
         429 -> VendorError.RateLimited
         else -> VendorError.Http(code)
     }

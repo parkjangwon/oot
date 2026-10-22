@@ -20,6 +20,7 @@ import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.oauth.OAuthManager
 import org.parkjw.apps.oot.notification.NotificationContent
+import org.parkjw.apps.oot.notification.TestNotificationStrings
 import org.parkjw.apps.oot.service.TokenNotificationManager
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -99,11 +100,11 @@ class TokenSyncRepositoryOrderTest {
         // The collapsed notification shows the first three in the user's order.
         assertEquals(
             listOf(ProviderType.ZAI, ProviderType.DEEPSEEK, ProviderType.OPENROUTER),
-            NotificationContent.collapsedItems(usages, maxItems = 3).map { it.provider },
+            NotificationContent.collapsedItems(usages, maxItems = 3, strings = TestNotificationStrings.KO).map { it.provider },
         )
         assertEquals(
             listOf("GLM", "DeepSeek", "OpenRouter", "xAI"),
-            NotificationContent.expandedItems(usages).map { it.name },
+            NotificationContent.expandedItems(usages, strings = TestNotificationStrings.KO).map { it.name },
         )
         val notification = TokenNotificationManager(context).buildNotification(usages)
         assertEquals(
@@ -179,7 +180,7 @@ class TokenSyncRepositoryOrderTest {
         // The dashboard keeps every provider in the dragged order.
         assertEquals(dragged, restarted.usageIds())
         assertEquals(setOf("ds"), restartedPrefs.notificationHiddenAccountIds.value)
-        val notification = TokenNotificationManager(context) { restartedPrefs.notificationHiddenAccountIds.value }
+        val notification = TokenNotificationManager(context, hiddenAccountIds = { restartedPrefs.notificationHiddenAccountIds.value })
             .buildNotification(restarted.vendorUsages.value)
         assertEquals(
             "GLM 확인 필요 · OpenRouter 확인 필요 · xAI 확인 필요",
@@ -214,10 +215,10 @@ class TokenSyncRepositoryOrderTest {
         runBlocking { restarted.refreshAll() }
 
         assertEquals(listOf("or", "xai", "glm", "ds"), restarted.usageIds())
-        val notification = TokenNotificationManager(context) { restartedPrefs.notificationHiddenAccountIds.value }
+        val notification = TokenNotificationManager(context, hiddenAccountIds = { restartedPrefs.notificationHiddenAccountIds.value })
             .buildNotification(restarted.vendorUsages.value)
         assertEquals(
-            NotificationContent.EMPTY_ALL_HIDDEN,
+            TestNotificationStrings.KO.emptyAllHidden,
             notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString(),
         )
     }

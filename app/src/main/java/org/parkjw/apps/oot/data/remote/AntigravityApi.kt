@@ -10,6 +10,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
@@ -17,6 +18,7 @@ import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.oauth.OAuthManager
+import org.parkjw.apps.oot.i18n.AppText
 import java.util.Locale
 
 // Google Antigravity quota through the Cloud Code endpoints documented by the open-source CodexBar provider.
@@ -31,9 +33,13 @@ class AntigravityApi(
 
     suspend fun fetchStatus(account: ProviderAccount): TokenStatus = withContext(Dispatchers.IO) {
         val credential = account.activeCredential().trim()
-        if (credential.isBlank()) return@withContext errorStatus(account, "Google 로그인 필요")
+        if (credential.isBlank()) {
+            return@withContext errorStatus(account, AppText.get(R.string.data_antigravity_sign_in_required))
+        }
         // A Gemini API key cannot read Cloud Code quota.
-        if (credential.startsWith("AIza")) return@withContext errorStatus(account, "Google 로그인 필요 (API 키 미지원)")
+        if (credential.startsWith("AIza")) {
+            return@withContext errorStatus(account, AppText.get(R.string.data_antigravity_api_key_unsupported))
+        }
 
         var result = fetchQuota(credential.bearerToken())
         if (result is AntigravityQuotaResult.Failure && result.error == VendorError.Unauthorized) {
@@ -119,7 +125,11 @@ class AntigravityApi(
 
     private fun successStatus(account: ProviderAccount, windows: List<UsageWindow>): TokenStatus {
         val text = windows.joinToString(" | ") {
-            String.format(Locale.US, "%s: %.0f%% 남음", it.label, (it.remaining as Remaining.Percent).percentLeft)
+            AppText.get(
+                R.string.data_label_left,
+                it.label,
+                String.format(Locale.US, "%.0f", (it.remaining as Remaining.Percent).percentLeft)
+            )
         }
         return TokenStatus(
             accountId = account.id,
@@ -136,7 +146,7 @@ class AntigravityApi(
         provider = ProviderType.ANTIGRAVITY,
         accountName = account.name,
         remainingFormatted = text,
-        statusSummary = "확인 필요",
+        statusSummary = AppText.get(R.string.status_needs_check),
         isError = true,
         errorMessage = text
     )

@@ -5,11 +5,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
+import org.parkjw.apps.oot.i18n.AppText
 import org.parkjw.apps.oot.notification.NotificationContent
 import kotlin.math.roundToInt
 
@@ -22,8 +24,8 @@ class OllamaCloudApi(
         if (credential.isBlank()) {
             return@withContext errorStatus(
                 account,
-                remainingFormatted = "API 키 없음",
-                errorMessage = "Ollama Cloud API 키를 등록해주세요."
+                remainingFormatted = AppText.get(R.string.data_no_api_key),
+                errorMessage = AppText.get(R.string.data_ollama_key_required)
             )
         }
 
@@ -43,13 +45,13 @@ class OllamaCloudApi(
                         when {
                             windows == null -> errorStatus(
                                 account,
-                                remainingFormatted = "조회 실패",
-                                errorMessage = "Ollama Cloud 응답을 해석하지 못했어요."
+                                remainingFormatted = AppText.get(R.string.data_fetch_failed),
+                                errorMessage = AppText.get(R.string.data_ollama_parse_failed)
                             )
                             windows.isEmpty() -> errorStatus(
                                 account,
-                                remainingFormatted = "사용량 정보 없음",
-                                errorMessage = "Ollama Cloud 사용량 정보가 비어 있어요."
+                                remainingFormatted = AppText.get(R.string.data_no_usage_info),
+                                errorMessage = AppText.get(R.string.data_ollama_empty_usage)
                             )
                             else -> successStatus(account, windows)
                         }
@@ -61,21 +63,21 @@ class OllamaCloudApi(
                     )
                     response.code == 401 -> errorStatus(
                         account,
-                        remainingFormatted = "인증 실패 (401)",
-                        errorMessage = "Ollama Cloud API 키를 확인해주세요."
+                        remainingFormatted = AppText.get(R.string.data_auth_failed_code, 401),
+                        errorMessage = AppText.get(R.string.data_ollama_key_invalid)
                     )
                     else -> errorStatus(
                         account,
                         remainingFormatted = "HTTP ${response.code}",
-                        errorMessage = "Ollama Cloud 서버 응답 오류 (${response.code})"
+                        errorMessage = AppText.get(R.string.data_ollama_server_error, response.code)
                     )
                 }
             }
         } catch (e: Exception) {
             errorStatus(
                 account,
-                remainingFormatted = "네트워크 오류",
-                errorMessage = e.localizedMessage ?: "연결 실패"
+                remainingFormatted = AppText.get(R.string.data_error_network),
+                errorMessage = e.localizedMessage ?: AppText.get(R.string.data_connection_failed)
             )
         }
     }
@@ -83,7 +85,11 @@ class OllamaCloudApi(
     private fun successStatus(account: ProviderAccount, windows: List<UsageWindow>): TokenStatus {
         val text = windows.joinToString(" | ") { window ->
             when (val remaining = window.remaining) {
-                is Remaining.Percent -> "${window.label} ${remaining.percentLeft.roundToInt()}% 남음"
+                is Remaining.Percent -> AppText.get(
+                    R.string.data_window_percent_left,
+                    window.label,
+                    remaining.percentLeft.roundToInt()
+                )
                 is Remaining.Balance -> "${window.label} ${NotificationContent.formatBalance(remaining.amountLeft, remaining.currency)}"
             }
         }
@@ -106,7 +112,7 @@ class OllamaCloudApi(
         provider = ProviderType.OLLAMA_CLOUD,
         accountName = account.name,
         remainingFormatted = remainingFormatted,
-        statusSummary = "확인 필요",
+        statusSummary = AppText.get(R.string.status_needs_check),
         isError = true,
         errorMessage = errorMessage
     )

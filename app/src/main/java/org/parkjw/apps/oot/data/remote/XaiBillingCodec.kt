@@ -26,7 +26,7 @@ data class XaiBilling(
 }
 
 fun XaiBilling.toUsageWindows(): List<UsageWindow> =
-    listOf(UsageWindow("weekly", "주간", Remaining.Percent(percentLeft), periodEnd))
+    listOf(UsageWindow("weekly", "weekly", Remaining.Percent(percentLeft), periodEnd))
 
 // Parses the Grok CLI billing body (https://cli-chat-proxy.grok.com/v1/billing?format=credits).
 // Returns null when the body shows no weekly period (error bodies, other shapes), so callers fall back

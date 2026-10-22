@@ -1,0 +1,77 @@
+<resources>
+    <string name="notification_channel_name">AI token &amp; quota monitor</string>
+    <string name="notification_channel_desc">Keeps the remaining quota and balance of your AI providers in the status bar.</string>
+    <string name="settings_section_update">Updates</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_section_notification_visibility">Show in notification</string>
+    <string name="settings_section_info">About</string>
+    <string name="settings_persistent_notification">Persistent notification</string>
+    <string name="settings_persistent_notification_desc">Keeps what\'s left in the notification shade</string>
+    <string name="settings_refresh_interval">Refresh interval</string>
+    <string name="settings_refresh_interval_minutes">%1$d min</string>
+    <string name="settings_refresh_interval_battery_note">Shorter intervals use more battery</string>
+    <string name="settings_version">Version</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_auto">Check for updates automatically</string>
+    <string name="update_auto_desc">Checks once a day when you open the app</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_latest">You\'re up to date</string>
+    <string name="update_available">New version available (%1$s)</string>
+    <string name="update_download">Download and install</string>
+    <string name="update_later">Later</string>
+    <string name="update_downloading">Downloading %1$d%%</string>
+    <string name="update_need_permission">Allow oot to install apps to continue</string>
+    <string name="update_open_settings">Open settings</string>
+    <string name="update_check_failed">Couldn\'t check for updates. Check your connection.</string>
+    <string name="update_download_failed">Couldn\'t download the file</string>
+    <string name="update_verify_failed">Couldn\'t verify the file, so it wasn\'t installed. Please get it from the release page.</string>
+    <string name="update_open_release">Open release page</string>
+    <string name="update_install_failed">Couldn\'t open the installer. Please get it from the release page.</string>
+    <string name="update_ok">Check</string>
+    <string name="update_current_version">Current version %1$s</string>
+    <string name="update_download_hint">Opens the installer once the download finishes</string>
+
+    <string name="settings_section_language">Language</string>
+
+    <string name="status_needs_check">Check needed</string>
+    <string name="remaining_left">%1$s left</string>
+    <string name="time_in_days">in %1$dd</string>
+    <string name="time_in_days_hours">in %1$dd %2$dh</string>
+    <string name="time_in_hours">in %1$dh</string>
+    <string name="time_in_hours_minutes">in %1$dh %2$dm</string>
+    <string name="time_in_minutes">in %1$dm</string>
+    <string name="time_reset_soon">Resets soon</string>
+    <string name="window_five_hour">5-hour</string>
+    <string name="window_weekly">Weekly</string>
+    <string name="window_monthly">Monthly</string>
+    <string name="window_session">Session</string>
+    <string name="key_limit_amount">Key limit %1$s</string>
+
+    <string name="notification_window_5h">5H</string>
+    <string name="notification_window_7d">7D</string>
+    <string name="notification_vendor_needs_check">%1$s: check needed</string>
+    <string name="notification_empty_title">OOT: token monitor</string>
+    <string name="notification_empty_no_providers">No providers yet. Add one in the app.</string>
+    <string name="notification_empty_all_hidden">All providers are hidden from the notification. Turn them on in Settings.</string>
+    <string name="notification_action_refresh">Refresh</string>
+
+    <string name="exit_prompt">Press back again to exit</string>
+    <string name="toast_provider_added">%1$s added</string>
+    <string name="toast_oauth_connected">%1$s connected</string>
+    <string name="toast_auth_error">Sign-in failed: %1$s</string>
+    <string name="token_exchange_failed">Couldn\'t get a token</string>
+    <string name="account_name_subscription">%1$s (subscription)</string>
+
+    <string name="provider_desc_openrouter">OpenRouter credits and balance</string>
+    <string name="provider_desc_claude">Anthropic Claude usage and rate limits</string>
+    <string name="provider_desc_openai">ChatGPT / OpenAI usage and rate limits</string>
+    <string name="provider_desc_xai">X bundle / xAI Grok subscription and API limits</string>
+    <string name="provider_desc_zai">Z.ai GLM Coding Plan quota</string>
+    <string name="provider_desc_antigravity">Google DeepMind Antigravity / Gemini agent quota</string>
+    <string name="provider_desc_deepseek">DeepSeek API credit balance</string>
+    <string name="provider_desc_ollama_cloud">Ollama Cloud subscription usage and credits</string>
+    <string name="provider_desc_opencode_go">OpenCode Go subscription usage</string>
+    <string name="auth_type_oauth">OAuth 2.0 (subscription sign-in)</string>
+    <string name="auth_type_api_key">API key / token</string>
+</resources>

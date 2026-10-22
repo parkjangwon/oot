@@ -5,11 +5,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
+import org.parkjw.apps.oot.i18n.AppText
 import org.parkjw.apps.oot.notification.NotificationContent
 
 class DeepSeekApi(
@@ -21,8 +23,8 @@ class DeepSeekApi(
         if (credential.isBlank()) {
             return@withContext errorStatus(
                 account,
-                remainingFormatted = "API 키 없음",
-                errorMessage = "DeepSeek API 키를 등록해주세요."
+                remainingFormatted = AppText.get(R.string.data_no_api_key),
+                errorMessage = AppText.get(R.string.data_deepseek_key_required)
             )
         }
 
@@ -42,13 +44,13 @@ class DeepSeekApi(
                         when {
                             windows == null -> errorStatus(
                                 account,
-                                remainingFormatted = "조회 실패",
-                                errorMessage = "DeepSeek 응답을 해석하지 못했어요."
+                                remainingFormatted = AppText.get(R.string.data_fetch_failed),
+                                errorMessage = AppText.get(R.string.data_deepseek_parse_failed)
                             )
                             windows.isEmpty() -> errorStatus(
                                 account,
-                                remainingFormatted = "잔액 정보 없음",
-                                errorMessage = "DeepSeek 잔액 정보가 비어 있어요."
+                                remainingFormatted = AppText.get(R.string.data_no_balance),
+                                errorMessage = AppText.get(R.string.data_deepseek_empty_balance)
                             )
                             else -> successStatus(account, windows)
                         }
@@ -60,21 +62,21 @@ class DeepSeekApi(
                     )
                     response.code == 401 -> errorStatus(
                         account,
-                        remainingFormatted = "인증 실패 (401)",
-                        errorMessage = "DeepSeek API 키를 확인해주세요."
+                        remainingFormatted = AppText.get(R.string.data_auth_failed_code, 401),
+                        errorMessage = AppText.get(R.string.data_deepseek_key_invalid)
                     )
                     else -> errorStatus(
                         account,
                         remainingFormatted = "HTTP ${response.code}",
-                        errorMessage = "DeepSeek 서버 응답 오류 (${response.code})"
+                        errorMessage = AppText.get(R.string.data_deepseek_server_error, response.code)
                     )
                 }
             }
         } catch (e: Exception) {
             errorStatus(
                 account,
-                remainingFormatted = "네트워크 오류",
-                errorMessage = e.localizedMessage ?: "연결 실패"
+                remainingFormatted = AppText.get(R.string.data_error_network),
+                errorMessage = e.localizedMessage ?: AppText.get(R.string.data_connection_failed)
             )
         }
     }
@@ -88,7 +90,7 @@ class DeepSeekApi(
             accountId = account.id,
             provider = ProviderType.DEEPSEEK,
             accountName = account.name,
-            remainingFormatted = "$formatted 남음",
+            remainingFormatted = AppText.get(R.string.remaining_left, formatted),
             statusSummary = "DS: $formatted",
             windows = windows
         )
@@ -103,7 +105,7 @@ class DeepSeekApi(
         provider = ProviderType.DEEPSEEK,
         accountName = account.name,
         remainingFormatted = remainingFormatted,
-        statusSummary = "확인 필요",
+        statusSummary = AppText.get(R.string.status_needs_check),
         isError = true,
         errorMessage = errorMessage
     )

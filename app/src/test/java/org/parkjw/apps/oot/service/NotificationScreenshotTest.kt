@@ -21,6 +21,7 @@ import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.model.VendorUsage
+import org.parkjw.apps.oot.i18n.AppLanguage
 import java.io.File
 import java.time.Instant
 
@@ -39,8 +40,8 @@ class NotificationScreenshotTest {
             providerType = ProviderType.CLAUDE,
             displayName = "claude-demo@example.com",
             windows = listOf(
-                UsageWindow("five_hour", "5시간", Remaining.Percent(62.0), resetIn(100)),
-                UsageWindow("seven_day", "주간", Remaining.Percent(81.0), resetIn(3 * 24 * 60))
+                UsageWindow("five_hour", "5h", Remaining.Percent(62.0), resetIn(100)),
+                UsageWindow("seven_day", "7d", Remaining.Percent(81.0), resetIn(3 * 24 * 60))
             )
         ),
         VendorUsage(
@@ -48,8 +49,8 @@ class NotificationScreenshotTest {
             providerType = ProviderType.ZAI,
             displayName = "glm-demo@example.com",
             windows = listOf(
-                UsageWindow("five_hour", "5시간", Remaining.Percent(98.0), resetIn(3 * 60 + 27)),
-                UsageWindow("seven_day", "주간", Remaining.Percent(71.0), resetIn(4 * 24 * 60))
+                UsageWindow("five_hour", "5h", Remaining.Percent(98.0), resetIn(3 * 60 + 27)),
+                UsageWindow("seven_day", "7d", Remaining.Percent(71.0), resetIn(4 * 24 * 60))
             )
         ),
         VendorUsage(
@@ -57,7 +58,7 @@ class NotificationScreenshotTest {
             providerType = ProviderType.XAI,
             displayName = "xai-demo@example.com",
             windows = listOf(
-                UsageWindow("weekly", "주간", Remaining.Percent(14.0), resetIn(2 * 24 * 60 + 3 * 60))
+                UsageWindow("weekly", "7d", Remaining.Percent(14.0), resetIn(2 * 24 * 60 + 3 * 60))
             )
         ),
         VendorUsage(
@@ -66,7 +67,7 @@ class NotificationScreenshotTest {
             displayName = "or-demo@example.com",
             windows = listOf(
                 UsageWindow("credit", "credit", Remaining.Balance(12.40)),
-                UsageWindow("key", "키 한도 $20.00", Remaining.Balance(7.60))
+                UsageWindow("key", "$20.00", Remaining.Balance(7.60))
             )
         ),
         VendorUsage(
@@ -194,10 +195,50 @@ class NotificationScreenshotTest {
     @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
     fun notifEmptyStates412Dark3x() = captureEmptyStates("dark")
 
-    private fun captureEmptyStates(mode: String) {
+    // English (#74): same captures with the language set to English in Settings.
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifCollapsed412Light3xEnglish() {
+        captureCollapsed(412, "notif-collapsed-412-light-3x-en.png", language = AppLanguage.ENGLISH)
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifExpanded412Light3xEnglish() {
+        captureExpanded(412, "notif-expanded-412-light-3x-en.png", language = AppLanguage.ENGLISH)
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
+    fun notifExpanded412Dark3xEnglish() {
+        captureExpanded(412, "notif-expanded-412-dark-3x-en.png", language = AppLanguage.ENGLISH)
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifEmptyStates412Light3xEnglish() = captureEmptyStates("light", AppLanguage.ENGLISH)
+
+    @Test
+    fun englishNotificationText() {
+        val notification = buildNotification(language = AppLanguage.ENGLISH)
+        assertEquals("Claude 62% · GLM 98% · xAI 14% · OpenRouter $7.60 · Antigravity 62%", notification.contentText())
+        assertEquals("Refresh", notification.actions.single().title.toString())
+        val expanded = applyToNewActivity(notification.bigContentView!!)
+        val claude = expanded.findViewById<android.widget.TextView>(R.id.text0).text.toString()
+        assertEquals(true, claude.startsWith("5H 62% left · in 1h 40m"))
+        val empty = buildNotification(usages = emptyList(), language = AppLanguage.ENGLISH)
+        assertEquals("No providers yet. Add one in the app.", empty.contentText())
+        assertEquals(
+            "All providers are hidden from the notification. Turn them on in Settings.",
+            buildNotification(hidden = allIds(), language = AppLanguage.ENGLISH).contentText(),
+        )
+    }
+
+    private fun captureEmptyStates(mode: String, language: AppLanguage = AppLanguage.KOREAN) {
+        val suffix = if (language == AppLanguage.ENGLISH) "-en" else ""
         val cases = mapOf(
-            "all-hidden" to buildNotification(hidden = allIds()),
-            "no-providers" to buildNotification(usages = emptyList()),
+            "all-hidden$suffix" to buildNotification(hidden = allIds(), language = language),
+            "no-providers$suffix" to buildNotification(usages = emptyList(), language = language),
         )
         for ((name, notification) in cases) {
             val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
@@ -220,19 +261,36 @@ class NotificationScreenshotTest {
         assertEquals(0, activity.resources.getIdentifier("notif_bar_warn", "color", activity.packageName))
     }
 
-    private fun captureCollapsed(widthDp: Int, fileName: String, hidden: Set<String> = emptySet()) {
-        val notification = buildNotification(hidden)
+    private fun captureCollapsed(
+        widthDp: Int,
+        fileName: String,
+        hidden: Set<String> = emptySet(),
+        language: AppLanguage = AppLanguage.KOREAN,
+    ) {
+        val notification = buildNotification(hidden, language = language)
         capture(notification.contentView!!, widthDp, fileName)
     }
 
-    private fun captureExpanded(widthDp: Int, fileName: String, hidden: Set<String> = emptySet()) {
-        val notification = buildNotification(hidden)
+    private fun captureExpanded(
+        widthDp: Int,
+        fileName: String,
+        hidden: Set<String> = emptySet(),
+        language: AppLanguage = AppLanguage.KOREAN,
+    ) {
+        val notification = buildNotification(hidden, language = language)
         capture(notification.bigContentView!!, widthDp, fileName)
     }
 
-    private fun buildNotification(hidden: Set<String> = emptySet(), usages: List<VendorUsage> = fakeUsages()): Notification =
-        TokenNotificationManager(Robolectric.buildActivity(Activity::class.java).setup().get()) { hidden }
-            .buildNotification(usages)
+    private fun buildNotification(
+        hidden: Set<String> = emptySet(),
+        usages: List<VendorUsage> = fakeUsages(),
+        language: AppLanguage = AppLanguage.KOREAN,
+    ): Notification =
+        TokenNotificationManager(
+            Robolectric.buildActivity(Activity::class.java).setup().get(),
+            hiddenAccountIds = { hidden },
+            language = { language },
+        ).buildNotification(usages)
 
     private fun applyToNewActivity(views: android.widget.RemoteViews): View {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()

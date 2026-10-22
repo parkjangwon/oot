@@ -1,11 +1,13 @@
 package org.parkjw.apps.oot.data.model
 
+import androidx.annotation.StringRes
 import kotlinx.serialization.Serializable
+import org.parkjw.apps.oot.R
 
 @Serializable
 enum class ProviderType(
     val displayName: String,
-    val description: String,
+    @StringRes val descriptionRes: Int,
     val primaryAuthType: AuthType,
     val defaultIconName: String,
     val baseUrl: String,
@@ -18,7 +20,7 @@ enum class ProviderType(
 ) {
     OPENROUTER(
         displayName = "OpenRouter",
-        description = "OpenRouter 크레딧 및 잔액 실시간 모니터링",
+        descriptionRes = R.string.provider_desc_openrouter,
         primaryAuthType = AuthType.API_KEY,
         defaultIconName = "openrouter",
         baseUrl = "https://openrouter.ai/api/v1",
@@ -26,7 +28,7 @@ enum class ProviderType(
     ),
     CLAUDE(
         displayName = "Claude",
-        description = "Anthropic Claude 토큰 사용량 및 레이트 리밋",
+        descriptionRes = R.string.provider_desc_claude,
         primaryAuthType = AuthType.API_KEY,
         defaultIconName = "claude",
         baseUrl = "https://api.anthropic.com/v1",
@@ -37,7 +39,7 @@ enum class ProviderType(
     ),
     OPENAI(
         displayName = "OpenAI",
-        description = "ChatGPT / OpenAI 사용량 및 토큰 레이트 리밋",
+        descriptionRes = R.string.provider_desc_openai,
         primaryAuthType = AuthType.API_KEY,
         defaultIconName = "openai",
         baseUrl = "https://api.openai.com/v1",
@@ -48,7 +50,7 @@ enum class ProviderType(
     ),
     XAI(
         displayName = "xAI (Grok)",
-        description = "X 통합 요금제 / xAI Grok 구독 및 API 한도",
+        descriptionRes = R.string.provider_desc_xai,
         primaryAuthType = AuthType.API_KEY,
         defaultIconName = "xai",
         baseUrl = "https://api.x.ai/v1",
@@ -59,7 +61,7 @@ enum class ProviderType(
     ),
     ZAI(
         displayName = "Z.ai (GLM)",
-        description = "Z.ai GLM 코딩 플랜 쿼터 및 토큰 모니터링",
+        descriptionRes = R.string.provider_desc_zai,
         primaryAuthType = AuthType.API_KEY,
         defaultIconName = "zai",
         baseUrl = "https://api.z.ai",
@@ -67,7 +69,7 @@ enum class ProviderType(
     ),
     ANTIGRAVITY(
         displayName = "Google Antigravity",
-        description = "Google DeepMind Antigravity / Gemini 에이전트 쿼터",
+        descriptionRes = R.string.provider_desc_antigravity,
         primaryAuthType = AuthType.OAUTH,
         defaultIconName = "gemini",
         baseUrl = "https://cloudcode.googleapis.com",
@@ -84,7 +86,7 @@ enum class ProviderType(
     ),
     DEEPSEEK(
         displayName = "DeepSeek",
-        description = "DeepSeek API 크레딧 잔액 모니터링",
+        descriptionRes = R.string.provider_desc_deepseek,
         primaryAuthType = AuthType.API_KEY,
         defaultIconName = "deepseek",
         baseUrl = "https://api.deepseek.com",
@@ -92,7 +94,7 @@ enum class ProviderType(
     ),
     OLLAMA_CLOUD(
         displayName = "Ollama Cloud",
-        description = "Ollama Cloud 구독 사용량 및 크레딧 모니터링",
+        descriptionRes = R.string.provider_desc_ollama_cloud,
         primaryAuthType = AuthType.API_KEY,
         defaultIconName = "ollama",
         baseUrl = "https://ollama.com",
@@ -100,7 +102,7 @@ enum class ProviderType(
     ),
     OPENCODE_GO(
         displayName = "OpenCode Go",
-        description = "OpenCode Go 구독 사용량 모니터링",
+        descriptionRes = R.string.provider_desc_opencode_go,
         primaryAuthType = AuthType.API_KEY,
         defaultIconName = "opencode",
         baseUrl = "https://opencode.ai",

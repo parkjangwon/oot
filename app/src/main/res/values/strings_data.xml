@@ -1,0 +1,108 @@
+<resources>
+    <!-- Shared vendor error texts (claudeErrorText / openAiErrorText) -->
+    <string name="data_error_sign_in_again">다시 로그인 필요</string>
+    <string name="data_error_sign_in_again_scope">다시 로그인 필요(범위)</string>
+    <string name="data_error_rate_limited">요청 제한(429)</string>
+    <string name="data_error_network">네트워크 오류</string>
+    <string name="data_error_parse">응답 해석 실패</string>
+    <string name="data_error_http">조회 실패 (HTTP %1$d)</string>
+    <string name="data_error_generic">오류</string>
+    <string name="data_error_code">오류 (%1$d)</string>
+
+    <!-- Shared status fragments -->
+    <string name="data_no_token_key">토큰/키 없음</string>
+    <string name="data_no_api_key">API 키 없음</string>
+    <string name="data_key_needed">키 필요</string>
+    <string name="data_fetch_failed">조회 실패</string>
+    <string name="data_auth_failed">인증 실패</string>
+    <string name="data_auth_failed_code">인증 실패 (%1$d)</string>
+    <string name="data_auth_error_code">인증 오류 (%1$d)</string>
+    <string name="data_connection_failed">연결 실패</string>
+    <string name="data_comm_failed">통신 실패</string>
+    <string name="data_network_failed">네트워크 실패</string>
+    <string name="data_reset_value">리셋: %1$s</string>
+    <string name="data_tokens_left">%1$s 토큰 남음</string>
+    <string name="data_k_left">%1$sk 남음</string>
+    <string name="data_limit_value">한도: %1$s</string>
+    <string name="data_limit_tokens_per_min">한도: %1$s 토큰/분</string>
+    <string name="data_limit_reqs">한도: %1$s req</string>
+    <string name="data_status_code">상태 코드: %1$d</string>
+    <string name="data_requests_left">남은 요청: %1$s</string>
+    <string name="data_reqs_left">%1$s req 남음</string>
+    <string name="data_no_usage_info">사용량 정보 없음</string>
+    <string name="data_no_balance">잔액 정보 없음</string>
+    <string name="data_subscription_active">구독 활성화됨</string>
+    <string name="data_working_normal">정상 작동 중</string>
+    <string name="data_working_normal_named">정상 작동 중 (%1$s)</string>
+    <string name="data_status_ok">정상</string>
+    <string name="data_window_percent_left">%1$s %2$d%% 남음</string>
+    <string name="data_label_left">%1$s: %2$s%% 남음</string>
+    <string name="data_window_used">%1$s 사용: %2$d%%</string>
+    <string name="data_window_left">%1$s: %2$d%% 남음</string>
+
+    <!-- Claude / OpenAI usage lines -->
+    <string name="data_claude_usage_left">5시간: %1$s%% 남음 | 주간: %2$s%% 남음</string>
+    <string name="data_used_5h">5h 사용: %1$s%%</string>
+    <string name="data_used_weekly">주간 사용: %1$s%%</string>
+    <string name="data_usage_detail_no_reset">5h 사용: %1$s%% | 주간 사용: %2$s%%</string>
+    <string name="data_claude_summary">5h %1$s%% | 주 %2$s%%</string>
+
+    <!-- Per-provider copy -->
+    <string name="data_claude_key_required">Claude API 키 또는 OAuth 인증이 필요합니다.</string>
+    <string name="data_claude_connected">연결 정상 (Anthropic API)</string>
+    <string name="data_openai_key_required">OAuth 로그인 또는 API 키가 필요합니다.</string>
+    <string name="data_openai_ok">OpenAI 정상</string>
+    <string name="data_deepseek_key_required">DeepSeek API 키를 등록해주세요.</string>
+    <string name="data_deepseek_parse_failed">DeepSeek 응답을 해석하지 못했어요.</string>
+    <string name="data_deepseek_empty_balance">DeepSeek 잔액 정보가 비어 있어요.</string>
+    <string name="data_deepseek_key_invalid">DeepSeek API 키를 확인해주세요.</string>
+    <string name="data_deepseek_server_error">DeepSeek 서버 응답 오류 (%1$d)</string>
+    <string name="data_ollama_key_required">Ollama Cloud API 키를 등록해주세요.</string>
+    <string name="data_ollama_parse_failed">Ollama Cloud 응답을 해석하지 못했어요.</string>
+    <string name="data_ollama_empty_usage">Ollama Cloud 사용량 정보가 비어 있어요.</string>
+    <string name="data_ollama_key_invalid">Ollama Cloud API 키를 확인해주세요.</string>
+    <string name="data_ollama_server_error">Ollama Cloud 서버 응답 오류 (%1$d)</string>
+    <string name="data_opencodego_key_required">OpenCode Go API 키를 등록해주세요.</string>
+    <string name="data_opencodego_parse_failed">OpenCode Go 응답을 해석하지 못했어요.</string>
+    <string name="data_opencodego_empty_usage">OpenCode Go 사용량 정보가 비어 있어요.</string>
+    <string name="data_opencodego_key_invalid">OpenCode Go API 키를 확인해주세요.</string>
+    <string name="data_opencodego_no_subscription">OpenCode Go 구독이 없어요</string>
+    <string name="data_no_subscription">구독 없음</string>
+    <string name="data_opencodego_server_error">OpenCode Go 서버 응답 오류 (%1$d)</string>
+    <string name="data_openrouter_key_required">OpenRouter API 키를 등록해주세요.</string>
+    <string name="data_openrouter_key_invalid">유효하지 않은 OpenRouter API 키입니다.</string>
+    <string name="data_openrouter_server_error">OpenRouter 서버 응답 오류</string>
+    <string name="data_xai_key_required">xAI API 키 또는 Device 로그인이 필요합니다.</string>
+    <string name="data_xai_token_invalid">유효하지 않은 xAI 인증 토큰/키입니다.</string>
+    <string name="data_xai_subscription_active">구독 활성 (%1$s)</string>
+    <string name="data_xai_ok">xAI 정상</string>
+    <string name="data_grok_connected">Grok 모델 연동됨</string>
+    <string name="data_weekly_left">주간: %1$s%% 남음</string>
+    <string name="data_weekly_summary">주간 %1$s%%</string>
+    <string name="data_balance_value">잔액 %1$s</string>
+    <string name="data_zai_key_required">Z.ai 코딩 플랜 API 키를 등록해주세요.</string>
+    <string name="data_zai_key_invalid">Z.ai 코딩 플랜 API 키를 확인해주세요.</string>
+    <string name="data_zai_plan_active">Z.ai 코딩 플랜 (%1$s) 활성</string>
+    <string name="data_zai_ok">Z.ai 정상</string>
+    <string name="data_zai_auth_failed">Z.ai 인증 실패</string>
+    <string name="data_zai_server_error">Z.ai 서버 응답 오류 (%1$d)</string>
+    <string name="data_reset_in_days_hours">%1$d일 %2$d시간 후 리셋</string>
+    <string name="data_reset_in_hours_minutes">%1$d시간 %2$d분 후 리셋</string>
+    <string name="data_reset_in_minutes">%1$d분 후 리셋</string>
+    <string name="data_reset_at">리셋됨 (%1$s)</string>
+    <string name="data_antigravity_sign_in_required">Google 로그인 필요</string>
+    <string name="data_antigravity_api_key_unsupported">Google 로그인 필요 (API 키 미지원)</string>
+    <string name="data_antigravity_google_label">Google 모델</string>
+    <string name="data_antigravity_third_party_label">타사 모델</string>
+    <string name="data_antigravity_no_quota">한도 정보를 찾지 못했어요</string>
+    <string name="data_antigravity_http_error_reason">조회 실패 (HTTP %1$d %2$s)</string>
+
+    <!-- Rate-limit backoff -->
+    <string name="data_previous_value">(이전 값)</string>
+    <string name="data_previous_value_short">(이전값)</string>
+    <string name="data_rate_limited_cached">조회 제한(429) - 마지막 확인 값 표시</string>
+    <string name="data_rate_limited_short">요청 제한 (429)</string>
+    <string name="data_rate_limited_retry">사용량 조회 제한(429) - 다음 주기에 재시도</string>
+    <string name="data_rate_limit_waiting">요청 제한 (대기)</string>
+    <string name="data_rate_limit_backoff">조회 제한 대기 중</string>
+</resources>
