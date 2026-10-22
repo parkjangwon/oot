@@ -17,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - The drag-reordered provider order is saved and survives a force-stop, a relaunch and a foreground-service restart; the notification follows it. A new provider is added at the end, and deleting one does not reshuffle the rest (#61).
 - The Z.ai letter tile shows 'Z' instead of 'G' on the card and in the notification (#54).
-- Antigravity: a quick second sign-in no longer reports the login port as busy, and the login tests no longer flake on CI (#65, #63).
 
 ## [1.2.0] - 2026-10-22
 
