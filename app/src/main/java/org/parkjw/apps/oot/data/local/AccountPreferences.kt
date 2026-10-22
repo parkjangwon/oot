@@ -78,7 +78,6 @@ class AccountPreferences(context: Context) {
         val index = current.indexOfFirst { it.id == account.id }
         if (index < 0) return false
         current[index] = current[index].copy(
-            apiKey = account.apiKey,
             accessToken = account.accessToken,
             refreshToken = account.refreshToken,
             tokenExpiresAt = account.tokenExpiresAt,
