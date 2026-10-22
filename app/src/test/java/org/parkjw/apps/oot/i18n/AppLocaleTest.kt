@@ -32,8 +32,8 @@ class AppLocaleTest {
         AppLocale.apply(context, AppLanguage.KOREAN)
         assertEquals("확인 필요", AppText.get(R.string.status_needs_check))
         AppLocale.apply(context, AppLanguage.ENGLISH)
-        assertEquals("Check needed", AppText.get(R.string.status_needs_check))
-        assertEquals("Claude: check needed", AppText.get(R.string.notification_vendor_needs_check, "Claude"))
+        assertEquals("Needs attention", AppText.get(R.string.status_needs_check))
+        assertEquals("Claude needs attention", AppText.get(R.string.notification_vendor_needs_check, "Claude"))
     }
 
     @Test

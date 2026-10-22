@@ -18,8 +18,8 @@ object TestNotificationStrings {
     )
 
     val EN = NotificationStrings(
-        needsCheck = "Check needed",
-        vendorNeedsCheck = "%1\$s: check needed",
+        needsCheck = "Needs attention",
+        vendorNeedsCheck = "%1\$s needs attention",
         left = "%1\$s left",
         window5h = "5H",
         window7d = "7D",

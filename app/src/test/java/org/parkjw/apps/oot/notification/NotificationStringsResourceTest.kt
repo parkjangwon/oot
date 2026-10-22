@@ -43,7 +43,7 @@ class NotificationStringsResourceTest {
         val item = NotificationContent.expandedItems(listOf(usage), TestNotificationStrings.EN, now).single()
         assertEquals("5H 62% left · in 1h 40m", item.text)
         assertEquals(
-            "Claude: check needed",
+            "Claude needs attention",
             NotificationContent.collapsedItems(
                 listOf(usage.copy(windows = emptyList())),
                 3,

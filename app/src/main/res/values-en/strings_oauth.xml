@@ -8,7 +8,7 @@
     <string name="oauth_openai_code_request_failed">Couldn\'t request the OpenAI device code (%1$d): %2$s</string>
     <string name="oauth_openai_no_device_code">Didn\'t receive a valid OpenAI device code.</string>
     <string name="oauth_openai_request_error">OpenAI sign-in error: %1$s</string>
-    <string name="oauth_openai_token_response_incomplete">The OpenAI deviceauth/token response was incomplete.</string>
+    <string name="oauth_openai_token_response_incomplete">The OpenAI device token response was incomplete.</string>
     <string name="oauth_openai_token_exchange_failed">OpenAI token exchange failed</string>
     <string name="oauth_openai_token_exchange_failed_code">OpenAI token exchange failed (%1$d): %2$s</string>
     <string name="oauth_google_token_exchange_failed">Google token exchange failed</string>
