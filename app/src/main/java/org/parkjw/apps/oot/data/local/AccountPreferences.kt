@@ -144,6 +144,30 @@ class AccountPreferences(
         secureStorage.putString(KEY_AUTO_UPDATE_CHECK, enabled.toString())
     }
 
+    /**
+     * Removes the stored accounts and reopens the encrypted store with a fresh key.
+     * Settings that are not credentials are written back after a successful reopen.
+     */
+    @Synchronized
+    fun resetSecureStorage(): Boolean {
+        val serviceEnabled = _isServiceEnabled.value
+        val refreshInterval = _refreshIntervalMinutes.value
+        val autoUpdateCheck = _isAutoUpdateCheckEnabled.value
+        val hidden = _notificationHiddenAccountIds.value
+
+        _accounts.value = emptyList()
+
+        if (!secureStorage.reset()) return false
+
+        secureStorage.putString(KEY_SERVICE_ENABLED, serviceEnabled.toString())
+        secureStorage.putString(KEY_REFRESH_INTERVAL, refreshInterval.toString())
+        secureStorage.putString(KEY_AUTO_UPDATE_CHECK, autoUpdateCheck.toString())
+        persistNotificationHidden(hidden)
+        persistAccounts(emptyList())
+        persistOrder(emptyList())
+        return true
+    }
+
     private fun persistAccounts(list: List<ProviderAccount>) {
         try {
             val serialized = json.encodeToString(list)

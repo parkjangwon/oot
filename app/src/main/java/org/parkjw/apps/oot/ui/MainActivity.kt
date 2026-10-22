@@ -13,12 +13,15 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.parkjw.apps.oot.OotApp
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.i18n.AppLanguage
@@ -43,10 +46,6 @@ import org.parkjw.apps.oot.update.openReleasePage
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
-
-    private companion object {
-        var secureStorageNoticeShown = false
-    }
 
     private val app by lazy { applicationContext as OotApp }
     private val updateViewModel: UpdateViewModel by viewModels()
@@ -75,7 +74,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        showSecureStorageNotice()
         checkNotificationPermission()
         handleIncomingIntent(intent)
         updateViewModel.autoCheckOnLaunch(app.preferences.isAutoUpdateCheckEnabled.value)
@@ -96,6 +94,10 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val versionName = remember { context.installedVersionName() }
                 val updateState by updateViewModel.state.collectAsState()
+                val snackbarHostState = remember { SnackbarHostState() }
+                var secureStorageAvailable by remember {
+                    mutableStateOf(app.preferences.isSecureStorageAvailable)
+                }
 
                 LaunchedEffect(updateState) {
                     val ready = updateState as? UpdateUiState.ReadyToInstall ?: return@LaunchedEffect
@@ -209,6 +211,26 @@ class MainActivity : ComponentActivity() {
                             app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                         },
                         onSettingsClick = { showSettings = true },
+                        isSecureStorageAvailable = secureStorageAvailable,
+                        snackbarHostState = snackbarHostState,
+                        onResetSecureStorage = {
+                            lifecycleScope.launch {
+                                val reset = withContext(Dispatchers.IO) {
+                                    app.preferences.resetSecureStorage()
+                                }
+                                secureStorageAvailable = app.preferences.isSecureStorageAvailable
+                                if (reset) {
+                                    showAddDialog = true
+                                    snackbarHostState.showSnackbar(
+                                        getString(R.string.secure_storage_reset_done),
+                                    )
+                                } else {
+                                    snackbarHostState.showSnackbar(
+                                        getString(R.string.secure_storage_reset_failed),
+                                    )
+                                }
+                            }
+                        },
                     )
                 }
 
@@ -303,12 +325,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun showSecureStorageNotice() {
-        if (app.preferences.isSecureStorageAvailable || secureStorageNoticeShown) return
-        secureStorageNoticeShown = true
-        Toast.makeText(this, R.string.secure_storage_unavailable, Toast.LENGTH_LONG).show()
     }
 
     private fun checkNotificationPermission() {

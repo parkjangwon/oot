@@ -39,6 +39,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarData
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -140,12 +144,16 @@ fun DashboardScreen(
     refreshIntervalMinutes: Int = 15,
     onToggleService: (Boolean) -> Unit = {},
     onSetRefreshInterval: (Int) -> Unit = {},
+    isSecureStorageAvailable: Boolean = true,
+    onResetSecureStorage: (() -> Unit)? = null,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     var selectedVendorForDetail by remember { mutableStateOf<VendorUsage?>(null) }
     var selectedLegacyForDetail by remember { mutableStateOf<ProviderAccount?>(null) }
     var orderedUsages by remember { mutableStateOf(vendorUsages) }
     var draggingId by remember { mutableStateOf<String?>(null) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    var showStorageResetDialog by remember { mutableStateOf(false) }
     LaunchedEffect(vendorUsages) {
         if (previewDraggingAccountId != null) return@LaunchedEffect
         // A refresh landing mid-drag still carries the saved order: keep the dragged one, take only the new numbers.
@@ -189,6 +197,9 @@ fun DashboardScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data -> OotSnackbar(data) }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -261,6 +272,12 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
             ) {
                 val renderedUsages = orderedUsages.map { it.withStaleRollover(now) }
+
+                if (!isSecureStorageAvailable) {
+                    item(key = "secure_storage_notice") {
+                        SecureStorageNoticeCard(onResetClick = { showStorageResetDialog = true })
+                    }
+                }
                 val leastItem = findLeastRemainingItem(renderedUsages)
                 if (leastItem != null) {
                     item(key = "summary_line") {
@@ -382,6 +399,16 @@ fun DashboardScreen(
                 }
             }
         }
+    }
+
+    if (showStorageResetDialog) {
+        SecureStorageResetDialog(
+            onDismiss = { showStorageResetDialog = false },
+            onConfirm = {
+                showStorageResetDialog = false
+                onResetSecureStorage?.invoke()
+            },
+        )
     }
 
     selectedVendorForDetail?.let { vendor ->
@@ -1327,4 +1354,96 @@ fun formatTimeToReset(res: Resources, resetsAt: Instant?, now: Instant): String?
         minutes >= 1 -> res.getString(R.string.time_in_minutes, minutes)
         else -> null // under a minute: callers show "resets soon"
     }
+}
+
+@Composable
+fun SecureStorageNoticeCard(
+    onResetClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = CardCorner,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(OotSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(OotSpacing.xs),
+        ) {
+            Text(
+                text = stringResource(R.string.secure_storage_unavailable),
+                style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(
+                onClick = onResetClick,
+                colors = ootTextButtonColors(),
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.secure_storage_reset_action),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SecureStorageResetDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = DialogCorner,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = {
+            Text(
+                text = stringResource(R.string.secure_storage_reset_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.secure_storage_reset_body),
+                style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ootTextButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text(stringResource(R.string.secure_storage_reset_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ootTextButtonColors(),
+            ) {
+                Text(stringResource(R.string.secure_storage_reset_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun OotSnackbar(data: SnackbarData) {
+    Snackbar(
+        snackbarData = data,
+        shape = ButtonCorner,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        actionColor = MaterialTheme.colorScheme.onSurface,
+        dismissActionContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }

@@ -5,19 +5,25 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.security.KeyStore
 
 enum class StorageStatus { ENCRYPTED, UNAVAILABLE }
 
 class SecureStorage internal constructor(
-    context: Context,
-    openEncrypted: (Context) -> SharedPreferences = ::openEncryptedPreferences,
+    private val context: Context,
+    private val openEncrypted: (Context) -> SharedPreferences = ::openEncryptedPreferences,
     private val legacyPrefsName: String = LEGACY_PREFS_NAME,
+    private val encryptedPrefsName: String = ENCRYPTED_PREFS_NAME,
+    private val deleteStoreFile: (Context, String) -> Unit = { ctx, name -> ctx.deleteSharedPreferences(name) },
+    private val deleteKeyAlias: () -> Unit = ::deleteMasterKeyAlias,
     // A legacy plaintext file can be an orphan left by v1.3.1 after a transient failure, older than the
     // encrypted store, and stale OAuth refresh tokens must not overwrite newer ones: the encrypted value wins.
     private val resolveConflict: (key: String, encrypted: String, legacy: String) -> String = { _, encrypted, _ -> encrypted },
 ) {
-    val status: StorageStatus
-    private val prefs: SharedPreferences?
+    var status: StorageStatus
+        private set
+
+    private var prefs: SharedPreferences?
     private val memory = mutableMapOf<String, String>()
 
     init {
@@ -30,6 +36,35 @@ class SecureStorage internal constructor(
             status = StorageStatus.UNAVAILABLE
             seedFromLegacy(context)
         }
+    }
+
+    /**
+     * Removes the encrypted and legacy stores and the key that may have made the encrypted store unreadable,
+     * then opens a fresh store. Returns true when the new store is usable.
+     */
+    @Synchronized
+    fun reset(): Boolean {
+        memory.clear()
+        prefs = null
+        try {
+            deleteStoreFile(context, encryptedPrefsName)
+        } catch (e: Exception) {
+            // The reopen below decides whether the store is usable.
+        }
+        try {
+            deleteStoreFile(context, legacyPrefsName)
+        } catch (e: Exception) {
+            // The reopen below decides whether the store is usable.
+        }
+        try {
+            deleteKeyAlias()
+        } catch (e: Exception) {
+            // A missing key is already the desired state.
+        }
+        val reopened = openWithRetry(context, openEncrypted)
+        prefs = reopened
+        status = if (reopened != null) StorageStatus.ENCRYPTED else StorageStatus.UNAVAILABLE
+        return reopened != null
     }
 
     @Synchronized
@@ -186,10 +221,18 @@ class SecureStorage internal constructor(
     }
 }
 
+private const val ANDROID_KEYSTORE = "AndroidKeyStore"
 private const val ENCRYPTED_PREFS_NAME = "oot_secure_prefs"
 private const val LEGACY_PREFS_NAME = "oot_fallback_prefs"
 private const val MARKER_KEY = "oot_legacy_migrated"
 private const val MARKER_VALUE = "1"
+
+private fun deleteMasterKeyAlias() {
+    val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+    if (keyStore.containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS)) {
+        keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+    }
+}
 
 private fun openEncryptedPreferences(context: Context): SharedPreferences {
     val masterKey = MasterKey.Builder(context)
