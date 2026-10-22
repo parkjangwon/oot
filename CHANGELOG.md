@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Google Antigravity provider: its quota is only available through Google's private API, which this app's own OAuth client cannot use (#53). A saved Antigravity account is dropped on update; other providers keep their order and settings (#73).
 
+## [1.2.1] - 2026-10-22
+
+### Added
+- Settings: a per-provider '알림에 표시' toggle (default on). Providers switched off leave the notification but stay on the dashboard, and the choice survives restarts (#56).
+
+### Changed
+- The notification labels windows '5H' and '7D' and puts the reset time after a middle dot, e.g. '7D · 2일 3시간 후'; app screens keep '5시간'/'주간' (#58).
+- The empty notification tells 'all providers hidden' (go to Settings) apart from 'no providers registered'; the dashboard empty-state title is now '등록된 프로바이더가 없어요' (#56, #67).
+
+### Fixed
+- The drag-reordered provider order is saved and survives a force-stop, a relaunch and a foreground-service restart; the notification follows it. A new provider is added at the end, and deleting one does not reshuffle the rest (#61).
+- The Z.ai letter tile shows 'Z' instead of 'G' on the card and in the notification (#54).
+
 ## [1.2.0] - 2026-10-22
 
 ### Added
