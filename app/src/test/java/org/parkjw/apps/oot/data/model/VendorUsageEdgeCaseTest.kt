@@ -65,6 +65,10 @@ class VendorUsageEdgeCaseTest {
         val b = vendor(UsageWindow("w", "b", Remaining.Percent(50.0)))
         val sorted = listOf(a, e1, b, e2).sortedByRemaining()
         assertEquals(listOf(e1, e2, a, b), sorted)
+    }
+
+    @Test
+    fun `sorting an empty list returns an empty list`() {
         assertTrue(emptyList<VendorUsage>().sortedByRemaining().isEmpty())
     }
 
@@ -81,15 +85,15 @@ class VendorUsageEdgeCaseTest {
 
     @Test
     fun `usage percent edge values convert to remaining`() {
-        assertEquals(100.0, (status(usagePercent = 0f).toVendorUsage().representative!!.remaining as Remaining.Percent).percentLeft, 0.001)
-        val full = status(usagePercent = 100f).toVendorUsage().representative!!.remaining as Remaining.Percent
+        assertEquals(100.0, (status(usagePercent = 0f).toVendorUsage(now).representative!!.remaining as Remaining.Percent).percentLeft, 0.001)
+        val full = status(usagePercent = 100f).toVendorUsage(now).representative!!.remaining as Remaining.Percent
         assertEquals(0.0, full.percentLeft, 0.001)
         assertEquals(Level.DANGER, full.level)
     }
 
     @Test
     fun `status without percent or number falls back to a full primary window`() {
-        val v = status(remainingFormatted = "확인 필요").toVendorUsage()
+        val v = status(remainingFormatted = "확인 필요").toVendorUsage(now)
         val w = v.windows.single()
         assertEquals("primary", w.id)
         assertEquals(Remaining.Percent(100.0), w.remaining)
@@ -97,9 +101,9 @@ class VendorUsageEdgeCaseTest {
 
     @Test
     fun `percent takes precedence over a formatted amount and the amount keeps its label`() {
-        val both = status(usagePercent = 25f, remainingFormatted = "$9.00 남음").toVendorUsage()
+        val both = status(usagePercent = 25f, remainingFormatted = "$9.00 남음").toVendorUsage(now)
         assertEquals(Remaining.Percent(75.0), both.windows.single().remaining)
-        val amount = status(remainingFormatted = "$9.5 left").toVendorUsage().windows.single()
+        val amount = status(remainingFormatted = "$9.5 left").toVendorUsage(now).windows.single()
         assertEquals("$9.5 left", amount.label)
         assertEquals(9.5, (amount.remaining as Remaining.Balance).amountLeft, 0.0)
     }

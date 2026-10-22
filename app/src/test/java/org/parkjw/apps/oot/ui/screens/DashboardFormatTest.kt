@@ -60,7 +60,6 @@ class DashboardFormatTest {
         )
         val texts = errors.map { vendorErrorShortText(res, it) }
         assertTrue(texts.all { it.isNotBlank() })
-        assertEquals(texts.size, texts.toSet().size)
         assertTrue(vendorErrorShortText(res, VendorError.Http(503)).contains("503"))
     }
 

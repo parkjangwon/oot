@@ -1,5 +1,6 @@
 package org.parkjw.apps.oot.data.remote
 
+import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -8,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
@@ -19,9 +21,10 @@ import org.robolectric.annotation.Config
 
 // Robolectric: texts come from string resources (AppText).
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "ko")
 class RateLimitedStatusUncachedTest {
 
+    private val context = ApplicationProvider.getApplicationContext<Context>()
     private val nowMs = 5_000_000L
 
     private val account = ProviderAccount(
@@ -44,7 +47,7 @@ class RateLimitedStatusUncachedTest {
 
     @Before
     fun setUp() {
-        AppLocale.apply(ApplicationProvider.getApplicationContext(), AppLanguage.DEFAULT)
+        AppLocale.apply(context, AppLanguage.DEFAULT)
     }
 
     @Test
@@ -78,8 +81,8 @@ class RateLimitedStatusUncachedTest {
 
         assertFalse(status.isError)
         assertTrue(status.isWarning)
-        assertTrue(status.remainingFormatted.startsWith("40% 남음 "))
-        assertTrue(status.statusSummary.startsWith("40% "))
+        assertEquals("40% 남음 " + context.getString(R.string.data_previous_value), status.remainingFormatted)
+        assertEquals("40% " + context.getString(R.string.data_previous_value_short), status.statusSummary)
         assertEquals(120_000L, status.rateLimitedRetryAfterMs)
     }
 
