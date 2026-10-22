@@ -42,9 +42,7 @@ class AddAccountProviderListScreenshotTest {
                     onStartOAuth = {},
                     onOpenExternalBrowser = {},
                     onStartXaiDeviceFlow = { _, _, _ -> },
-                    onStartAntigravityOAuth = { _, _ -> },
                     onExchangeClaudeCode = { _, _, _ -> },
-                    onExchangeAntigravityCode = { _, _, _ -> },
                     onStartOpenAiDeviceFlow = { _, _, _ -> },
                     onSaveAccount = {},
                 )

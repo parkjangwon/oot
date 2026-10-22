@@ -56,7 +56,7 @@ Thumbs.db
 # Package and dependency caches
 .scannerwork/
 
-# Local OAuth client values for test builds (point OOT_OAUTH_PROPS at a file outside the repo)
+# Local OAuth client files left from the removed Antigravity login; keep them out of git
 *.oauth.properties
 oauth.properties
 __pycache__/

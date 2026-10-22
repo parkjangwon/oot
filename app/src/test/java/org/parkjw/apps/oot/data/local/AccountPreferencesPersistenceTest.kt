@@ -109,6 +109,34 @@ class AccountPreferencesPersistenceTest {
         assertEquals(listOf("b", "c", "a"), restart().ids())
     }
 
+    @Test
+    fun `a saved Antigravity account is dropped on load and the rest keep order and toggles`() {
+        val prefs = context.getSharedPreferences("oot_fallback_prefs", Application.MODE_PRIVATE)
+        val rawAccounts = """
+            [
+              {"id":"c","provider":"ZAI","name":"c","authType":"API_KEY","apiKey":"k","isEnabled":false},
+              {"id":"x","provider":"ANTIGRAVITY","name":"x","authType":"OAUTH","accessToken":"at","refreshToken":"rt"},
+              {"id":"a","provider":"OPENROUTER","name":"a","authType":"API_KEY","apiKey":"k"},
+              {"id":"b","provider":"CLAUDE","name":"b","authType":"API_KEY","apiKey":"k"}
+            ]
+        """.trimIndent()
+        prefs.edit()
+            .putString("oot_accounts", rawAccounts)
+            .putString("oot_account_order", """["b","x","c","a"]""")
+            .putString("oot_notification_hidden", """["x","a"]""")
+            .commit()
+
+        val loaded = AccountPreferences(context)
+        assertEquals(listOf("b", "c", "a"), loaded.ids())
+        assertFalse(loaded.accounts.value.first { it.id == "c" }.isEnabled)
+        assertTrue(loaded.accounts.value.first { it.id == "b" }.isEnabled)
+        assertTrue(loaded.accounts.value.first { it.id == "a" }.isEnabled)
+        assertEquals(setOf("a"), loaded.notificationHiddenAccountIds.value)
+
+        assertEquals(listOf("b", "c", "a"), restart().ids())
+        assertFalse(prefs.getString("oot_accounts", null)!!.contains("ANTIGRAVITY"))
+    }
+
     // Token refresh saves on the worker's thread while the UI reorders. The collector pauses a save right after it
     // published its list; without the lock the reorder finishes meanwhile and the paused save then writes its stale order.
     @Test
