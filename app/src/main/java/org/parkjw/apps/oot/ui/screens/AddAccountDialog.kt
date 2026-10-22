@@ -23,6 +23,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
@@ -89,6 +91,7 @@ fun AddAccountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(securePolicy = SecureFlagPolicy.SecureOn),
         shape = DialogCorner,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         title = {
@@ -421,6 +424,10 @@ fun AddAccountDialog(
                                         label = { Text(stringResource(R.string.add_account_claude_code_label), style = LocalTextStyle.current.ootWordBreak()) },
                                         placeholder = { Text(stringResource(R.string.add_account_claude_code_placeholder), style = LocalTextStyle.current.ootWordBreak()) },
                                         singleLine = true,
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Password,
+                                            autoCorrectEnabled = false
+                                        ),
                                         trailingIcon = {
                                             IconButton(onClick = {
                                                 val text = clipboardManager.getText()?.text
@@ -510,7 +517,10 @@ fun AddAccountDialog(
                             )
                         },
                         visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            autoCorrectEnabled = false
+                        ),
                         trailingIcon = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(onClick = {
