@@ -10,8 +10,15 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import org.parkjw.apps.oot.data.model.ProviderAccount
 
-class AccountPreferences(context: Context) {
-    private val secureStorage = SecureStorage(context)
+class AccountPreferences(
+    context: Context,
+    private val secureStorage: SecureStorage = SecureStorage(
+        context,
+        resolveConflict = { key, encrypted, legacy -> mergeStoredValue(key, encrypted, legacy) },
+    ),
+) {
+    val isSecureStorageAvailable: Boolean get() = secureStorage.status == StorageStatus.ENCRYPTED
+
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = false }
 
     private val _accounts = MutableStateFlow<List<ProviderAccount>>(emptyList())
@@ -68,6 +75,27 @@ class AccountPreferences(context: Context) {
         persistOrder(current.map { it.id })
     }
 
+    /**
+     * Persist a token refresh only for an account that is still stored (#96). Keeps the position, the user's
+     * name and enable toggle, and writes nothing when the user removed the account while the refresh was in flight.
+     */
+    @Synchronized
+    fun updateAccountIfPresent(account: ProviderAccount): Boolean {
+        val current = _accounts.value.toMutableList()
+        val index = current.indexOfFirst { it.id == account.id }
+        if (index < 0) return false
+        current[index] = current[index].copy(
+            accessToken = account.accessToken,
+            refreshToken = account.refreshToken,
+            tokenExpiresAt = account.tokenExpiresAt,
+            accountEmail = account.accountEmail,
+            chatgptAccountId = account.chatgptAccountId,
+        )
+        _accounts.value = current
+        persistAccountsNow(current)
+        return true
+    }
+
     @Synchronized
     fun deleteAccount(accountId: String) {
         val current = _accounts.value.filter { it.id != accountId }
@@ -120,6 +148,16 @@ class AccountPreferences(context: Context) {
         try {
             val serialized = json.encodeToString(list)
             secureStorage.putString(KEY_ACCOUNTS, serialized)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // commit, not apply: a rotated refresh token must survive a force-stop right after the refresh.
+    private fun persistAccountsNow(list: List<ProviderAccount>) {
+        try {
+            val serialized = json.encodeToString(list)
+            secureStorage.putStringNow(KEY_ACCOUNTS, serialized)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -184,6 +222,40 @@ class AccountPreferences(context: Context) {
         ): List<ProviderAccount> {
             val byId = accounts.associateBy { it.id }
             return mergeAccountOrder(savedOrder, accounts.map { it.id }).mapNotNull { byId[it] }
+        }
+
+        private val mergeJson = Json { ignoreUnknownKeys = true; prettyPrint = false }
+
+        /**
+         * Resolves a key found in both the encrypted and the legacy plaintext store.
+         *
+         * The encrypted value wins: the legacy file can be an orphan left by v1.3.1 after a transient failure, older
+         * than the encrypted store, and stale OAuth refresh tokens must not overwrite newer ones.
+         */
+        internal fun mergeStoredValue(key: String, encrypted: String, legacy: String): String = when (key) {
+            KEY_ACCOUNTS -> mergeAccounts(encrypted, legacy)
+            KEY_NOTIFICATION_HIDDEN, KEY_ACCOUNT_ORDER -> mergeIdLists(encrypted, legacy)
+            else -> encrypted
+        }
+
+        private fun mergeAccounts(encrypted: String, legacy: String): String {
+            val byId = LinkedHashMap<String, ProviderAccount>()
+            decodeAccounts(mergeJson, encrypted).accounts.forEach { byId[it.id] = it }
+            decodeAccounts(mergeJson, legacy).accounts.forEach { byId.putIfAbsent(it.id, it) }
+            return mergeJson.encodeToString(byId.values.toList())
+        }
+
+        private fun mergeIdLists(encrypted: String, legacy: String): String {
+            val ids = LinkedHashSet<String>()
+            ids += decodeIdList(mergeJson, encrypted)
+            ids += decodeIdList(mergeJson, legacy)
+            return mergeJson.encodeToString(ids.toList())
+        }
+
+        private fun decodeIdList(json: Json, raw: String): List<String> = try {
+            json.decodeFromString<List<String>>(raw)
+        } catch (e: Exception) {
+            emptyList()
         }
 
         private const val KEY_ACCOUNTS = "oot_accounts"

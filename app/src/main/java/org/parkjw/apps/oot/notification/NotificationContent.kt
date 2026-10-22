@@ -35,6 +35,8 @@ data class NotificationStrings(
     val inHoursMinutes: String,
     /** "%1$d분 후" */
     val inMinutes: String,
+    /** "(이전값)": suffix for values carried over from a failed refresh. */
+    val previousValue: String,
 ) {
     fun leftOf(value: String): String = left.format(value)
     fun vendorNeedsCheck(name: String): String = vendorNeedsCheck.format(name)
@@ -163,12 +165,20 @@ object NotificationContent {
     fun visibleUsages(usages: List<VendorUsage>, hiddenAccountIds: Set<String>): List<VendorUsage> =
         usages.filter { it.accountId !in hiddenAccountIds }
 
+    // Values carried over from a failed refresh get the same "(이전값)" suffix the status text uses.
+    // The collapsed row stays bare: one line there has no room for it (#107).
+    private fun ExpandedItem.markStale(usage: VendorUsage, strings: NotificationStrings): ExpandedItem {
+        if (usage.staleSince == null || isError) return this
+        val suffix = " " + strings.previousValue
+        return copy(text = text + suffix)
+    }
+
     // User order as given; errored vendors stay in place ("check needed").
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int, strings: NotificationStrings): List<CollapsedItem> =
         usages.take(maxItems.coerceAtLeast(0)).map { usage ->
             val p = usage.providerType
             openRouterView(usage)?.let { or ->
-                return@map CollapsedItem(
+                CollapsedItem(
                     p,
                     mark(p),
                     formatBalance(or.amountLeft, or.currency),
@@ -176,8 +186,7 @@ object NotificationContent {
                     false,
                     openRouterLevel(or.keyPercent)
                 )
-            }
-            when (val remaining = usage.representative?.remaining) {
+            } ?: when (val remaining = usage.representative?.remaining) {
                 null ->
                     CollapsedItem(p, mark(p), strings.vendorNeedsCheck(shortName(p)), null, true, Level.OK)
                 is Remaining.Balance ->
@@ -204,44 +213,44 @@ object NotificationContent {
             val p = usage.providerType
             val itemMark = mark(p)
             val name = shortName(p)
-            if (usage.error != null) {
-                return@map ExpandedItem(p, itemMark, name, strings.needsCheck, null, true, Level.OK)
-            }
             val representative = usage.representative
-                ?: return@map ExpandedItem(p, itemMark, name, strings.needsCheck, null, true, Level.OK)
-            openRouterView(usage)?.let { or ->
-                return@map ExpandedItem(
-                    p,
-                    itemMark,
-                    name,
-                    strings.leftOf(formatBalance(or.amountLeft, or.currency)),
-                    or.keyPercent,
-                    false,
-                    openRouterLevel(or.keyPercent)
-                )
-            }
-            when (val remaining = representative.remaining) {
-                is Remaining.Balance ->
-                    ExpandedItem(p, itemMark, name, strings.leftOf(formatBalance(remaining.amountLeft, remaining.currency)), null, false, Level.OK)
-                is Remaining.Percent -> {
-                    // Representative window only (5-hour when present, else least remaining), plus its reset.
-                    val text = windowLabel(representative, strings) + strings.leftOf(formatPercent(remaining))
-                    val reset = representative.resetsAt
-                        ?.let { formatNotificationReset(it, now, strings) }
-                        ?.takeIf { it.isNotEmpty() }
-                        ?.let { " · $it" }
-                        ?: ""
+            val item = if (usage.error != null || representative == null) {
+                ExpandedItem(p, itemMark, name, strings.needsCheck, null, true, Level.OK)
+            } else {
+                openRouterView(usage)?.let { or ->
                     ExpandedItem(
                         p,
                         itemMark,
                         name,
-                        text + reset,
-                        remaining.percentLeft.roundToInt().coerceIn(0, 100),
+                        strings.leftOf(formatBalance(or.amountLeft, or.currency)),
+                        or.keyPercent,
                         false,
-                        remaining.level
+                        openRouterLevel(or.keyPercent)
                     )
+                } ?: when (val remaining = representative.remaining) {
+                    is Remaining.Balance ->
+                        ExpandedItem(p, itemMark, name, strings.leftOf(formatBalance(remaining.amountLeft, remaining.currency)), null, false, Level.OK)
+                    is Remaining.Percent -> {
+                        // Representative window only (5-hour when present, else least remaining), plus its reset.
+                        val text = windowLabel(representative, strings) + strings.leftOf(formatPercent(remaining))
+                        val reset = representative.resetsAt
+                            ?.let { formatNotificationReset(it, now, strings) }
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.let { " · $it" }
+                            ?: ""
+                        ExpandedItem(
+                            p,
+                            itemMark,
+                            name,
+                            text + reset,
+                            remaining.percentLeft.roundToInt().coerceIn(0, 100),
+                            false,
+                            remaining.level
+                        )
+                    }
                 }
             }
+            item.markStale(usage, strings)
         }
 
     // Text-only fallback (option C): user order, e.g. "Claude 62% · GLM 98% · OpenRouter $12.40"
@@ -256,6 +265,7 @@ object NotificationContent {
                     null -> strings.needsCheck
                 }
             }
-            "${shortName(usage.providerType)} $label"
+            val stale = if (usage.staleSince != null && usage.representative != null) " ${strings.previousValue}" else ""
+            "${shortName(usage.providerType)} $label$stale"
         }
 }

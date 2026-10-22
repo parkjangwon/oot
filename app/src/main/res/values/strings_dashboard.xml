@@ -25,4 +25,5 @@
     <string name="dashboard_error_parse">응답 해석 실패</string>
     <string name="dashboard_error_http">HTTP %1$d</string>
     <string name="dashboard_error_unknown">연결 확인 필요</string>
+    <string name="dashboard_stale_values">%1$s 전 값이에요 · 새로고침에 실패했어요</string>
 </resources>

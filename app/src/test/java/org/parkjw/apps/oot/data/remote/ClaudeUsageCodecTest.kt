@@ -122,11 +122,13 @@ class ClaudeUsageCodecTest {
 
     @Test
     fun `429 with cached value keeps it and marks stale`() {
-        val status = claudeRateLimitedStatus(account(), cachedStatus())
+        val cached = cachedStatus()
+        val status = claudeRateLimitedStatus(account(), cached)
         assertFalse(status.isError)
         assertTrue(status.isWarning)
         assertTrue(status.remainingFormatted.contains("이전 값"))
         assertTrue(status.remainingFormatted.contains("80% 남음"))
+        assertEquals(cached.lastUpdated, status.staleSince)
     }
 
     @Test

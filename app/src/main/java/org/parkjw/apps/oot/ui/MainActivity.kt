@@ -44,6 +44,10 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
+    private companion object {
+        var secureStorageNoticeShown = false
+    }
+
     private val app by lazy { applicationContext as OotApp }
     private val updateViewModel: UpdateViewModel by viewModels()
     internal var exitBackPressPolicy = ExitBackPressPolicy()
@@ -71,6 +75,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        showSecureStorageNotice()
         checkNotificationPermission()
         handleIncomingIntent(intent)
         updateViewModel.autoCheckOnLaunch(app.preferences.isAutoUpdateCheckEnabled.value)
@@ -298,6 +303,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun showSecureStorageNotice() {
+        if (app.preferences.isSecureStorageAvailable || secureStorageNoticeShown) return
+        secureStorageNoticeShown = true
+        Toast.makeText(this, R.string.secure_storage_unavailable, Toast.LENGTH_LONG).show()
     }
 
     private fun checkNotificationPermission() {

@@ -39,12 +39,13 @@ fun parseXaiBilling(body: String, json: Json = Json): XaiBilling? {
     val rawUsage = config.number("creditUsagePercent")
     if (currentPeriod == null && rawUsage == null) return null
 
-    // creditUsagePercent is a 0.0..1.0 ratio; it may be omitted right after a weekly reset (0% used).
-    val usedPercent = percentOf(rawUsage ?: 0.0).coerceIn(0.0, 100.0)
+    // creditUsagePercent is already a percentage of the allowance (0.0-100.0); it may be omitted right
+    // after a weekly reset (0% used).
+    val usedPercent = (rawUsage ?: 0.0).coerceIn(0.0, 100.0)
     val products = (config["productUsage"] as? JsonArray)?.mapNotNull { item ->
         val product = item as? JsonObject ?: return@mapNotNull null
         val name = (product["product"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
-        name.removePrefix("Grok") to percentOf(product.number("usagePercent") ?: 0.0)
+        name.removePrefix("Grok") to (product.number("usagePercent") ?: 0.0).coerceIn(0.0, 100.0)
     }.orEmpty()
     val isUnified = (config["isUnifiedBillingUser"] as? JsonPrimitive)?.booleanOrNull == true
     val prepaid = (config["prepaidBalance"] as? JsonObject)?.number("val")?.takeIf { isUnified }
@@ -59,8 +60,6 @@ fun parseXaiBilling(body: String, json: Json = Json): XaiBilling? {
 
 private fun JsonObject.number(key: String): Double? =
     (this[key] as? JsonPrimitive)?.doubleOrNull?.takeIf { it.isFinite() }
-
-private fun percentOf(value: Double): Double = if (value in 0.0..1.0) value * 100.0 else value
 
 // RFC 3339 instant; a value without a zone is read as UTC (fractional seconds dropped), as the period end always was.
 private fun parseXaiInstant(raw: String?): Instant? {

@@ -2,9 +2,14 @@ package org.parkjw.apps.oot.data.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Duration
+import java.time.Instant
 
 class VendorUsageTest {
+
+    private val now: Instant = Instant.parse("2026-10-21T12:00:00Z")
 
     private fun status(
         usagePercent: Float? = null,
@@ -12,7 +17,10 @@ class VendorUsageTest {
         isError: Boolean = false,
         errorMessage: String? = null,
         provider: ProviderType = ProviderType.CLAUDE,
-        accountName: String = "acc"
+        accountName: String = "acc",
+        staleSince: Long? = null,
+        isRateLimited: Boolean = false,
+        windows: List<UsageWindow> = emptyList(),
     ) = TokenStatus(
         accountId = "id",
         provider = provider,
@@ -21,7 +29,10 @@ class VendorUsageTest {
         usagePercent = usagePercent,
         statusSummary = "",
         isError = isError,
-        errorMessage = errorMessage
+        errorMessage = errorMessage,
+        staleSince = staleSince,
+        isRateLimited = isRateLimited,
+        windows = windows,
     )
 
     private fun vendor(
@@ -102,5 +113,68 @@ class VendorUsageTest {
         val v = status(isError = true, errorMessage = "failed").toVendorUsage()
         assertEquals(VendorError.Unknown("failed"), v.error)
         assertNull(v.representative)
+    }
+
+    @Test
+    fun `stale status marks the usage and drops windows that already reset`() {
+        val staleSince = now.minus(Duration.ofHours(2)).toEpochMilli()
+        val v = status(
+            staleSince = staleSince,
+            windows = listOf(
+                UsageWindow("seven_day", "7d", Remaining.Percent(10.0), now.minusSeconds(60)),
+                UsageWindow("five_hour", "5h", Remaining.Percent(50.0), now.plusSeconds(3600)),
+            ),
+        ).toVendorUsage(now)
+
+        assertEquals(listOf("five_hour"), v.windows.map { it.id })
+        assertNull(v.error)
+        assertEquals(Instant.ofEpochMilli(staleSince), v.staleSince)
+    }
+
+    @Test
+    fun `stale status whose windows all reset becomes an error`() {
+        val staleSince = now.minus(Duration.ofHours(2)).toEpochMilli()
+        val past = listOf(
+            UsageWindow("weekly", "weekly", Remaining.Percent(4.0), now.minusSeconds(1)),
+        )
+
+        val rateLimited = status(staleSince = staleSince, isRateLimited = true, windows = past).toVendorUsage(now)
+        assertTrue(rateLimited.windows.isEmpty())
+        assertEquals(VendorError.RateLimited, rateLimited.error)
+
+        val unknown = status(staleSince = staleSince, windows = past).toVendorUsage(now)
+        assertTrue(unknown.windows.isEmpty())
+        assertTrue(unknown.error is VendorError.Unknown)
+    }
+
+    @Test
+    fun `stale usage whose reset passes after conversion becomes an error at render time`() {
+        val resetAt = now.plusSeconds(60)
+        val staleSince = now.minus(Duration.ofHours(2)).toEpochMilli()
+        val converted = status(
+            staleSince = staleSince,
+            windows = listOf(UsageWindow("five_hour", "5h", Remaining.Percent(50.0), resetAt)),
+        ).toVendorUsage(now)
+        assertEquals(listOf("five_hour"), converted.windows.map { it.id })
+
+        val rendered = converted.withStaleRollover(now.plusSeconds(120))
+        assertTrue(rendered.windows.isEmpty())
+        assertEquals(VendorError.RateLimited, rendered.error)
+
+        // Fresh values ignore the rollover: their reset is processed by the next refresh.
+        assertNull(converted.copy(staleSince = null).withStaleRollover(now.plusSeconds(120)).error)
+    }
+
+    @Test
+    fun `fresh status keeps a window whose reset just passed`() {
+        val v = status(
+            windows = listOf(
+                UsageWindow("weekly", "weekly", Remaining.Percent(4.0), now.minusSeconds(60)),
+            ),
+        ).toVendorUsage(now)
+
+        assertEquals(1, v.windows.size)
+        assertNull(v.staleSince)
+        assertNull(v.error)
     }
 }

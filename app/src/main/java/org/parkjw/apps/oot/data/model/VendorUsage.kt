@@ -41,7 +41,9 @@ data class VendorUsage(
     val providerType: ProviderType,
     val displayName: String,
     val windows: List<UsageWindow>,
-    val error: VendorError? = null
+    val error: VendorError? = null,
+    /** The last successful fetch these values came from; null = fresh. */
+    val staleSince: Instant? = null
 ) {
     // The notification shows the 5-hour window when the vendor has one, else the least-remaining window.
     val representative: UsageWindow?
@@ -66,14 +68,27 @@ fun List<VendorUsage>.sortedByRemaining(): List<VendorUsage> =
 
 private val amountRegex = Regex("""\d+(\.\d+)?""")
 
-fun TokenStatus.toVendorUsage(): VendorUsage {
+// A stale snapshot must not keep showing a window whose reset has passed since it was converted.
+fun VendorUsage.withStaleRollover(now: Instant): VendorUsage {
+    if (staleSince == null) return this
+    val shown = windows.filter { it.resetsAt == null || it.resetsAt > now }
+    if (shown.size == windows.size) return this
+    return copy(
+        windows = shown,
+        error = if (shown.isEmpty()) error ?: VendorError.RateLimited else error
+    )
+}
+
+fun TokenStatus.toVendorUsage(now: Instant = Instant.now()): VendorUsage {
+    val staleAt = staleSince?.let { Instant.ofEpochMilli(it) }
     if (isError) {
         return VendorUsage(
             accountId = accountId,
             providerType = provider,
             displayName = accountName,
             windows = emptyList(),
-            error = VendorError.Unknown(errorMessage)
+            error = VendorError.Unknown(errorMessage),
+            staleSince = staleAt
         )
     }
     // Providers that report real windows (e.g. Claude 5-hour/weekly with resetsAt) carry them directly.
@@ -86,10 +101,23 @@ fun TokenStatus.toVendorUsage(): VendorUsage {
             } ?: UsageWindow("primary", "primary", Remaining.Percent(100.0))
         )
     }
+    // A stale snapshot must not keep showing a window whose reset already passed: its remaining is not current.
+    val shownWindows = if (staleAt == null) {
+        usageWindows
+    } else {
+        usageWindows.filter { it.resetsAt == null || it.resetsAt > now }
+    }
+    val error = if (staleAt != null && shownWindows.isEmpty()) {
+        if (isRateLimited) VendorError.RateLimited else VendorError.Unknown(errorMessage)
+    } else {
+        null
+    }
     return VendorUsage(
         accountId = accountId,
         providerType = provider,
         displayName = accountName,
-        windows = usageWindows
+        windows = shownWindows,
+        error = error,
+        staleSince = staleAt
     )
 }

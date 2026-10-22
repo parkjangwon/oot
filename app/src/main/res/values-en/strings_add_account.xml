@@ -4,7 +4,7 @@
     <string name="add_account_display_name_label">Display name</string>
     <string name="add_account_open_zai">Open Z.ai Console to get a key</string>
     <string name="add_account_open_openrouter">Open the OpenRouter keys page</string>
-    <string name="add_account_open_claude">Open Claude Console to get a key</string>
+    <string name="add_account_open_claude">Get a key in Claude Console</string>
     <string name="add_account_open_openai">Open OpenAI Platform to get a key</string>
     <string name="add_account_open_xai">Open xAI Console to get a key</string>
     <string name="add_account_open_deepseek">Open the DeepSeek platform to get a key</string>

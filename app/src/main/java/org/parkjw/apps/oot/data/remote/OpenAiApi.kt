@@ -20,7 +20,7 @@ class OpenAiApi(
     private val client: OkHttpClient,
     private val json: Json,
     private val oauthManager: OAuthManager? = null,
-    private val onAccountRefreshed: (ProviderAccount) -> Unit = {}
+    private val onAccountRefreshed: (ProviderAccount) -> Boolean = { true }
 ) {
     suspend fun fetchStatus(account: ProviderAccount): TokenStatus = withContext(Dispatchers.IO) {
         val credential = account.activeCredential().trim()
@@ -84,7 +84,9 @@ class OpenAiApi(
                     if (refreshed == account || refreshed.refreshToken.isNullOrBlank()) {
                         return errorStatus(account, openAiErrorText(VendorError.Unauthorized))
                     }
-                    onAccountRefreshed(refreshed)
+                    if (!onAccountRefreshed(refreshed)) {
+                        return errorStatus(account, openAiErrorText(VendorError.Unauthorized))
+                    }
                     return fetchWhamUsage(
                         refreshed,
                         refreshed.activeCredential().trim().removePrefix("Bearer ").trim(),
