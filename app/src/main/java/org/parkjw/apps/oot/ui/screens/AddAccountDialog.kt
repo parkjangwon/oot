@@ -44,16 +44,7 @@ fun AddAccountDialog(
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
     ) -> Unit,
-    onStartAntigravityOAuth: (
-        onTokenReceived: (OAuthTokenResult) -> Unit,
-        onError: (String) -> Unit
-    ) -> Unit,
     onExchangeClaudeCode: (
-        code: String,
-        onTokenReceived: (OAuthTokenResult) -> Unit,
-        onError: (String) -> Unit
-    ) -> Unit,
-    onExchangeAntigravityCode: (
         code: String,
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
@@ -89,12 +80,6 @@ fun AddAccountDialog(
     var isClaudeExchanging by remember { mutableStateOf(false) }
     var claudeErrorMessage by remember { mutableStateOf<String?>(null) }
     var showClaudeCodeInput by remember { mutableStateOf(false) }
-
-    // Antigravity OAuth state
-    var antigravityAuthCode by remember { mutableStateOf("") }
-    var isAntigravityExchanging by remember { mutableStateOf(false) }
-    var antigravityErrorMessage by remember { mutableStateOf<String?>(null) }
-    var showAntigravityCodeInput by remember { mutableStateOf(false) }
 
     val clipboardManager = LocalClipboardManager.current
     val scrollState = rememberScrollState()
@@ -153,8 +138,6 @@ fun AddAccountDialog(
                                     xaiErrorMessage = null
                                     showClaudeCodeInput = false
                                     claudeErrorMessage = null
-                                    showAntigravityCodeInput = false
-                                    antigravityErrorMessage = null
                                     isProviderDropdownExpanded = false
                                 }
                             )
@@ -188,7 +171,6 @@ fun AddAccountDialog(
                             ProviderType.CLAUDE -> "Claude Console 키 발급 열기"
                             ProviderType.OPENAI -> "OpenAI Platform 키 발급 열기"
                             ProviderType.XAI -> "xAI Console 키 발급 열기"
-                            ProviderType.ANTIGRAVITY -> "Google Antigravity 사이트 열기"
                             ProviderType.DEEPSEEK -> "DeepSeek 플랫폼 키 발급 열기"
                             ProviderType.OLLAMA_CLOUD -> "Ollama 키 페이지 열기"
                             ProviderType.OPENCODE_GO -> "OpenCode 키 페이지 열기"
@@ -197,129 +179,6 @@ fun AddAccountDialog(
                 }
 
                 // Provider-Specific OAuth / Device Flow Sections
-                if (selectedProvider == ProviderType.ANTIGRAVITY) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "✨ Google Antigravity OAuth 2.0 연동",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Google 계정 로그인으로 Antigravity / Gemini 에이전트 쿼터를 자동 연동합니다.",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-
-                            Button(
-                                onClick = {
-                                    showAntigravityCodeInput = true
-                                    antigravityErrorMessage = null
-                                    onStartAntigravityOAuth(
-                                        { tokenResult ->
-                                            val newAccount = ProviderAccount(
-                                                id = UUID.randomUUID().toString(),
-                                                provider = ProviderType.ANTIGRAVITY,
-                                                name = accountName.ifBlank { "Google Antigravity" },
-                                                authType = AuthType.OAUTH,
-                                                accessToken = tokenResult.accessToken,
-                                                refreshToken = tokenResult.refreshToken,
-                                                tokenExpiresAt = tokenResult.expiresAt
-                                            )
-                                            onSaveAccount(newAccount)
-                                        },
-                                        { errorMsg ->
-                                            antigravityErrorMessage = errorMsg
-                                        }
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("외부 브라우저로 Google 로그인")
-                            }
-
-                            AnimatedVisibility(visible = showAntigravityCodeInput) {
-                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(
-                                        text = "브라우저에서 로그인 후 자동으로 등록되거나, 콜백 URL/코드를 여기에 직접 붙여넣으실 수 있습니다:",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    OutlinedTextField(
-                                        value = antigravityAuthCode,
-                                        onValueChange = { antigravityAuthCode = it },
-                                        label = { Text("인증 코드 또는 콜백 URL") },
-                                        placeholder = { Text("http://127.0.0.1:4000/?code=... 또는 코드") },
-                                        singleLine = true,
-                                        trailingIcon = {
-                                            IconButton(onClick = {
-                                                val text = clipboardManager.getText()?.text
-                                                if (!text.isNullOrBlank()) {
-                                                    antigravityAuthCode = text.trim()
-                                                }
-                                            }) {
-                                                Icon(Icons.Filled.ContentPaste, contentDescription = "붙여넣기")
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-
-                                    Button(
-                                        onClick = {
-                                            isAntigravityExchanging = true
-                                            antigravityErrorMessage = null
-                                            onExchangeAntigravityCode(
-                                                antigravityAuthCode,
-                                                { tokenResult ->
-                                                    isAntigravityExchanging = false
-                                                    val newAccount = ProviderAccount(
-                                                        id = UUID.randomUUID().toString(),
-                                                        provider = ProviderType.ANTIGRAVITY,
-                                                        name = accountName.ifBlank { "Google Antigravity" },
-                                                        authType = AuthType.OAUTH,
-                                                        accessToken = tokenResult.accessToken,
-                                                        refreshToken = tokenResult.refreshToken,
-                                                        tokenExpiresAt = tokenResult.expiresAt
-                                                    )
-                                                    onSaveAccount(newAccount)
-                                                },
-                                                { errorMsg ->
-                                                    isAntigravityExchanging = false
-                                                    antigravityErrorMessage = errorMsg
-                                                }
-                                            )
-                                        },
-                                        enabled = antigravityAuthCode.isNotBlank() && !isAntigravityExchanging,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        if (isAntigravityExchanging) {
-                                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("토큰 교환 중...")
-                                        } else {
-                                            Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("인증 코드로 토큰 등록")
-                                        }
-                                    }
-
-                                    antigravityErrorMessage?.let {
-                                        Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
                 if (selectedProvider == ProviderType.XAI) {
                     Card(
                         colors = CardDefaults.cardColors(
@@ -639,7 +498,6 @@ fun AddAccountDialog(
                                     ProviderType.CLAUDE -> "sk-ant-... 또는 세션 키"
                                     ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
                                     ProviderType.XAI -> "xai-... API Key"
-                                    ProviderType.ANTIGRAVITY -> "Bearer 토큰"
                                     ProviderType.DEEPSEEK -> "sk-..."
                                     ProviderType.OLLAMA_CLOUD -> "Ollama Cloud API Key"
                                     ProviderType.OPENCODE_GO -> "OpenCode Go API Key"
@@ -676,7 +534,6 @@ fun AddAccountDialog(
                             ProviderType.CLAUDE -> "💡 Anthropic Console API 키(sk-ant-...) 또는 OAuth 토큰을 입력해주세요."
                             ProviderType.OPENAI -> "💡 ChatGPT 로그인(5h/주간) 또는 API 키(sk-...)로 레이트 리밋을 조회합니다."
                             ProviderType.XAI -> "💡 xAI Console API 키 또는 Grok OAuth 토큰으로 주간 한도를 모니터링합니다."
-                            ProviderType.ANTIGRAVITY -> "💡 Antigravity 사용량은 Google 로그인으로만 조회할 수 있어요. Gemini API Key로는 조회되지 않습니다."
                             ProviderType.DEEPSEEK -> "💡 DeepSeek API 키를 등록하면 남은 API 크레딧 잔액을 확인합니다."
                             ProviderType.OLLAMA_CLOUD -> "💡 Ollama Cloud API 키를 등록하면 세션/주간 사용량과 구매 크레딧을 확인합니다."
                             ProviderType.OPENCODE_GO -> "💡 OpenCode Go API 키를 등록하면 5시간/주간/월간 사용량을 확인합니다."

@@ -1,5 +1,3 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -15,32 +13,6 @@ val hasReleaseSigning =
         System.getenv("OOT_KEY_ALIAS"),
         System.getenv("OOT_KEY_PASSWORD"),
     ).all { !it.isNullOrBlank() }
-
-// Antigravity's Google OAuth client (installed-app: id + secret on every token call). Never committed.
-// Each value comes from, in order: the env var, a gradle property, or the properties file that OOT_OAUTH_PROPS
-// (env var or gradle property) points to, kept outside the repo. No fallback: the id and the secret must come from
-// the same OAuth client, so a missing value leaves the build without Antigravity login (the app says so).
-val oauthProps = Properties().apply {
-    val path = System.getenv("OOT_OAUTH_PROPS")?.takeIf { it.isNotBlank() }
-        ?: providers.gradleProperty("OOT_OAUTH_PROPS").orNull?.takeIf { it.isNotBlank() }
-    if (path != null) {
-        val propsFile = file(path)
-        if (!propsFile.isFile) throw GradleException("OOT_OAUTH_PROPS does not point to a readable file")
-        propsFile.inputStream().use { load(it) }
-    }
-}
-
-fun oauthValue(key: String): String =
-    (System.getenv(key)?.takeIf { it.isNotBlank() }
-        ?: providers.gradleProperty(key).orNull?.takeIf { it.isNotBlank() }
-        ?: oauthProps.getProperty(key))
-        .orEmpty()
-        .trim()
-
-fun buildConfigString(value: String): String = "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
-
-val antigravityClientId = oauthValue("OOT_ANTIGRAVITY_CLIENT_ID")
-val antigravityClientSecret = oauthValue("OOT_ANTIGRAVITY_CLIENT_SECRET")
 
 val appVersionName = version.toString()
 
@@ -73,8 +45,6 @@ android {
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
-        buildConfigField("String", "ANTIGRAVITY_CLIENT_ID", buildConfigString(antigravityClientId))
-        buildConfigField("String", "ANTIGRAVITY_CLIENT_SECRET", buildConfigString(antigravityClientSecret))
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

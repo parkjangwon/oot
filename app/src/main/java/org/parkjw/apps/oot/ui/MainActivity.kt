@@ -209,21 +209,9 @@ class MainActivity : ComponentActivity() {
                                 onError = onError
                             )
                         },
-                        onStartAntigravityOAuth = { onTokenReceived, onError ->
-                            app.oauthManager.startAntigravityOAuthFlow(
-                                onTokenReceived = onTokenReceived,
-                                onError = onError
-                            )
-                        },
                         onExchangeClaudeCode = { code, onTokenReceived, onError ->
                             lifecycleScope.launch {
                                 val result = app.oauthManager.exchangeClaudeAuthCode(code)
-                                result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: "토큰 교환 실패") }
-                            }
-                        },
-                        onExchangeAntigravityCode = { code, onTokenReceived, onError ->
-                            lifecycleScope.launch {
-                                val result = app.oauthManager.exchangeAntigravityCode(code)
                                 result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: "토큰 교환 실패") }
                             }
                         },

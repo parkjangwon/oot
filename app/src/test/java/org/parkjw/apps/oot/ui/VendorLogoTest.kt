@@ -18,7 +18,6 @@ class VendorLogoTest {
                 ProviderType.CLAUDE,
                 ProviderType.OPENROUTER,
                 ProviderType.XAI,
-                ProviderType.ANTIGRAVITY,
                 ProviderType.DEEPSEEK,
                 ProviderType.OLLAMA_CLOUD,
                 ProviderType.OPENCODE_GO,

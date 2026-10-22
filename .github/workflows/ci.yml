@@ -19,11 +19,6 @@ jobs:
           java-version: "21"
           cache: gradle
       - name: Build, test, lint
-        env:
-          OOT_ANTIGRAVITY_CLIENT_ID: ${{ secrets.OOT_ANTIGRAVITY_CLIENT_ID }}
-          OOT_ANTIGRAVITY_CLIENT_SECRET: ${{ secrets.OOT_ANTIGRAVITY_CLIENT_SECRET }}
         run: ./gradlew assembleDebug assembleRelease testDebugUnitTest lintDebug --console=plain
       - name: Test release version
         run: bash scripts/test-release-version.sh
-      - name: Test OAuth config resolution (fake values)
-        run: bash scripts/test-oauth-config.sh

@@ -29,4 +29,18 @@ class AccountDecodeTest {
         assertEquals(0, decoded.accounts.size)
         assertEquals(0, decoded.droppedCount)
     }
+
+    @Test
+    fun `a stored Antigravity account is dropped and the rest kept in order`() {
+        val raw = """
+            [
+              {"id":"a","provider":"CLAUDE","name":"Claude"},
+              {"id":"b","provider":"ANTIGRAVITY","name":"Google Antigravity","authType":"OAUTH","accessToken":"at","refreshToken":"rt"},
+              {"id":"c","provider":"ZAI","name":"Z.ai (GLM)"}
+            ]
+        """.trimIndent()
+        val decoded = AccountPreferences.decodeAccounts(json, raw)
+        assertEquals(listOf("a", "c"), decoded.accounts.map { it.id })
+        assertEquals(1, decoded.droppedCount)
+    }
 }

@@ -39,7 +39,6 @@ class SettingsScreenScreenshotTest {
         ProviderAccount(id = "demo-glm", provider = ProviderType.ZAI, name = "Z.ai (GLM)"),
         ProviderAccount(id = "demo-xai", provider = ProviderType.XAI, name = "xAI (Grok)"),
         ProviderAccount(id = "demo-openrouter", provider = ProviderType.OPENROUTER, name = "OpenRouter"),
-        ProviderAccount(id = "demo-antigravity", provider = ProviderType.ANTIGRAVITY, name = "Google Antigravity"),
     )
 
     private fun setSettingsContent(
