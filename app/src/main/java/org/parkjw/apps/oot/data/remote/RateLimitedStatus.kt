@@ -22,7 +22,8 @@ fun rateLimitedTokenStatus(
             isWarning = true,
             isError = false,
             errorMessage = AppText.get(R.string.data_rate_limited_cached),
-            lastUpdated = nowMs,
+            // Keep the time of the fetch these values came from; the card marks them stale.
+            staleSince = cached.staleSince ?: cached.lastUpdated,
             isRateLimited = true,
             rateLimitedRetryAfterMs = retryAfterMs,
         )

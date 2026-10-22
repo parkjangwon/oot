@@ -15,6 +15,7 @@ import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorUsage
+import org.parkjw.apps.oot.data.model.asStale
 import org.parkjw.apps.oot.data.model.toVendorUsage
 import org.parkjw.apps.oot.data.oauth.OAuthManager
 import org.parkjw.apps.oot.i18n.AppText
@@ -66,7 +67,8 @@ class TokenSyncRepository(
         val deferreds = activeAccounts.map { account ->
             async {
                 if (!refreshScheduler.shouldFetch(account.id)) {
-                    return@async previous[account.id] ?: skippedBackoffStatus(account)
+                    // Backoff: the previous values are shown again, so they must be marked stale.
+                    return@async previous[account.id]?.asStale() ?: skippedBackoffStatus(account)
                 }
                 val updatedAccount = if (account.authType == AuthType.OAUTH && account.isTokenExpired) {
                     val refreshed = oauthManager.refreshTokenIfNeeded(account)

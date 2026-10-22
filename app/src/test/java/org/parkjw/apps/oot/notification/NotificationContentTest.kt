@@ -80,6 +80,29 @@ class NotificationContentTest {
     }
 
     @Test
+    fun `stale values carry the previous value suffix in every notification form`() {
+        val stale = vendor(62.0, ProviderType.CLAUDE, now.plusSeconds(120 * 60))
+            .copy(staleSince = now.minusSeconds(2 * 3600))
+
+        val expanded = NotificationContent.expandedItems(listOf(stale), now = now, strings = TestNotificationStrings.KO).single()
+        assertEquals("5H 62% 남음 · 2시간 후 (이전값)", expanded.text)
+        val collapsed = NotificationContent.collapsedItems(listOf(stale), maxItems = 3, strings = TestNotificationStrings.KO).single()
+        assertEquals("62% 남음 (이전값)", collapsed.label)
+        assertEquals(62, collapsed.percent)
+        assertEquals("Claude 62% (이전값)", NotificationContent.textFallback(listOf(stale), strings = TestNotificationStrings.KO))
+    }
+
+    @Test
+    fun `stale error lines keep the plain error text`() {
+        val staleError = errored().copy(staleSince = now.minusSeconds(2 * 3600))
+        assertEquals(
+            "xAI 확인 필요",
+            NotificationContent.collapsedItems(listOf(staleError), maxItems = 3, strings = TestNotificationStrings.KO).single().label,
+        )
+        assertEquals("xAI 확인 필요", NotificationContent.textFallback(listOf(staleError), strings = TestNotificationStrings.KO))
+    }
+
+    @Test
     fun `marks are unique per provider`() {
         val marks = ProviderType.entries.map { NotificationContent.mark(it) }
         assertEquals(marks.size, marks.distinct().size)

@@ -96,6 +96,7 @@ import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.level
 import org.parkjw.apps.oot.data.model.toVendorUsage
+import org.parkjw.apps.oot.data.model.withStaleRollover
 import org.parkjw.apps.oot.ui.VendorLogo
 import org.parkjw.apps.oot.ui.theme.ButtonCorner
 import org.parkjw.apps.oot.ui.theme.CardCorner
@@ -258,7 +259,8 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(bottom = OotSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
             ) {
-                val leastItem = findLeastRemainingItem(orderedUsages)
+                val renderedUsages = orderedUsages.map { it.withStaleRollover(now) }
+                val leastItem = findLeastRemainingItem(renderedUsages)
                 if (leastItem != null) {
                     item(key = "summary_line") {
                         QuotaSummaryLine(
@@ -275,7 +277,7 @@ fun DashboardScreen(
                         EmptyAccountsBanner(onAddClick = onAddAccountClick)
                     }
                 } else {
-                    itemsIndexed(orderedUsages, key = { _, u -> u.accountId }) { index, usage ->
+                    itemsIndexed(renderedUsages, key = { _, u -> u.accountId }) { index, usage ->
                         val isDragged = activeDraggingId == usage.accountId
                         VendorCard(
                             usage = usage,
@@ -482,10 +484,10 @@ fun DashboardScreen(
     )
 }
 
-private fun findLeastRemainingItem(usages: List<VendorUsage>): Pair<VendorUsage, UsageWindow>? {
+internal fun findLeastRemainingItem(usages: List<VendorUsage>): Pair<VendorUsage, UsageWindow>? {
     return usages
         .asSequence()
-        .filter { it.error == null }
+        .filter { it.error == null && it.staleSince == null }
         .flatMap { vendor ->
             vendor.windows.asSequence()
                 .filter { it.remaining is Remaining.Percent }
@@ -701,6 +703,21 @@ fun VendorCard(
                         }
                     }
                 }
+            }
+
+            // Values carried over from a failed refresh are marked so they are not read as current.
+            usage.staleSince?.let { staleSince ->
+                Text(
+                    text = withNumericSpans(
+                        stringResource(
+                            R.string.dashboard_stale_values,
+                            formatTimeAgo(LocalContext.current.resources, staleSince, now),
+                        ),
+                        SpanStyle(fontFamily = OotMonoFamily, letterSpacing = (-0.2).sp),
+                    ),
+                    style = MaterialTheme.typography.bodySmall.copy(lineBreak = WordWrapFriendly),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -1269,6 +1286,18 @@ fun vendorErrorShortText(res: Resources, error: VendorError): String = when (err
     is VendorError.Http -> res.getString(R.string.dashboard_error_http, error.code)
     is VendorError.Unknown -> error.message?.takeIf { it.isNotBlank() }
         ?: res.getString(R.string.dashboard_error_unknown)
+}
+
+fun formatTimeAgo(res: Resources, since: Instant, now: Instant): String {
+    val seconds = (now.epochSecond - since.epochSecond).coerceAtLeast(0)
+    val totalMinutes = ((seconds + 30) / 60).coerceAtLeast(1)
+    val days = totalMinutes / (60 * 24)
+    val hours = (totalMinutes % (60 * 24)) / 60
+    return when {
+        days >= 1 -> res.getString(R.string.time_ago_days, days)
+        hours >= 1 -> res.getString(R.string.time_ago_hours, hours)
+        else -> res.getString(R.string.time_ago_minutes, totalMinutes)
+    }
 }
 
 fun formatTimeToReset(res: Resources, resetsAt: Instant?, now: Instant): String? {

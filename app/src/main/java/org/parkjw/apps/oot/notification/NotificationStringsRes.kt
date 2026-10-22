@@ -17,4 +17,5 @@ fun Context.notificationStrings(): NotificationStrings = NotificationStrings(
     inHours = getString(R.string.time_in_hours),
     inHoursMinutes = getString(R.string.time_in_hours_minutes),
     inMinutes = getString(R.string.time_in_minutes),
+    previousValue = getString(R.string.data_previous_value_short),
 )
