@@ -1,6 +1,7 @@
 package org.parkjw.apps.oot.data.local
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.SharedPreferences
 import androidx.test.core.app.ApplicationProvider
 import com.google.crypto.tink.Aead
@@ -139,5 +140,74 @@ class TinkMigrationTest {
 
         assertEquals(before, HashMap(oldStore().all))
         assertFalse(tinkFile().contains("oot_tink_migrated"))
+    }
+
+    @Test
+    fun `a failing marker removal still raises the verification error`() {
+        seedOld()
+        val flaky = object : Aead {
+            override fun encrypt(plaintext: ByteArray, associatedData: ByteArray) = aead.encrypt(plaintext, associatedData)
+            override fun decrypt(ciphertext: ByteArray, associatedData: ByteArray) = "wrong".toByteArray()
+        }
+        val ctx = object : ContextWrapper(context) {
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences {
+                val base = super.getSharedPreferences(name, mode)
+                if (name != "oot_tink_prefs") return base
+                return object : SharedPreferences by base {
+                    override fun edit(): SharedPreferences.Editor = object : SharedPreferences.Editor by base.edit() {
+                        override fun remove(key: String): SharedPreferences.Editor = throw IllegalStateException("remove failed")
+                    }
+                }
+            }
+        }
+
+        try {
+            openTinkPreferences(ctx, openAead = { flaky }, openLegacy = { oldStore() }, deleteLegacy = {})
+            fail("expected the migration to fail")
+        } catch (e: IllegalStateException) {
+            assertEquals("migrated credentials did not verify", e.message)
+        }
+    }
+
+    @Test
+    fun `a value already in the Tink store wins over the old one and the rest still migrates`() {
+        seedOld()
+        open(legacy = null).edit().putString("oot_refresh_interval", "99").commit()
+
+        val store = open()
+
+        assertEquals("99", store.getString("oot_refresh_interval", null))
+        assertTrue(store.getString("oot_accounts", null)!!.contains("sk-test-000"))
+        assertTrue(oldStore().all.isEmpty())
+    }
+
+    @Test
+    fun `one unreadable old entry keeps the old store and no marker but copies the readable ones`() {
+        seedOld()
+        val before = HashMap(oldStore().all)
+        val base = oldStore()
+        val corrupt = object : SharedPreferences by base {
+            override fun getString(key: String, defValue: String?): String? =
+                if (key == "oot_accounts") throw IllegalStateException("cannot decrypt") else base.getString(key, defValue)
+        }
+
+        val storage = SecureStorage(context, openEncrypted = { open(legacy = corrupt) })
+
+        assertEquals(StorageStatus.UNAVAILABLE, storage.status)
+        assertEquals(before, HashMap(oldStore().all))
+        assertFalse(tinkFile().contains("oot_tink_migrated"))
+        assertEquals("30", open(legacy = null).getString("oot_refresh_interval", null))
+    }
+
+    @Test
+    fun `typed puts other than strings are rejected`() {
+        val editor = open(legacy = null).edit()
+
+        try {
+            editor.putInt("n", 1)
+            fail("expected UnsupportedOperationException")
+        } catch (e: UnsupportedOperationException) {
+            // expected
+        }
     }
 }
