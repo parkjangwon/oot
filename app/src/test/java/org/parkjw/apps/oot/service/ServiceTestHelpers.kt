@@ -35,7 +35,8 @@ internal fun notificationManager(context: Context): NotificationManager =
     context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
 internal fun awaitUntil(
-    timeoutMs: Long = 10_000,
+    // Generous bound: CI runners are much slower than local machines; the loop exits as soon as it holds.
+    timeoutMs: Long = 30_000,
     describe: () -> String = { "" },
     condition: () -> Boolean,
 ) {

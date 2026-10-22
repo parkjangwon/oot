@@ -2,7 +2,6 @@ package org.parkjw.apps.oot.service
 
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
-import androidx.work.WorkInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -47,7 +46,7 @@ class TokenMonitorForegroundServiceTest {
 
         // The default 15-minute interval goes to WorkManager, not to an in-service loop.
         awaitUntil { uniqueWorkInfos(app).size == 1 }
-        assertEquals(WorkInfo.State.ENQUEUED, uniqueWorkInfos(app).single().state)
+        assertEquals(1, activeWorkInfos(app).size)
 
         controller.destroy()
     }
@@ -55,7 +54,7 @@ class TokenMonitorForegroundServiceTest {
     @Test
     fun shortIntervalCancelsPeriodicWorkForInServiceSync() {
         TokenRefreshWork.enqueue(app, intervalMinutes = 20)
-        awaitUntil { uniqueWorkInfos(app).any { it.state == WorkInfo.State.ENQUEUED } }
+        awaitUntil { activeWorkInfos(app).isNotEmpty() }
 
         app.preferences.setRefreshInterval(5)
         val controller = buildService(TokenMonitorForegroundService.ACTION_START)
@@ -75,8 +74,9 @@ class TokenMonitorForegroundServiceTest {
         awaitUntil { activeWorkInfos(app).isEmpty() }
 
         app.preferences.setRefreshInterval(20)
+        // Periodic work has no initial delay, so it may already be RUNNING; either state means scheduled again.
         awaitUntil(describe = { "work=${uniqueWorkInfos(app)}" }) {
-            uniqueWorkInfos(app).any { it.state == WorkInfo.State.ENQUEUED }
+            activeWorkInfos(app).isNotEmpty()
         }
 
         controller.destroy()

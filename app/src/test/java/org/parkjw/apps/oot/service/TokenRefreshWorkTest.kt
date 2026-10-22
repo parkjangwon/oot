@@ -38,7 +38,7 @@ class TokenRefreshWorkTest {
         TokenRefreshWork.enqueue(app, intervalMinutes = 30)
 
         awaitUntil { uniqueWorkInfos(app).size == 1 }
-        assertEquals(WorkInfo.State.ENQUEUED, uniqueWorkInfos(app).single().state)
+        assertEquals(1, activeWorkInfos(app).size)
 
         TokenRefreshWork.cancel(app)
         awaitUntil { activeWorkInfos(app).isEmpty() }
@@ -49,7 +49,7 @@ class TokenRefreshWorkTest {
         initWorkManager(app)
 
         TokenRefreshWork.enqueue(app, intervalMinutes = 15)
-        awaitUntil { uniqueWorkInfos(app).singleOrNull()?.state == WorkInfo.State.ENQUEUED }
+        awaitUntil { activeWorkInfos(app).size == 1 }
         val firstId = uniqueWorkInfos(app).single().id
 
         TokenRefreshWork.enqueue(app, intervalMinutes = 60)
@@ -57,8 +57,11 @@ class TokenRefreshWorkTest {
         // CANCEL_AND_REENQUEUE drops the old work from the unique name, leaving one fresh request.
         awaitUntil {
             uniqueWorkInfos(app).singleOrNull()?.let {
-                it.id != firstId && it.state == WorkInfo.State.ENQUEUED
+                it.id != firstId && it.state.isActive()
             } == true
         }
     }
 }
+
+// Periodic work has no initial delay, so a fresh request may already be RUNNING.
+private fun WorkInfo.State.isActive() = this == WorkInfo.State.ENQUEUED || this == WorkInfo.State.RUNNING
