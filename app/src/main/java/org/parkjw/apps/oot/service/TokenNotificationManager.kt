@@ -82,7 +82,7 @@ class TokenNotificationManager(
             return NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_oot)
                 .setContentTitle("OOT: 토큰 모니터")
-                .setContentText("등록된 프로바이더가 없습니다. 앱에서 추가해주세요.")
+                .setContentText(NotificationContent.emptyStateText(registeredCount = allUsages.size))
                 .setContentIntent(openAppPendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)

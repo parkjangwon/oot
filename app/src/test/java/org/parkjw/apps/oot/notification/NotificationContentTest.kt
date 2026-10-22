@@ -352,4 +352,10 @@ class NotificationContentTest {
         val usages = listOf(account("a", 90.0, ProviderType.CLAUDE), account("b", 10.0, ProviderType.ZAI))
         assertEquals(emptyList<VendorUsage>(), NotificationContent.visibleUsages(usages, setOf("a", "b")))
     }
+
+    @Test
+    fun `empty notification tells nothing registered apart from everything hidden`() {
+        assertEquals("등록된 프로바이더가 없어요. 앱에서 추가해 주세요.", NotificationContent.emptyStateText(registeredCount = 0))
+        assertEquals("알림에 표시할 프로바이더를 모두 껐어요. 설정에서 켜 주세요.", NotificationContent.emptyStateText(registeredCount = 3))
+    }
 }

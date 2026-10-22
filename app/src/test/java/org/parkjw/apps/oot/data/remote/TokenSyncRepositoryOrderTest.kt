@@ -203,4 +203,22 @@ class TokenSyncRepositoryOrderTest {
         assertEquals(dragged + "ds2", restarted.usageIds())
         assertEquals(emptySet<String>(), restartedPrefs.notificationHiddenAccountIds.value)
     }
+
+    @Test
+    fun `after a restart with every provider hidden the notification says so, not that none are registered`() {
+        val prefs = prefsWithAll()
+        providers.keys.forEach { prefs.setShownInNotification(it, false) }
+
+        val restartedPrefs = AccountPreferences(context)
+        val restarted = repository(restartedPrefs)
+        runBlocking { restarted.refreshAll() }
+
+        assertEquals(listOf("or", "xai", "glm", "ds"), restarted.usageIds())
+        val notification = TokenNotificationManager(context) { restartedPrefs.notificationHiddenAccountIds.value }
+            .buildNotification(restarted.vendorUsages.value)
+        assertEquals(
+            NotificationContent.EMPTY_ALL_HIDDEN,
+            notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString(),
+        )
+    }
 }

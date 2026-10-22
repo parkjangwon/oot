@@ -126,6 +126,13 @@ object NotificationContent {
         percent?.let { Remaining.Percent(it.toDouble()).level } ?: Level.OK
 
     // Accounts switched off in Settings stay on the dashboard but leave every notification form; order is kept.
+    const val EMPTY_NO_PROVIDERS = "등록된 프로바이더가 없어요. 앱에서 추가해 주세요."
+    const val EMPTY_ALL_HIDDEN = "알림에 표시할 프로바이더를 모두 껐어요. 설정에서 켜 주세요."
+
+    // Shown when nothing is left to list: nothing registered, or every provider switched off in "알림에 표시".
+    fun emptyStateText(registeredCount: Int): String =
+        if (registeredCount == 0) EMPTY_NO_PROVIDERS else EMPTY_ALL_HIDDEN
+
     fun visibleUsages(usages: List<VendorUsage>, hiddenAccountIds: Set<String>): List<VendorUsage> =
         usages.filter { it.accountId !in hiddenAccountIds }
 
