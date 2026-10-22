@@ -5,6 +5,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import org.parkjw.apps.oot.R
@@ -17,6 +18,10 @@ val OotSansFamily = FontFamily(
 val OotMonoFamily = FontFamily(
     Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
 )
+
+/** Keeps Korean words whole when wrapping (no mid-word breaks, #92). */
+// Paragraph uses WordBreak.Default in this Compose BOM; Heading is the built-in that packs WordBreak.Phrase.
+fun TextStyle.ootWordBreak(): TextStyle = copy(lineBreak = LineBreak.Heading)
 
 val OotNumeric = TextStyle(
     fontFamily = OotMonoFamily,
