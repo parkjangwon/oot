@@ -38,6 +38,7 @@ class AddAccountCopyScreenshotTest {
     fun claudeSignInLight() {
         capture(ProviderType.CLAUDE, darkTheme = false, fileName = "add-account-claude-light.png")
         composeRule.onNodeWithText("Claude 브라우저 로그인 (5h/주간 한도)").assertExists()
+        composeRule.onNodeWithText("브라우저로 Claude 로그인").assertExists()
     }
 
     @Test
@@ -54,6 +55,7 @@ class AddAccountCopyScreenshotTest {
     fun claudeSignInLightEnglish() {
         capture(ProviderType.CLAUDE, darkTheme = false, fileName = "add-account-claude-light-en.png")
         composeRule.onNodeWithText("Claude browser sign-in (5-hour and weekly limits)").assertExists()
+        composeRule.onNodeWithText("Sign in to Claude").assertExists()
     }
 
     @OptIn(ExperimentalRoborazziApi::class)
