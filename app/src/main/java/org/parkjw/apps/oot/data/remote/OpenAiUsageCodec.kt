@@ -2,6 +2,7 @@ package org.parkjw.apps.oot.data.remote
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -68,8 +69,8 @@ private fun parseWindow(
     label: String
 ): OpenAiWindowUsage? {
     if (obj == null) return null
-    val used = obj["used_percent"]?.jsonPrimitive?.intOrNull
-        ?: obj["used_percent"]?.jsonPrimitive?.longOrNull?.toInt()
+    val used = obj["used_percent"]?.jsonPrimitive?.doubleOrNull
+        ?: obj["used_percent"]?.jsonPrimitive?.intOrNull?.toDouble()
         ?: return null
     val resetAtSec = obj["reset_at"]?.jsonPrimitive?.longOrNull
         ?: obj["reset_at"]?.jsonPrimitive?.intOrNull?.toLong()
@@ -84,12 +85,24 @@ private fun parseWindow(
     return OpenAiWindowUsage(
         id = windowId,
         label = windowLabel,
-        usedPercent = used.toDouble().coerceIn(0.0, 100.0),
+        usedPercent = used.coerceIn(0.0, 100.0),
         resetsAt = resetsAt
     )
 }
 
 fun openAiOAuthSuccessStatus(account: ProviderAccount, windows: List<OpenAiWindowUsage>): TokenStatus {
+    if (windows.isEmpty()) {
+        val text = openAiErrorText(VendorError.Parse)
+        return TokenStatus(
+            accountId = account.id,
+            provider = account.provider,
+            accountName = account.name,
+            remainingFormatted = text,
+            statusSummary = AppText.get(R.string.status_needs_check),
+            isError = true,
+            errorMessage = text
+        )
+    }
     // Build everything from the windows the response actually had; a missing window is not 0% used.
     val usageWindows = windows.map { w ->
         UsageWindow(
@@ -104,7 +117,7 @@ fun openAiOAuthSuccessStatus(account: ProviderAccount, windows: List<OpenAiWindo
         AppText.get(R.string.data_window_left, window.label, left.roundToInt())
     }
     val primary = windows.firstOrNull { it.id == "five_hour" } ?: windows.first()
-    val worstUsed = windows.maxOf { it.usedPercent }
+    val worstUsed = windows.maxOfOrNull { it.usedPercent } ?: 0.0
 
     return TokenStatus(
         accountId = account.id,

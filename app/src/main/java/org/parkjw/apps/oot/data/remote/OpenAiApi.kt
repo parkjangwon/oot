@@ -1,5 +1,6 @@
 package org.parkjw.apps.oot.data.remote
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -70,9 +71,14 @@ class OpenAiApi(
                     val body = resp.body?.string().orEmpty()
                     val windows = try {
                         parseOpenAiWhamUsage(body, json)
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        Log.w(TAG, "usage parse threw endpoint=/backend-api/wham/usage error=${e.javaClass.simpleName}")
                         null
-                    } ?: return errorStatus(account, openAiErrorText(VendorError.Parse))
+                    }
+                    if (windows == null) {
+                        Log.w(TAG, "usage parse failed endpoint=/backend-api/wham/usage error=Parse bytes=${body.toByteArray().size}")
+                        return errorStatus(account, openAiErrorText(VendorError.Parse))
+                    }
                     return openAiOAuthSuccessStatus(account, windows)
                 }
                 resp.code == 401 -> {
@@ -198,6 +204,8 @@ class OpenAiApi(
     )
 
     companion object {
+        private const val TAG = "oot.OpenAi"
+
         // Codex backend-client PathStyle::ChatGptApi + rate_limit_status_url
         const val WHAM_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
     }

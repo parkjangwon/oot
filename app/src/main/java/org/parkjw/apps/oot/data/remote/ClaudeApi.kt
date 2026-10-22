@@ -211,6 +211,7 @@ class ClaudeApi(
     }
 
     private fun successStatus(account: ProviderAccount, windows: List<ClaudeWindowUsage>): TokenStatus {
+        if (windows.isEmpty()) return errorStatus(account, claudeErrorText(VendorError.Parse))
         // Build everything from the windows the response actually had; a missing window is not 0% used.
         val usageWindows = windows.map { w ->
             UsageWindow(
@@ -230,7 +231,7 @@ class ClaudeApi(
         }
         val primary = windows.firstOrNull { it.id == "five_hour" } ?: windows.first()
         val primaryResetText = formatReset(primary.resetsAt)
-        val worstPct = windows.maxOf { it.utilization }
+        val worstPct = windows.maxOfOrNull { it.utilization } ?: 0.0
 
         return TokenStatus(
             accountId = account.id,

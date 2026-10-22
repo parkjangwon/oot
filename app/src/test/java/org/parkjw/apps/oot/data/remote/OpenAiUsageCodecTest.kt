@@ -126,6 +126,36 @@ class OpenAiUsageCodecTest {
     }
 
     @Test
+    fun `fractional used_percent parses and rounds for display`() {
+        val windows = parseOpenAiWhamUsage(
+            """{"rate_limit":{"primary_window":{"used_percent":38.5,"limit_window_seconds":18000}}}""",
+            json
+        )!!
+        assertEquals(38.5, windows.single().usedPercent, 0.001)
+
+        val status = openAiOAuthSuccessStatus(fakeAccount(), windows)
+
+        assertTrue(status.remainingFormatted.contains("62"))
+        assertTrue(status.totalLimitFormatted!!.contains("39"))
+    }
+
+    private fun fakeAccount() = ProviderAccount(
+        id = "acct-fake",
+        provider = ProviderType.OPENAI,
+        name = "OpenAI (ChatGPT)",
+        authType = AuthType.OAUTH,
+        accessToken = "sk-test-000"
+    )
+
+    @Test
+    fun `empty window list returns a parse error status`() {
+        val status = openAiOAuthSuccessStatus(fakeAccount(), emptyList())
+
+        assertTrue(status.isError)
+        assertEquals(openAiErrorText(VendorError.Parse), status.errorMessage)
+    }
+
+    @Test
     fun `oauth success status builds TokenStatus windows`() {
         val account = ProviderAccount(
             id = "acct-fake",

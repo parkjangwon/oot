@@ -20,6 +20,7 @@ import org.robolectric.annotation.Config
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
+import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.oauth.OAuthManager
@@ -232,5 +233,25 @@ class ClaudeUsageCodecTest {
         assertFalse(status.isError)
         assertEquals(listOf("five_hour"), status.windows.map { it.id })
         assertFalse(status.remainingFormatted.contains("|"))
+    }
+
+    @Test
+    fun `api builds a status for a well-formed two-window response`() = runBlocking {
+        val client = clientReturning(usageBody)
+
+        val status = api(client).fetchStatus(oauthAccount())
+
+        assertFalse(status.isError)
+        assertEquals(listOf("five_hour", "seven_day"), status.windows.map { it.id })
+        assertEquals(Remaining.Percent(57.5), status.windows[0].remaining)
+        assertEquals(Remaining.Percent(90.0), status.windows[1].remaining)
+        assertEquals(42.5f, status.usagePercent!!, 0.001f)
+        assertFalse(status.isWarning)
+        assertFalse(status.isCritical)
+        assertTrue(status.remainingFormatted.contains("|"))
+        assertTrue(status.remainingFormatted.contains("58"))
+        assertTrue(status.remainingFormatted.contains("90"))
+        assertTrue(status.statusSummary.contains("58"))
+        assertTrue(status.totalLimitFormatted!!.contains("43"))
     }
 }
