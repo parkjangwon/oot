@@ -172,7 +172,7 @@ class TokenSyncRepositoryOrderTest {
     // #96: the refreshed copy (with new tokens) must not re-add an account deleted while the refresh was in flight.
     @Test
     fun `a token refresh for a provider deleted mid-refresh does not bring it back after a restart`() {
-        val prefs = AccountPreferences(context).also {
+        val prefs = testAccountPreferences(context).also {
             it.saveAccount(
                 ProviderAccount(
                     id = "claude",
@@ -222,13 +222,13 @@ class TokenSyncRepositoryOrderTest {
         refresh.join(10_000)
 
         assertEquals(emptyList<String>(), repo.usageIds())
-        assertEquals(emptyList<String>(), AccountPreferences(context).accounts.value.map { it.id })
+        assertEquals(emptyList<String>(), testAccountPreferences(context).accounts.value.map { it.id })
     }
 
     // #96: a provider deleted while its token refresh is in flight is not asked for usage with the rotated token.
     @Test
     fun `a provider deleted during a token refresh is not asked for usage`() {
-        val prefs = AccountPreferences(context).also {
+        val prefs = testAccountPreferences(context).also {
             it.saveAccount(
                 ProviderAccount(
                     id = "claude",
@@ -281,13 +281,13 @@ class TokenSyncRepositoryOrderTest {
 
         assertEquals(0, usageRequests.get())
         assertEquals(emptyList<String>(), repo.usageIds())
-        assertEquals(emptyList<String>(), AccountPreferences(context).accounts.value.map { it.id })
+        assertEquals(emptyList<String>(), testAccountPreferences(context).accounts.value.map { it.id })
     }
 
     // #96: an OpenAI 401 refresh that finishes after the delete must not retry usage with the new token.
     @Test
     fun `an OpenAI 401 refresh for a provider deleted mid-refresh does not retry usage`() {
-        val prefs = AccountPreferences(context).also {
+        val prefs = testAccountPreferences(context).also {
             it.saveAccount(
                 ProviderAccount(
                     id = "openai",
@@ -350,7 +350,7 @@ class TokenSyncRepositoryOrderTest {
 
         assertEquals(1, usageRequests.get())
         assertEquals(emptyList<String>(), repo.usageIds())
-        assertEquals(emptyList<String>(), AccountPreferences(context).accounts.value.map { it.id })
+        assertEquals(emptyList<String>(), testAccountPreferences(context).accounts.value.map { it.id })
     }
 
     // The "알림에 표시" toggle (#56) goes through the same committed storage and must survive the same restart.
