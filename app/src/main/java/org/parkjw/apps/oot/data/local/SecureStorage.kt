@@ -21,6 +21,7 @@ class SecureStorage internal constructor(
     // encrypted store, and stale OAuth refresh tokens must not overwrite newer ones: the encrypted value wins.
     private val resolveConflict: (key: String, encrypted: String, legacy: String) -> String = { _, encrypted, _ -> encrypted },
 ) {
+    @Volatile
     var status: StorageStatus
         private set
 
