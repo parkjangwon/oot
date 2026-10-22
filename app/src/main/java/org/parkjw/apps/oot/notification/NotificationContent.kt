@@ -87,9 +87,24 @@ object NotificationContent {
         return "${totalMinutes}분 후"
     }
 
-    // Labels stay short here: the "Google 모델" window reads "Google".
+    // Notification reset text (#58): days keep their hours, e.g. "2일 3시간 후"; shorter spans as formatReset.
+    fun formatNotificationReset(resetsAt: Instant, now: Instant): String {
+        val totalMinutes = Duration.between(now, resetsAt).toMinutes()
+        if (totalMinutes < 1440) return formatReset(resetsAt, now)
+        val days = totalMinutes / 1440
+        val hours = (totalMinutes % 1440) / 60
+        return if (hours == 0L) "${days}일 후" else "${days}일 ${hours}시간 후"
+    }
+
+    // Labels stay short here: the "Google 모델" window reads "Google",
+    // the 5-hour window reads "5H" and the weekly one "7D" (issue #58, notification only).
     private fun windowLabel(window: UsageWindow): String =
-        if (window.label == "primary" || window.label.isBlank()) "" else "${window.label.removeSuffix(" 모델")} "
+        when {
+            window.id == "five_hour" -> "5H "
+            window.id == "seven_day" || window.id == "weekly" -> "7D "
+            window.label == "primary" || window.label.isBlank() -> ""
+            else -> "${window.label.removeSuffix(" 모델")} "
+        }
 
     // Antigravity shows only its Google-model window, whatever the other window holds.
     private fun notificationWindow(usage: VendorUsage): UsageWindow? =
@@ -185,9 +200,9 @@ object NotificationContent {
                     // Representative window only (5-hour when present, else least remaining), plus its reset.
                     val text = "${windowLabel(representative)}${formatPercent(remaining)} 남음"
                     val reset = representative.resetsAt
-                        ?.let { formatReset(it, now) }
+                        ?.let { formatNotificationReset(it, now) }
                         ?.takeIf { it.isNotEmpty() }
-                        ?.let { " · ${it} 리셋" }
+                        ?.let { " · $it" }
                         ?: ""
                     ExpandedItem(
                         p,

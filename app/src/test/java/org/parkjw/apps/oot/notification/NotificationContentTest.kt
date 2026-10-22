@@ -120,7 +120,7 @@ class NotificationContentTest {
             now = now
         ).single()
         assertEquals("Claude", item.name)
-        assertEquals("5시간 62% 남음 · 2시간 후 리셋", item.text)
+        assertEquals("5H 62% 남음 · 2시간 후", item.text)
         assertEquals(62, item.percent)
         assertFalse(item.isError)
     }
@@ -130,7 +130,7 @@ class NotificationContentTest {
         val weekly = UsageWindow("seven_day", "주간", Remaining.Percent(14.0), now.plusSeconds(3 * 24 * 3600))
         val usage = vendor(62.0, ProviderType.CLAUDE, now.plusSeconds(100 * 60), weekly)
         val item = NotificationContent.expandedItems(listOf(usage), now = now).single()
-        assertEquals("5시간 62% 남음 · 1시간 40분 후 리셋", item.text)
+        assertEquals("5H 62% 남음 · 1시간 40분 후", item.text)
         assertEquals(62, item.percent)
     }
 
@@ -149,7 +149,7 @@ class NotificationContentTest {
         val monthly = UsageWindow("monthly", "월간", Remaining.Percent(50.0), now.plusSeconds(20 * 24 * 3600))
         val usage = VendorUsage("id", ProviderType.OPENAI, "acc", listOf(monthly, weekly))
         val item = NotificationContent.expandedItems(listOf(usage), now = now).single()
-        assertEquals("주간 14% 남음 · 3일 후 리셋", item.text)
+        assertEquals("7D 14% 남음 · 3일 후", item.text)
         assertEquals(14, item.percent)
     }
 
@@ -168,15 +168,35 @@ class NotificationContentTest {
         )
         val items = NotificationContent.expandedItems(listOf(glm, xai), now = now)
         assertEquals("GLM", items[0].name)
-        assertEquals("5시간 98% 남음 · 3시간 27분 후 리셋", items[0].text)
+        assertEquals("5H 98% 남음 · 3시간 27분 후", items[0].text)
         assertEquals("xAI", items[1].name)
-        assertEquals("주간 14% 남음 · 1일 후 리셋", items[1].text)
+        assertEquals("7D 14% 남음 · 1일 2시간 후", items[1].text)
     }
 
     @Test
     fun `expanded line has no reset suffix when the representative has no reset`() {
         val usage = vendor(62.0, ProviderType.ZAI)
-        assertEquals("5시간 62% 남음", NotificationContent.expandedItems(listOf(usage), now = now).single().text)
+        assertEquals("5H 62% 남음", NotificationContent.expandedItems(listOf(usage), now = now).single().text)
+    }
+
+    @Test
+    fun `five hour window reads 5H while weekly keeps its label`() {
+        val resetsAt = now.plusSeconds(120 * 60)
+        val weekly = UsageWindow("seven_day", "주간", Remaining.Percent(14.0), now.plusSeconds(3 * 24 * 3600))
+        val usage = VendorUsage(
+            "id", ProviderType.CLAUDE, "acc",
+            listOf(
+                UsageWindow("five_hour", "5시간", Remaining.Percent(62.0), resetsAt),
+                weekly
+            )
+        )
+        val items = NotificationContent.expandedItems(listOf(usage), now = now)
+        assertEquals("5H 62% 남음 · 2시간 후", items.single().text)
+        val weeklyOnly = VendorUsage(
+            "id", ProviderType.CLAUDE, "acc",
+            listOf(weekly)
+        )
+        assertEquals("7D 14% 남음 · 3일 후", NotificationContent.expandedItems(listOf(weeklyOnly), now = now).single().text)
     }
 
     @Test
@@ -301,7 +321,7 @@ class NotificationContentTest {
     fun `antigravity expanded line shows only the Google window and its reset`() {
         val item = NotificationContent.expandedItems(listOf(antigravity(62.0, 10.0)), now = now).single()
         assertEquals("Antigravity", item.name)
-        assertEquals("Google 62% 남음 · 2시간 후 리셋", item.text)
+        assertEquals("Google 62% 남음 · 2시간 후", item.text)
         assertEquals(62, item.percent)
         assertFalse(item.text.contains("타사"))
     }
@@ -318,6 +338,14 @@ class NotificationContentTest {
     @Test
     fun `antigravity without a Google window falls back to its lowest window`() {
         val item = NotificationContent.expandedItems(listOf(antigravity(null, 10.0)), now = now).single()
-        assertEquals("타사 10% 남음 · 30분 후 리셋", item.text)
+        assertEquals("타사 10% 남음 · 30분 후", item.text)
+    }
+
+    @Test
+    fun `notification reset keeps hours after a day`() {
+        val now = Instant.parse("2026-10-22T00:00:00Z")
+        assertEquals("2일 3시간 후", NotificationContent.formatNotificationReset(now.plusSeconds((2 * 24 + 3) * 3600L + 30), now))
+        assertEquals("2일 후", NotificationContent.formatNotificationReset(now.plusSeconds(2 * 24 * 3600L + 30), now))
+        assertEquals("2시간 후", NotificationContent.formatNotificationReset(now.plusSeconds(2 * 3600L + 30), now))
     }
 }
