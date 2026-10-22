@@ -170,6 +170,7 @@ class AccountPreferences(
      * The accounts stay cleared even when the reopen fails; settings that are not credentials are always restored,
      * into the store's memory fallback while it is unavailable.
      */
+    // Holds the shared lock for the whole (slow) key reset: callers run it off the main thread.
     @Synchronized
     fun resetSecureStorage(): Boolean {
         resetGeneration++

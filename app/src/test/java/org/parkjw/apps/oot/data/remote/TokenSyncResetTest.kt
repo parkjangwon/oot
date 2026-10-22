@@ -134,6 +134,49 @@ class TokenSyncResetTest {
     }
 
     @Test
+    fun `a refresh started between the repository reset and the storage reset sends no usage request`() {
+        val prefs = testAccountPreferences(context).also {
+            it.saveAccount(
+                ProviderAccount(
+                    id = "claude",
+                    provider = ProviderType.CLAUDE,
+                    name = "claude",
+                    authType = AuthType.OAUTH,
+                    accessToken = "at-old",
+                    refreshToken = "rt-old",
+                    tokenExpiresAt = 1L,
+                ),
+            )
+        }
+        val entered = CountDownLatch(1)
+        val gate = CountDownLatch(1)
+        val usageRequests = AtomicInteger()
+        val client = client { chain ->
+            val request = chain.request()
+            if (request.url.encodedPath.endsWith("/v1/oauth/token")) {
+                entered.countDown()
+                gate.await(10, TimeUnit.SECONDS)
+                fakeResponse(request, 200, """{"access_token":"at-new","refresh_token":"rt-new","expires_in":3600}""")
+            } else {
+                usageRequests.incrementAndGet()
+                fakeResponse(request, 503, "{}")
+            }
+        }
+        val repo = repository(prefs, client)
+
+        repo.onAccountsReset()
+        val refresh = thread { runBlocking { repo.refreshAll() } }
+        assertTrue(entered.await(10, TimeUnit.SECONDS))
+        prefs.resetSecureStorage()
+        repo.onAccountsReset()
+        gate.countDown()
+        refresh.join(10_000)
+
+        assertEquals(0, usageRequests.get())
+        assertTrue(repo.vendorUsages.value.isEmpty())
+    }
+
+    @Test
     fun `a reset clears rate-limit backoff`() {
         val prefs = testAccountPreferences(context).also { it.saveAccount(xaiAccount()) }
         val requests = AtomicInteger()

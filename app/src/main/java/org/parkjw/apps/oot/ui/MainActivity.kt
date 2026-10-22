@@ -215,11 +215,15 @@ class MainActivity : ComponentActivity() {
                         snackbarHostState = snackbarHostState,
                         onResetSecureStorage = {
                             lifecycleScope.launch {
+                                // Close the sign-in dialog: its pending callbacks are dropped by the reset.
+                                showAddDialog = false
                                 app.oauthManager.cancelPendingFlows()
                                 app.repository.onAccountsReset()
                                 val reset = withContext(Dispatchers.IO) {
                                     app.preferences.resetSecureStorage()
                                 }
+                                // Again after the reset: a refresh started in the gap read the old accounts.
+                                app.repository.onAccountsReset()
                                 secureStorageAvailable = app.preferences.isSecureStorageAvailable
                                 if (reset) showAddDialog = true
                                 app.repository.refreshAll()
