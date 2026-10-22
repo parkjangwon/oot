@@ -14,11 +14,6 @@
     <string name="oauth_openai_auth_failed">OpenAI Device 인증 실패 (%1$d): %2$s</string>
     <string name="oauth_openai_wait_timeout">OpenAI 인증 대기 시간(15분)이 지났어요.</string>
     <string name="oauth_missing_access_token">응답에 access_token이 없어요.</string>
-    <string name="oauth_callback_denied">OAuth 인증 거부: %1$s</string>
-    <string name="oauth_invalid_callback">인증 콜백 데이터가 올바르지 않아요.</string>
-    <string name="oauth_invalid_state">세션 상태(state)가 만료됐거나 일치하지 않아요.</string>
-    <string name="oauth_token_endpoint_missing">토큰 엔드포인트가 정해지지 않았어요.</string>
-    <string name="oauth_token_exchange_failed_code">토큰 교환 실패 (%1$d): %2$s</string>
     <string name="oauth_claude_no_session">Claude 인증 세션을 찾지 못했어요. 브라우저 로그인을 다시 해 주세요.</string>
     <string name="oauth_claude_token_exchange_failed">Claude 토큰 교환 실패 (%1$d): %2$s</string>
 </resources>

@@ -2,9 +2,7 @@ package org.parkjw.apps.oot.ui
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -23,8 +21,6 @@ import org.parkjw.apps.oot.OotApp
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.i18n.AppLanguage
 import org.parkjw.apps.oot.i18n.AppLocale
-import org.parkjw.apps.oot.data.model.AuthType
-import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.service.TokenMonitorForegroundService
 import org.parkjw.apps.oot.ui.screens.AddAccountDialog
 import org.parkjw.apps.oot.ui.screens.DashboardScreen
@@ -40,7 +36,6 @@ import org.parkjw.apps.oot.update.launchApkInstaller
 import org.parkjw.apps.oot.update.openBrowsableUrl
 import org.parkjw.apps.oot.update.openInstallPermissionSettings
 import org.parkjw.apps.oot.update.openReleasePage
-import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
@@ -77,7 +72,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         showSecureStorageNotice()
         checkNotificationPermission()
-        handleIncomingIntent(intent)
         updateViewModel.autoCheckOnLaunch(app.preferences.isAutoUpdateCheckEnabled.value)
 
         setContent {
@@ -263,46 +257,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         updateViewModel.onResumed()
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleIncomingIntent(intent)
-    }
-
-    private fun handleIncomingIntent(intent: Intent?) {
-        val uri: Uri = intent?.data ?: return
-        if (uri.scheme == "oot" && uri.host == "oauth") {
-            lifecycleScope.launch {
-                val result = app.oauthManager.handleOAuthCallback(uri)
-                result.onSuccess { tokenResult ->
-                    val newAccount = ProviderAccount(
-                        id = UUID.randomUUID().toString(),
-                        provider = tokenResult.provider,
-                        name = getString(R.string.account_name_subscription, tokenResult.provider.displayName),
-                        authType = AuthType.OAUTH,
-                        accessToken = tokenResult.accessToken,
-                        refreshToken = tokenResult.refreshToken,
-                        tokenExpiresAt = tokenResult.expiresAt
-                    )
-                    app.preferences.saveAccount(newAccount)
-                    app.repository.refreshAll()
-                    app.notificationManager.updateNotification(app.repository.vendorUsages.value)
-                    Toast.makeText(
-                        this@MainActivity,
-                        getString(R.string.toast_oauth_connected, tokenResult.provider.displayName),
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }.onFailure { error ->
-                    Toast.makeText(
-                        this@MainActivity,
-                        getString(R.string.toast_auth_error, error.message.orEmpty()),
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
-            }
-        }
     }
 
     private fun showSecureStorageNotice() {

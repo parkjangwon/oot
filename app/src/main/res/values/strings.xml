@@ -69,10 +69,7 @@
     <string name="exit_prompt">한 번 더 누르면 종료돼요</string>
     <string name="secure_storage_unavailable">보안 저장소를 열지 못했어요. 지금 바꾼 계정 정보는 앱을 다시 열면 사라질 수 있어요.</string>
     <string name="toast_provider_added">%1$s 프로바이더를 등록했어요.</string>
-    <string name="toast_oauth_connected">%1$s 연동을 마쳤어요.</string>
-    <string name="toast_auth_error">인증 오류: %1$s</string>
     <string name="token_exchange_failed">토큰 교환 실패</string>
-    <string name="account_name_subscription">%1$s (구독)</string>
 
     <!-- Provider descriptions and auth types -->
     <string name="provider_desc_openrouter">OpenRouter 크레딧 및 잔액 실시간 모니터링</string>
