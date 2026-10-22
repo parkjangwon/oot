@@ -1,9 +1,11 @@
 package org.parkjw.apps.oot.data.remote
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
@@ -15,14 +17,14 @@ object OllamaCloudCodec {
     // An empty list means the body parsed but carries no usable quota data.
     fun parse(body: String, json: Json = Json): List<UsageWindow>? {
         val root = try { json.parseToJsonElement(body).jsonObject } catch (e: Exception) { return null }
-        val included = root["included"]?.jsonObject ?: return null
+        val included = root["included"] as? JsonObject ?: return null
         val windows = mutableListOf<UsageWindow>()
 
-        val creditBalance = included["balance_usd"]?.jsonPrimitive?.doubleOrNull
-        val allowanceUsd = included["allowance_usd"]?.jsonPrimitive?.doubleOrNull
+        val creditBalance = (included["balance_usd"] as? JsonPrimitive)?.doubleOrNull
+        val allowanceUsd = (included["allowance_usd"] as? JsonPrimitive)?.doubleOrNull
         if (creditBalance != null && allowanceUsd != null && allowanceUsd > 0.0) {
             // Credit plans: monthly allowance window from balance/allowance.
-            val until = included["period"]?.jsonObject?.get("until")?.jsonPrimitive?.content
+            val until = ((included["period"] as? JsonObject)?.get("until") as? JsonPrimitive)?.contentOrNull
             windows += UsageWindow(
                 id = "monthly",
                 label = "monthly",
@@ -31,30 +33,30 @@ object OllamaCloudCodec {
             )
         } else {
             // Legacy plans: session and weekly remaining percent.
-            included["session"]?.jsonObject?.let { session ->
-                session["remaining_percent"]?.jsonPrimitive?.doubleOrNull?.let { pct ->
+            (included["session"] as? JsonObject)?.let { session ->
+                (session["remaining_percent"] as? JsonPrimitive)?.doubleOrNull?.let { pct ->
                     windows += UsageWindow(
                         id = "session",
                         label = "session",
                         remaining = Remaining.Percent(pct.coerceIn(0.0, 100.0)),
-                        resetsAt = parseClaudeInstant(session["resets_at"]?.jsonPrimitive?.content)
+                        resetsAt = parseClaudeInstant((session["resets_at"] as? JsonPrimitive)?.contentOrNull)
                     )
                 }
             }
-            included["weekly"]?.jsonObject?.let { weekly ->
-                weekly["remaining_percent"]?.jsonPrimitive?.doubleOrNull?.let { pct ->
+            (included["weekly"] as? JsonObject)?.let { weekly ->
+                (weekly["remaining_percent"] as? JsonPrimitive)?.doubleOrNull?.let { pct ->
                     windows += UsageWindow(
                         id = "weekly",
                         label = "weekly",
                         remaining = Remaining.Percent(pct.coerceIn(0.0, 100.0)),
-                        resetsAt = parseClaudeInstant(weekly["resets_at"]?.jsonPrimitive?.content)
+                        resetsAt = parseClaudeInstant((weekly["resets_at"] as? JsonPrimitive)?.contentOrNull)
                     )
                 }
             }
         }
 
         // Purchased credit: shown only when it exists and is positive.
-        root["purchased"]?.jsonObject?.get("balance_usd")?.jsonPrimitive?.doubleOrNull
+        ((root["purchased"] as? JsonObject)?.get("balance_usd") as? JsonPrimitive)?.doubleOrNull
             ?.takeIf { it > 0.0 }
             ?.let { windows += UsageWindow("credit", "credit", Remaining.Balance(it, "USD")) }
 

@@ -3,7 +3,6 @@ package org.parkjw.apps.oot.ui.theme
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
@@ -28,10 +27,4 @@ fun ootInkButtonColors() = ButtonDefaults.buttonColors(
     contentColor = MaterialTheme.extendedColors.onInkButton,
     disabledContainerColor = MaterialTheme.extendedColors.inkButton,
     disabledContentColor = MaterialTheme.extendedColors.onInkButton,
-)
-
-@Composable
-fun ootRadioButtonColors() = RadioButtonDefaults.colors(
-    selectedColor = MaterialTheme.colorScheme.onSurface,
-    unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant,
 )

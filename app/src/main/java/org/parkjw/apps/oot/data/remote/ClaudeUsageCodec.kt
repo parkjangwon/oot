@@ -1,14 +1,13 @@
 package org.parkjw.apps.oot.data.remote
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
-import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
-import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.i18n.AppText
 import java.time.Instant
@@ -54,26 +53,25 @@ fun parseClaudeInstant(raw: String?): Instant? {
 }
 
 // Parses the /api/oauth/usage body into the 5-hour and weekly windows.
-// Returns null when the body is not the expected JSON shape (parse failure).
+// A null or absent window is skipped (enterprise seats return null buckets).
+// Returns null when no window can be read (parse failure).
 fun parseClaudeUsage(body: String, json: Json = Json): List<ClaudeWindowUsage>? {
     val root = try { json.parseToJsonElement(body).jsonObject } catch (e: Exception) { return null }
-    val fiveHour = root["five_hour"]?.jsonObject ?: return null
-    val sevenDay = root["seven_day"]?.jsonObject ?: return null
-    val fiveUtil = fiveHour["utilization"]?.jsonPrimitive?.doubleOrNull ?: return null
-    val weekUtil = sevenDay["utilization"]?.jsonPrimitive?.doubleOrNull ?: return null
-    return listOf(
-        ClaudeWindowUsage(
-            id = "five_hour",
-            label = "5h",
-            utilization = fiveUtil,
-            resetsAt = parseClaudeInstant(fiveHour["resets_at"]?.jsonPrimitive?.content)
-        ),
-        ClaudeWindowUsage(
-            id = "seven_day",
-            label = "7d",
-            utilization = weekUtil,
-            resetsAt = parseClaudeInstant(sevenDay["resets_at"]?.jsonPrimitive?.content)
-        )
+    val windows = listOfNotNull(
+        parseClaudeWindow(root, "five_hour", "5h"),
+        parseClaudeWindow(root, "seven_day", "7d")
+    )
+    return windows.takeIf { it.isNotEmpty() }
+}
+
+private fun parseClaudeWindow(root: JsonObject, id: String, label: String): ClaudeWindowUsage? {
+    val obj = root[id] as? JsonObject ?: return null
+    val utilization = obj["utilization"]?.jsonPrimitive?.doubleOrNull ?: return null
+    return ClaudeWindowUsage(
+        id = id,
+        label = label,
+        utilization = utilization,
+        resetsAt = parseClaudeInstant(obj["resets_at"]?.jsonPrimitive?.content)
     )
 }
 

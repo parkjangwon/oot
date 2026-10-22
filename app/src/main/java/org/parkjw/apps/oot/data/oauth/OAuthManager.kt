@@ -47,6 +47,8 @@ class OAuthManager(
     internal fun hasPendingVerificationFlow(): Boolean = pendingVerifications.isNotEmpty()
 
     fun startOAuthFlow(provider: ProviderType) {
+        // Only the Claude browser flow uses this; other providers sign in via device flow.
+        if (provider != ProviderType.CLAUDE) return
         val authEndpoint = provider.oauthAuthEndpoint ?: return
         val state = UUID.randomUUID().toString()
         val codeVerifier = generateCodeVerifier()
@@ -61,15 +63,8 @@ class OAuthManager(
             .appendQueryParameter("code_challenge_method", "S256")
             .appendQueryParameter("state", state)
 
-        when (provider) {
-            ProviderType.CLAUDE -> {
-                uriBuilder.appendQueryParameter("code", "true")
-                uriBuilder.appendQueryParameter("redirect_uri", CLAUDE_REDIRECT_URI)
-            }
-            else -> {
-                uriBuilder.appendQueryParameter("redirect_uri", REDIRECT_URI)
-            }
-        }
+        uriBuilder.appendQueryParameter("code", "true")
+        uriBuilder.appendQueryParameter("redirect_uri", CLAUDE_REDIRECT_URI)
 
         if (provider.defaultScopes.isNotEmpty()) {
             uriBuilder.appendQueryParameter("scope", provider.defaultScopes.joinToString(" "))
@@ -420,85 +415,6 @@ class OAuthManager(
         )
     }
 
-    suspend fun handleOAuthCallback(uri: Uri): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
-        val code = uri.getQueryParameter("code")
-        val state = uri.getQueryParameter("state")
-        val error = uri.getQueryParameter("error")
-
-        if (error != null) {
-            val errorDesc = uri.getQueryParameter("error_description") ?: error
-            return@withContext Result.failure(Exception(AppText.get(R.string.oauth_callback_denied, errorDesc)))
-        }
-
-        if (code == null || state == null) {
-            return@withContext Result.failure(Exception(AppText.get(R.string.oauth_invalid_callback)))
-        }
-
-        val pending = pendingVerifications.remove(state)
-            ?: return@withContext Result.failure(Exception(AppText.get(R.string.oauth_invalid_state)))
-
-        val (provider, codeVerifier) = pending
-        val tokenEndpoint = provider.oauthTokenEndpoint
-            ?: return@withContext Result.failure(Exception(AppText.get(R.string.oauth_token_endpoint_missing)))
-
-        try {
-            val redirectUri = when (provider) {
-                ProviderType.CLAUDE -> CLAUDE_REDIRECT_URI
-                else -> REDIRECT_URI
-            }
-
-            val request = if (provider == ProviderType.CLAUDE) {
-                val jsonPayload = """{"grant_type":"authorization_code","client_id":"$CLAUDE_CLIENT_ID","code":"$code","state":"$state","redirect_uri":"$redirectUri","code_verifier":"$codeVerifier"}"""
-                Request.Builder()
-                    .url(tokenEndpoint)
-                    .addHeader("Content-Type", "application/json")
-                    .addHeader("Accept", "application/json")
-                    .post(jsonPayload.toRequestBody("application/json".toMediaType()))
-                    .build()
-            } else {
-                val formBody = FormBody.Builder()
-                    .add("grant_type", "authorization_code")
-                    .add("client_id", getClientIdForProvider(provider))
-                    .add("code", code)
-                    .add("redirect_uri", redirectUri)
-                    .add("code_verifier", codeVerifier)
-                    .build()
-
-                Request.Builder()
-                    .url(tokenEndpoint)
-                    .addHeader("Accept", "application/json")
-                    .post(formBody)
-                    .build()
-            }
-
-            client.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    return@withContext Result.failure(Exception(AppText.get(R.string.oauth_token_exchange_failed_code, response.code, body)))
-                }
-
-                val root = json.parseToJsonElement(body).jsonObject
-                val accessToken = root["access_token"]?.jsonPrimitive?.content
-                    ?: return@withContext Result.failure(Exception(AppText.get(R.string.oauth_missing_access_token)))
-
-                val refreshToken = root["refresh_token"]?.jsonPrimitive?.content
-                val expiresIn = root["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L
-                val expiresAt = System.currentTimeMillis() + (expiresIn * 1000L)
-
-                Result.success(
-                    OAuthTokenResult(
-                        provider = provider,
-                        accessToken = accessToken,
-                        refreshToken = refreshToken,
-                        expiresAt = expiresAt
-                    )
-                )
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
     suspend fun exchangeClaudeAuthCode(rawInput: String): Result<OAuthTokenResult> = withContext(Dispatchers.IO) {
         val trimmed = rawInput.trim()
         val parts = trimmed.split("#")
@@ -661,7 +577,6 @@ class OAuthManager(
     private data class ChatgptIdClaims(val accountId: String?, val email: String?)
 
     companion object {
-        const val REDIRECT_URI = "oot://oauth"
         const val CLAUDE_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback"
         // Official Client ID UUIDs
         const val CLAUDE_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"

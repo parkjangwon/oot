@@ -14,11 +14,6 @@
     <string name="oauth_openai_auth_failed">OpenAI device authentication failed (%1$d): %2$s</string>
     <string name="oauth_openai_wait_timeout">Timed out waiting for OpenAI sign-in (15 minutes).</string>
     <string name="oauth_missing_access_token">The response has no access_token.</string>
-    <string name="oauth_callback_denied">OAuth authorization denied: %1$s</string>
-    <string name="oauth_invalid_callback">The sign-in callback data isn\'t valid.</string>
-    <string name="oauth_invalid_state">The session state is expired or doesn\'t match.</string>
-    <string name="oauth_token_endpoint_missing">No token endpoint is set.</string>
-    <string name="oauth_token_exchange_failed_code">Token exchange failed (%1$d): %2$s</string>
     <string name="oauth_claude_no_session">Couldn\'t find the Claude sign-in session. Sign in with your browser again.</string>
     <string name="oauth_claude_token_exchange_failed">Claude token exchange failed (%1$d): %2$s</string>
 </resources>

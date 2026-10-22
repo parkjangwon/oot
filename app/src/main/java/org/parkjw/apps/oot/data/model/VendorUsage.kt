@@ -66,7 +66,8 @@ fun List<VendorUsage>.sortedByRemaining(): List<VendorUsage> =
         )
     )
 
-private val amountRegex = Regex("""\d+(\.\d+)?""")
+// Only a currency-marked number is a balance; bare numbers are request/token counts.
+private val amountRegex = Regex("""[$¥€£]\s?([\d,]+(?:\.\d+)?)""")
 
 // A stale snapshot must not keep showing a window whose reset has passed since it was converted.
 fun VendorUsage.withStaleRollover(now: Instant): VendorUsage {
@@ -96,9 +97,10 @@ fun TokenStatus.toVendorUsage(now: Instant = Instant.now()): VendorUsage {
         listOf(
             usagePercent?.let { used ->
                 UsageWindow("primary", "primary", Remaining.Percent(100.0 - used))
-            } ?: amountRegex.find(remainingFormatted)?.value?.toDoubleOrNull()?.let { amount ->
-                UsageWindow("primary", remainingFormatted, Remaining.Balance(amount))
-            } ?: UsageWindow("primary", "primary", Remaining.Percent(100.0))
+            } ?: amountRegex.find(remainingFormatted)?.groupValues?.get(1)
+                ?.replace(",", "")?.toDoubleOrNull()?.let { amount ->
+                    UsageWindow("primary", remainingFormatted, Remaining.Balance(amount))
+                } ?: UsageWindow("primary", "primary", Remaining.Percent(100.0))
         )
     }
     // A stale snapshot must not keep showing a window whose reset already passed: its remaining is not current.
