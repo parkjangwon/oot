@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 and lower backup rules.
+  The credential store is encrypted with an Android Keystore key that never leaves
+  this device, so a restored copy could never be decrypted.
+  The language preference (datastore/language.preferences_pb) stays included.
+-->
+<full-backup-content>
+    <exclude
+        domain="sharedpref"
+        path="oot_secure_prefs.xml" />
+    <!-- Older plaintext credential store, kept out as well. -->
+    <exclude
+        domain="sharedpref"
+        path="oot_fallback_prefs.xml" />
+    <!-- Update download progress is device/session state. -->
+    <exclude
+        domain="file"
+        path="datastore/update.preferences_pb" />
+</full-backup-content>
