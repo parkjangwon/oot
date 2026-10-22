@@ -80,14 +80,15 @@ class NotificationContentTest {
     }
 
     @Test
-    fun `stale values carry the previous value suffix in every notification form`() {
+    fun `stale values carry the previous value suffix in the expanded line and text fallback`() {
         val stale = vendor(62.0, ProviderType.CLAUDE, now.plusSeconds(120 * 60))
             .copy(staleSince = now.minusSeconds(2 * 3600))
 
         val expanded = NotificationContent.expandedItems(listOf(stale), now = now, strings = TestNotificationStrings.KO).single()
         assertEquals("5H 62% 남음 · 2시간 후 (이전값)", expanded.text)
+        // The collapsed row has room for one line only, so it shows the value without the suffix (#107).
         val collapsed = NotificationContent.collapsedItems(listOf(stale), maxItems = 3, strings = TestNotificationStrings.KO).single()
-        assertEquals("62% 남음 (이전값)", collapsed.label)
+        assertEquals("62% 남음", collapsed.label)
         assertEquals(62, collapsed.percent)
         assertEquals("Claude 62% (이전값)", NotificationContent.textFallback(listOf(stale), strings = TestNotificationStrings.KO))
     }

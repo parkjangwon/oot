@@ -166,9 +166,7 @@ object NotificationContent {
         usages.filter { it.accountId !in hiddenAccountIds }
 
     // Values carried over from a failed refresh get the same "(이전값)" suffix the status text uses.
-    private fun CollapsedItem.markStale(usage: VendorUsage, strings: NotificationStrings): CollapsedItem =
-        if (usage.staleSince != null && !isError) copy(label = "$label ${strings.previousValue}") else this
-
+    // The collapsed row stays bare: one line there has no room for it (#107).
     private fun ExpandedItem.markStale(usage: VendorUsage, strings: NotificationStrings): ExpandedItem {
         if (usage.staleSince == null || isError) return this
         val suffix = " " + strings.previousValue
@@ -179,7 +177,7 @@ object NotificationContent {
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int, strings: NotificationStrings): List<CollapsedItem> =
         usages.take(maxItems.coerceAtLeast(0)).map { usage ->
             val p = usage.providerType
-            val item = openRouterView(usage)?.let { or ->
+            openRouterView(usage)?.let { or ->
                 CollapsedItem(
                     p,
                     mark(p),
@@ -203,7 +201,6 @@ object NotificationContent {
                         remaining.level
                     )
             }
-            item.markStale(usage, strings)
         }
 
     // One line per registered vendor, user order.
