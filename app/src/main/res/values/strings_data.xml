@@ -8,6 +8,7 @@
     <string name="data_error_http">조회 실패 (HTTP %1$d)</string>
     <string name="data_error_generic">오류</string>
     <string name="data_error_code">오류 (%1$d)</string>
+    <string name="error_custom_endpoint_not_https">사용자 지정 엔드포인트가 https 주소가 아니에요. 계정을 다시 추가해 주세요.</string>
 
     <!-- Shared status fragments -->
     <string name="data_no_token_key">토큰/키 없음</string>

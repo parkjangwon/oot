@@ -31,6 +31,8 @@ class XaiApi(
             )
         }
 
+        val baseUrl = resolveBaseUrl(account.customEndpoint, ProviderType.XAI.baseUrl)
+            ?: return@withContext customEndpointErrorStatus(account)
         val authHeader = "Bearer $credential"
 
         // 1. Try Grok CLI Subscription Billing endpoint (Weekly quota & product usage)
@@ -56,7 +58,6 @@ class XaiApi(
         }
 
         // 2. Fallback: xAI Developer API (api-key & models endpoint)
-        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.XAI.baseUrl
         val keyUrl = "$baseUrl/api-key"
         val modelsUrl = "$baseUrl/models"
 
