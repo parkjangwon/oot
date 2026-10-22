@@ -147,7 +147,8 @@ class NotificationScreenshotTest {
         captureExpanded(412, "notif-expanded-412-light-3x-claude-hidden.png", hidden = setOf("demo-claude"))
     }
 
-    // 429/backoff still shows the last values, marked "(이전값)" in every row that carries them.
+    // 429/backoff still shows the last values: the text fallback and expanded row mark them "(이전값)",
+    // the one-line collapsed row stays bare so it does not ellipsize (#107).
     private fun staleUsages(): List<VendorUsage> =
         fakeUsages().map { usage ->
             if (usage.accountId == "demo-claude") {
@@ -170,14 +171,14 @@ class NotificationScreenshotTest {
     }
 
     @Test
-    fun staleRowsSayPreviousInEveryForm() {
+    fun staleRowsSayPreviousInTheExpandedFormAndText() {
         val notification = buildNotification(usages = staleUsages())
         assertEquals(
             "Claude 62% (이전값) · GLM 98% · xAI 14% · OpenRouter $7.60",
             notification.contentText(),
         )
         val collapsed = applyToNewActivity(notification.contentView!!)
-        assertEquals("62% 남음 (이전값)", collapsed.findViewById<android.widget.TextView>(R.id.label0).text.toString())
+        assertEquals("62% 남음", collapsed.findViewById<android.widget.TextView>(R.id.label0).text.toString())
         val expanded = applyToNewActivity(notification.bigContentView!!)
         assertEquals(
             "5H 62% 남음 · 1시간 40분 후 (이전값)",

@@ -56,6 +56,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.ColorFilter
@@ -498,6 +499,9 @@ internal fun findLeastRemainingItem(usages: List<VendorUsage>): Pair<VendorUsage
         }
 }
 
+// Carried-over values keep their numbers but their bars fade, so a stale card does not read as current.
+internal fun staleBarAlpha(staleSince: Instant?): Float = if (staleSince != null) 0.6f else 1f
+
 @Composable
 fun QuotaSummaryLine(
     vendorName: String,
@@ -576,6 +580,7 @@ fun VendorCard(
         .minByOrNull { (it.remaining as Remaining.Percent).percentLeft }
         ?.remaining
         ?.level
+    val barAlpha = staleBarAlpha(usage.staleSince)
 
     Surface(
         modifier = modifier
@@ -673,6 +678,7 @@ fun VendorCard(
                                         remainingPercent = rem.percentLeft,
                                         resetsAt = window.resetsAt,
                                         now = now,
+                                        barAlpha = barAlpha,
                                     )
                                 }
                                 is Remaining.Balance -> {
@@ -681,6 +687,7 @@ fun VendorCard(
                                             label = window.label,
                                             remaining = rem.amountLeft,
                                             currency = rem.currency,
+                                            barAlpha = barAlpha,
                                         )
                                     } else {
                                         BalanceRow(
@@ -730,6 +737,7 @@ fun LimitRow(
     resetsAt: Instant?,
     now: Instant,
     modifier: Modifier = Modifier,
+    barAlpha: Float = 1f,
 ) {
     val pctInt = remainingPercent.roundToInt().coerceIn(0, 100)
     val level = progressLevel(pctInt)
@@ -781,7 +789,8 @@ fun LimitRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(4.dp)
-                .clip(OotShapeTokens.pill),
+                .clip(OotShapeTokens.pill)
+                .alpha(barAlpha),
         )
 
         if (resetText != null) {
@@ -861,6 +870,7 @@ fun KeyLimitRow(
     remaining: Double,
     currency: String,
     modifier: Modifier = Modifier,
+    barAlpha: Float = 1f,
 ) {
     val limit = keyLimitFromLabel(label)
     val pctInt = limit?.takeIf { it > 0 }
@@ -900,7 +910,8 @@ fun KeyLimitRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
-                    .clip(OotShapeTokens.pill),
+                    .clip(OotShapeTokens.pill)
+                    .alpha(barAlpha),
             )
         }
     }
