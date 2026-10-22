@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -27,6 +31,8 @@ jobs:
         run: |
           ./gradlew testDebugUnitTest lintDebug --console=plain
           bash scripts/test-release-version.sh
+          # Stop the daemon so no Gradle process from the check step outlives it into the signing steps.
+          ./gradlew --stop
       - name: Require signing secrets
         env:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
