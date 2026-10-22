@@ -6,9 +6,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
-import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
-import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.i18n.AppText
 import java.time.Instant
