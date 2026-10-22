@@ -18,7 +18,7 @@ class AccountPreferencesMergeTest {
         json.parseToJsonElement(raw).jsonArray.map { it.jsonPrimitive.content }
 
     @Test
-    fun `accounts merge by id with the legacy entry winning for the same id`() {
+    fun `accounts merge by id with the encrypted entry winning and its order first`() {
         val legacy = """[{"id":"a","provider":"OPENROUTER","name":"legacy-a","authType":"API_KEY","apiKey":"legacy-a"},""" +
             """{"id":"c","provider":"DEEPSEEK","name":"legacy-c","authType":"API_KEY","apiKey":"legacy-c"}]"""
         val encrypted = """[{"id":"a","provider":"OPENROUTER","name":"enc-a","authType":"API_KEY","apiKey":"enc-a"},""" +
@@ -26,10 +26,10 @@ class AccountPreferencesMergeTest {
 
         val merged = AccountPreferences.mergeStoredValue("oot_accounts", encrypted, legacy)
 
-        assertEquals(listOf("a", "c", "b"), ids(merged))
+        assertEquals(listOf("a", "b", "c"), ids(merged))
         val a = json.parseToJsonElement(merged).jsonArray
             .first { it.jsonObject.getValue("id").jsonPrimitive.content == "a" }
-        assertEquals("legacy-a", a.jsonObject.getValue("name").jsonPrimitive.content)
+        assertEquals("enc-a", a.jsonObject.getValue("name").jsonPrimitive.content)
     }
 
     @Test
@@ -50,28 +50,28 @@ class AccountPreferencesMergeTest {
             legacy = """["b","a"]""",
         )
 
-        assertEquals(listOf("b", "a", "c"), strings(merged))
+        assertEquals(listOf("a", "c", "b"), strings(merged))
     }
 
     @Test
-    fun `account order is the legacy order followed by encrypted-only ids`() {
+    fun `account order is the encrypted order followed by legacy-only ids`() {
         val merged = AccountPreferences.mergeStoredValue(
             "oot_account_order",
             encrypted = """["a","b"]""",
             legacy = """["c","a"]""",
         )
 
-        assertEquals(listOf("c", "a", "b"), strings(merged))
+        assertEquals(listOf("a", "b", "c"), strings(merged))
     }
 
     @Test
-    fun `other keys take the legacy value`() {
+    fun `other keys take the encrypted value`() {
         assertEquals(
-            "false",
+            "true",
             AccountPreferences.mergeStoredValue("oot_service_enabled", encrypted = "true", legacy = "false"),
         )
         assertEquals(
-            "30",
+            "15",
             AccountPreferences.mergeStoredValue("oot_refresh_interval", encrypted = "15", legacy = "30"),
         )
     }

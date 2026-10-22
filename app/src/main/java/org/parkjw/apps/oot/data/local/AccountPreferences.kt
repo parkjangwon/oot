@@ -195,24 +195,29 @@ class AccountPreferences(
 
         private val mergeJson = Json { ignoreUnknownKeys = true; prettyPrint = false }
 
-        /** Resolves a key found in both the encrypted and the legacy plaintext store. */
+        /**
+         * Resolves a key found in both the encrypted and the legacy plaintext store.
+         *
+         * The encrypted value wins: the legacy file can be an orphan left by v1.3.1 after a transient failure, older
+         * than the encrypted store, and stale OAuth refresh tokens must not overwrite newer ones.
+         */
         internal fun mergeStoredValue(key: String, encrypted: String, legacy: String): String = when (key) {
             KEY_ACCOUNTS -> mergeAccounts(encrypted, legacy)
             KEY_NOTIFICATION_HIDDEN, KEY_ACCOUNT_ORDER -> mergeIdLists(encrypted, legacy)
-            else -> legacy
+            else -> encrypted
         }
 
         private fun mergeAccounts(encrypted: String, legacy: String): String {
             val byId = LinkedHashMap<String, ProviderAccount>()
-            decodeAccounts(mergeJson, legacy).accounts.forEach { byId[it.id] = it }
-            decodeAccounts(mergeJson, encrypted).accounts.forEach { byId.putIfAbsent(it.id, it) }
+            decodeAccounts(mergeJson, encrypted).accounts.forEach { byId[it.id] = it }
+            decodeAccounts(mergeJson, legacy).accounts.forEach { byId.putIfAbsent(it.id, it) }
             return mergeJson.encodeToString(byId.values.toList())
         }
 
         private fun mergeIdLists(encrypted: String, legacy: String): String {
             val ids = LinkedHashSet<String>()
-            ids += decodeIdList(mergeJson, legacy)
             ids += decodeIdList(mergeJson, encrypted)
+            ids += decodeIdList(mergeJson, legacy)
             return mergeJson.encodeToString(ids.toList())
         }
 

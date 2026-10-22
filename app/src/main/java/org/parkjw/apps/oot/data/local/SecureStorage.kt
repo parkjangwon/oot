@@ -12,7 +12,9 @@ class SecureStorage internal constructor(
     context: Context,
     openEncrypted: (Context) -> SharedPreferences = ::openEncryptedPreferences,
     private val legacyPrefsName: String = LEGACY_PREFS_NAME,
-    private val resolveConflict: (key: String, encrypted: String, legacy: String) -> String = { _, _, legacy -> legacy },
+    // A legacy plaintext file can be an orphan left by v1.3.1 after a transient failure, older than the
+    // encrypted store, and stale OAuth refresh tokens must not overwrite newer ones: the encrypted value wins.
+    private val resolveConflict: (key: String, encrypted: String, legacy: String) -> String = { _, encrypted, _ -> encrypted },
 ) {
     val status: StorageStatus
     private val prefs: SharedPreferences?
@@ -30,28 +32,33 @@ class SecureStorage internal constructor(
         }
     }
 
+    @Synchronized
     fun putString(key: String, value: String) {
         val store = prefs
         if (store != null) store.edit().putString(key, value).apply() else memory[key] = value
     }
 
     /** Like [putString] but returns only once the value (and any earlier queued write) is on disk. */
+    @Synchronized
     @SuppressLint("ApplySharedPref") // blocking is the point: data that must survive a force-stop
     fun putStringNow(key: String, value: String) {
         val store = prefs
         if (store != null) store.edit().putString(key, value).commit() else memory[key] = value
     }
 
+    @Synchronized
     fun getString(key: String, defaultValue: String? = null): String? {
         val store = prefs
         return if (store != null) store.getString(key, defaultValue) else memory[key] ?: defaultValue
     }
 
+    @Synchronized
     fun remove(key: String) {
         val store = prefs
         if (store != null) store.edit().remove(key).apply() else memory.remove(key)
     }
 
+    @Synchronized
     fun clear() {
         val store = prefs
         if (store != null) store.edit().clear().apply() else memory.clear()
@@ -75,6 +82,18 @@ class SecureStorage internal constructor(
         } catch (e: Exception) {
             return
         }
+        // Marker present: the migration already committed. Never merge the legacy file again, or accounts the user
+        // deleted after migration would come back. Only retry removing the leftover plaintext file.
+        val alreadyMigrated = try {
+            encrypted.getString(MARKER_KEY, null) == MARKER_VALUE
+        } catch (e: Exception) {
+            return
+        }
+        if (alreadyMigrated) {
+            deleteLegacy(context)
+            return
+        }
+
         val entries = try {
             legacy.all
         } catch (e: Exception) {
@@ -102,6 +121,8 @@ class SecureStorage internal constructor(
 
         val editor = encrypted.edit()
         migrated.forEach { (key, value) -> editor.putString(key, value) }
+        // The marker rides in the same commit as the migrated values: after this commit the merge must never run again.
+        editor.putString(MARKER_KEY, MARKER_VALUE)
         val committed = try {
             editor.commit()
         } catch (e: Exception) {
@@ -116,13 +137,17 @@ class SecureStorage internal constructor(
                 false
             }
         }
-        if (!readBackOk) return
-
-        try {
-            if (legacy.edit().clear().commit()) deleteLegacy(context)
-        } catch (e: Exception) {
-            // Keep the legacy file: the next launch retries.
+        if (!readBackOk) {
+            // Do not leave a marker behind when the values did not land: the next launch must merge again.
+            try {
+                encrypted.edit().remove(MARKER_KEY).commit()
+            } catch (e: Exception) {
+                // Nothing more to do.
+            }
+            return
         }
+
+        deleteLegacy(context)
     }
 
     private fun seedFromLegacy(context: Context) {
@@ -141,17 +166,30 @@ class SecureStorage internal constructor(
         }
     }
 
+    @SuppressLint("ApplySharedPref")
     private fun deleteLegacy(context: Context) {
+        val legacy = try {
+            context.getSharedPreferences(legacyPrefsName, Context.MODE_PRIVATE)
+        } catch (e: Exception) {
+            null
+        }
+        try {
+            legacy?.edit()?.clear()?.commit()
+        } catch (e: Exception) {
+            // Fall through: deleteSharedPreferences below can still remove the file.
+        }
         try {
             context.deleteSharedPreferences(legacyPrefsName)
         } catch (e: Exception) {
-            // Nothing left to migrate; the next launch retries the delete.
+            // The marker keeps the next launch from re-merging; it retries the delete.
         }
     }
 }
 
 private const val ENCRYPTED_PREFS_NAME = "oot_secure_prefs"
 private const val LEGACY_PREFS_NAME = "oot_fallback_prefs"
+private const val MARKER_KEY = "oot_legacy_migrated"
+private const val MARKER_VALUE = "1"
 
 private fun openEncryptedPreferences(context: Context): SharedPreferences {
     val masterKey = MasterKey.Builder(context)

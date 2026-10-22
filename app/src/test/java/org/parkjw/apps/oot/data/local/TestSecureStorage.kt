@@ -8,7 +8,7 @@ internal const val TEST_ENCRYPTED_STORE = "test_encrypted_store"
 
 internal fun testSecureStorage(
     context: Context,
-    resolveConflict: (key: String, encrypted: String, legacy: String) -> String = { _, _, legacy -> legacy },
+    resolveConflict: (key: String, encrypted: String, legacy: String) -> String = { _, encrypted, _ -> encrypted },
 ): SecureStorage = SecureStorage(
     context,
     openEncrypted = { it.getSharedPreferences(TEST_ENCRYPTED_STORE, Context.MODE_PRIVATE) },
