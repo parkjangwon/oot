@@ -54,13 +54,13 @@ Screenshots use sample data only.
 
 | Vendor | Auth | What oot shows |
 | :--- | :--- | :--- |
-| <img src="docs/screenshots/vendors/vendor-claude.png" alt="" width="20" align="center"> **Claude** | API key or OAuth | 5-hour and weekly usage windows as % left, with reset times |
+| <img src="docs/screenshots/vendors/vendor-claude.png" alt="" width="20" align="center"> **Claude** | API key or OAuth | OAuth: 5-hour and weekly usage windows as % left, with reset times. API key: remaining rate-limit tokens |
 | <img src="docs/screenshots/vendors/vendor-openai.png" alt="" width="20" align="center"> **OpenAI** | ChatGPT sign-in (OAuth) or API key | ChatGPT plan 5-hour and weekly windows as % left, with reset times; with an API key, remaining rate-limit tokens |
-| <img src="docs/screenshots/vendors/vendor-xai.png" alt="" width="20" align="center"> **xAI (Grok)** | API key or device-code login | Weekly subscription quota as % left, with reset time |
+| <img src="docs/screenshots/vendors/vendor-xai.png" alt="" width="20" align="center"> **xAI (Grok)** | API key or device-code login | Weekly subscription quota as % left, with reset time, when the billing endpoint answers (device-code login); otherwise the account tier or remaining rate-limit tokens |
 | <img src="docs/screenshots/vendors/vendor-zai.png" alt="" width="20" align="center"> **Z.ai (GLM)** | API key | GLM coding plan 5-hour and weekly quota as % left, with reset times |
 | <img src="docs/screenshots/vendors/vendor-openrouter.png" alt="" width="20" align="center"> **OpenRouter** | API key | Account credits in $, plus the key's own limit and what is left of it, when the key has one |
 | <img src="docs/screenshots/vendors/vendor-deepseek.png" alt="" width="20" align="center"> **DeepSeek** | API key | Remaining balance (USD or CNY) |
-| <img src="docs/screenshots/vendors/vendor-ollama-cloud.png" alt="" width="20" align="center"> **Ollama Cloud** | API key | Session and monthly usage as % left, with reset times |
+| <img src="docs/screenshots/vendors/vendor-ollama-cloud.png" alt="" width="20" align="center"> **Ollama Cloud** | API key | Session and weekly usage as % left, with reset times; credit plans show the monthly allowance instead, plus purchased credits when present |
 | <img src="docs/screenshots/vendors/vendor-opencode-go.png" alt="" width="20" align="center"> **OpenCode Go** | API key | Subscription usage windows as % left, with reset times |
 
 OpenAI and Z.ai are shown with a letter tile because their brand terms do not allow using the logo without permission.
@@ -79,9 +79,8 @@ All trademarks and logos are the property of their respective owners and are use
 - JDK 21 and the Android SDK (compileSdk 35 — see `app/build.gradle.kts`).
 
 ```bash
-./gradlew assembleDebug              # debug build
-./gradlew testDebugUnitTest lintDebug  # tests and lint
-./gradlew recordRoborazziDebug       # screenshots
+./gradlew assembleDebug assembleRelease testDebugUnitTest lintDebug  # build, tests and lint (the Gradle command CI runs)
+./gradlew recordRoborazziDebug                                       # screenshots
 ```
 
 Release builds are signed in CI and cut from tags: a tag `vX.Y.Z` must match `version` in `gradle.properties`.
@@ -90,7 +89,7 @@ Release builds are signed in CI and cut from tags: a tag `vX.Y.Z` must match `ve
 
 ## Privacy & security
 
-Tokens and API keys are stored locally in encrypted storage (`EncryptedSharedPreferences`, Android Keystore). The app contains no analytics or telemetry — it only talks to the vendors you add and to GitHub Releases for update checks.
+Credentials (tokens and API keys) stay in Keystore-backed encrypted storage on the device. That store is excluded from Android backup and device transfer, so after restoring a backup or moving to a new phone you sign in to your providers again. Network traffic is https only, including custom endpoints. The add-account dialog is marked secure, so it stays out of screenshots and the recent-apps preview. There are no analytics or telemetry — the app only talks to the vendors you add and to GitHub Releases for update checks.
 
 ## License
 
