@@ -85,7 +85,7 @@ class AccountPreferences(context: Context) {
             chatgptAccountId = account.chatgptAccountId,
         )
         _accounts.value = current
-        persistAccounts(current)
+        persistAccountsNow(current)
         return true
     }
 
@@ -141,6 +141,16 @@ class AccountPreferences(context: Context) {
         try {
             val serialized = json.encodeToString(list)
             secureStorage.putString(KEY_ACCOUNTS, serialized)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // commit, not apply: a rotated refresh token must survive a force-stop right after the refresh.
+    private fun persistAccountsNow(list: List<ProviderAccount>) {
+        try {
+            val serialized = json.encodeToString(list)
+            secureStorage.putStringNow(KEY_ACCOUNTS, serialized)
         } catch (e: Exception) {
             e.printStackTrace()
         }

@@ -192,7 +192,7 @@ class AccountPreferencesPersistenceTest {
             }
         }
         armed.set(true)
-        val refresh = thread { prefs.saveAccount(account("b").copy(accessToken = "at-new")) }
+        val refresh = thread { prefs.updateAccountIfPresent(account("b").copy(accessToken = "at-new")) }
         assertTrue(paused.await(10, TimeUnit.SECONDS))
         val reorder = thread { prefs.setAccountOrder(listOf("c", "b", "a")) }
         Thread.sleep(200) // long enough for an unlocked reorder to finish

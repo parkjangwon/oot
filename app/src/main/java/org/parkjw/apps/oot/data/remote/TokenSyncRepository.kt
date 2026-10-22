@@ -70,8 +70,9 @@ class TokenSyncRepository(
                 }
                 val updatedAccount = if (account.authType == AuthType.OAUTH && account.isTokenExpired) {
                     val refreshed = oauthManager.refreshTokenIfNeeded(account)
-                    if (refreshed != account) {
-                        preferences.updateAccountIfPresent(refreshed)
+                    // Removed while the token refresh was in flight: no usage call with the rotated token.
+                    if (refreshed != account && !preferences.updateAccountIfPresent(refreshed)) {
+                        return@async null
                     }
                     refreshed
                 } else {
@@ -91,7 +92,7 @@ class TokenSyncRepository(
             }
         }
 
-        val results = deferreds.awaitAll()
+        val results = deferreds.awaitAll().filterNotNull()
         // Order by what is saved now, not at the start: the user may have dragged while requests were in flight.
         val byId = results.associateBy { it.accountId }
         val ordered = preferences.accounts.value.mapNotNull { byId[it.id] }
