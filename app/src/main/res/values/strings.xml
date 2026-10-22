@@ -67,7 +67,7 @@
     <!-- Main activity -->
     <string name="exit_prompt">한 번 더 누르면 종료돼요</string>
     <string name="secure_storage_unavailable">보안 저장소를 열지 못했어요. 지금 바꾼 계정 정보는 앱을 다시 열면 사라질 수 있어요.</string>
-    <string name="secure_storage_reset_action">저장소 초기화하고 다시 로그인</string>
+    <string name="secure_storage_reset_action">저장소 초기화하고 계정 다시 추가</string>
     <string name="secure_storage_resetting">초기화하는 중…</string>
     <string name="secure_storage_reset_title">저장소를 초기화할까요?</string>
     <string name="secure_storage_reset_body">이 기기에 저장된 계정과 키를 지워요. 초기화한 뒤에는 계정을 다시 추가해야 하고, 나머지 설정은 그대로 남아요.</string>
