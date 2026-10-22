@@ -5,13 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Changed
-- English status badges read 'Low' / 'Critical' instead of 'Warning' / 'Danger' (#80).
-- The empty-state notification title uses the lowercase wordmark: 'oot · 토큰 모니터' / 'oot · token monitor' (#80).
-
-## [1.2.2] - 2026-10-22
+## [1.3.0] - 2026-10-22
 
 ### Added
 - English UI. Korean stays the default; pick 한국어 / English under Settings → '언어 · Language'. The choice is saved, applied on start and also offered in the system's per-app language settings (Android 13+). Notifications, card errors and empty states follow it (#74).
@@ -19,9 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Every user-facing string now lives in string resources (`values` Korean, `values-en` English); lint (`HardcodedText`, `SetTextI18n`, `MissingTranslation`) and a source-scan test fail the build on hardcoded UI text (#74).
 - The notification channel name and description are now in the app language ('AI 토큰·한도 모니터' in Korean) (#74).
+- English status badges read 'Low' / 'Critical' instead of 'Warning' / 'Danger' (#80).
+- The empty-state notification title uses the lowercase wordmark: 'oot · 토큰 모니터' / 'oot · token monitor' (#80).
 
 ### Fixed
 - A dashboard reset time under a minute no longer reads '곧 리셋 리셋' (#74).
+
+## [1.2.2] - 2026-10-22
 
 ### Removed
 - Google Antigravity provider: its quota is only available through Google's private API, which this app's own OAuth client cannot use (#53). A saved Antigravity account is dropped on update; other providers keep their order and settings (#73).
