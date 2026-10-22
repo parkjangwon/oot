@@ -37,8 +37,8 @@ fun parseZaiUsage(body: String, json: Json = Json): ZaiUsage {
     return ZaiUsage(
         level = (data?.get("level") as? JsonPrimitive)?.contentOrNull ?: "GLM",
         windows = listOfNotNull(
-            zaiWindow(limits, unit = 3, id = "five_hour", label = "5시간"),
-            zaiWindow(limits, unit = 6, id = "seven_day", label = "주간")
+            zaiWindow(limits, unit = 3, id = "five_hour", label = "5h"),
+            zaiWindow(limits, unit = 6, id = "seven_day", label = "7d")
         )
     )
 }

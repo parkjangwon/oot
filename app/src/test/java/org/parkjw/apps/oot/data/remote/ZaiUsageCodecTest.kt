@@ -24,7 +24,7 @@ class ZaiUsageCodecTest {
 
         assertEquals("pro", usage.level)
         assertEquals(listOf("five_hour", "seven_day"), usage.windows.map { it.id })
-        assertEquals(listOf("5시간", "주간"), usage.windows.map { it.label })
+        assertEquals(listOf("5h", "7d"), usage.windows.map { it.label })
         val (five, week) = usage.windows
         assertEquals(66.0, five.percentLeft, 0.001)
         assertEquals(Instant.ofEpochMilli(1792000000000), five.resetsAt)

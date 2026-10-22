@@ -31,12 +31,12 @@ class OllamaCloudCodecTest {
         assertEquals(3, windows.size)
 
         assertEquals("session", windows[0].id)
-        assertEquals("세션", windows[0].label)
+        assertEquals("session", windows[0].label)
         assertEquals(75.0, (windows[0].remaining as Remaining.Percent).percentLeft, 0.001)
         assertEquals(Instant.parse("2026-10-21T18:00:00Z"), windows[0].resetsAt)
 
         assertEquals("weekly", windows[1].id)
-        assertEquals("주간", windows[1].label)
+        assertEquals("weekly", windows[1].label)
         assertEquals(40.0, (windows[1].remaining as Remaining.Percent).percentLeft, 0.001)
 
         val purchased = windows[2].remaining as Remaining.Balance
@@ -79,7 +79,7 @@ class OllamaCloudCodecTest {
         assertEquals(2, windows.size)
 
         assertEquals("monthly", windows[0].id)
-        assertEquals("월간", windows[0].label)
+        assertEquals("monthly", windows[0].label)
         assertEquals(72.5, (windows[0].remaining as Remaining.Percent).percentLeft, 0.001)
         assertEquals(Instant.parse("2026-11-01T00:00:00Z"), windows[0].resetsAt)
 

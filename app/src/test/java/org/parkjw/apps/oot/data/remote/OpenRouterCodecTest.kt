@@ -70,7 +70,7 @@ class OpenRouterCodecTest {
         assertEquals(12.4, credit.amountLeft, 0.001)
         assertEquals("USD", credit.currency)
         val keyWindow = windows[1]
-        assertEquals("키 한도 $20.00", keyWindow.label)
+        assertEquals("$20.00", keyWindow.label)
         assertEquals(7.6, (keyWindow.remaining as Remaining.Balance).amountLeft, 0.001)
     }
 

@@ -11,8 +11,10 @@ import kotlinx.serialization.json.*
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
+import org.parkjw.apps.oot.i18n.AppText
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.UUID
@@ -94,7 +96,7 @@ class OAuthManager(
                 val (deviceCode, userCode, verificationUrl, intervalSec) = client.newCall(request).execute().use { response ->
                     val body = response.body?.string().orEmpty()
                     if (!response.isSuccessful) {
-                        onError("xAI Device 인증 코드 요청 실패 (${response.code}): $body")
+                        onError(AppText.get(R.string.oauth_xai_code_request_failed, response.code, body))
                         return@launch
                     }
 
@@ -109,7 +111,7 @@ class OAuthManager(
                 }
 
                 if (deviceCode.isBlank() || userCode.isBlank()) {
-                    onError("유효한 xAI 디바이스 코드를 받지 못했습니다.")
+                    onError(AppText.get(R.string.oauth_xai_no_device_code))
                     return@launch
                 }
 
@@ -127,7 +129,7 @@ class OAuthManager(
                 pollXaiDeviceToken(deviceCode, intervalSec, onTokenReceived, onError)
 
             } catch (e: Exception) {
-                onError("xAI Device 인증 요청 중 오류: ${e.localizedMessage}")
+                onError(AppText.get(R.string.oauth_xai_request_error, e.localizedMessage ?: ""))
             }
         }
     }
@@ -190,11 +192,11 @@ class OAuthManager(
                                 currentInterval += 5
                             }
                             "expired_token" -> {
-                                onError("인증 시간이 만료되었습니다. 다시 시도해주세요.")
+                                onError(AppText.get(R.string.oauth_auth_expired))
                                 return
                             }
                             "access_denied" -> {
-                                onError("사용자가 로그인을 취소하거나 거절했습니다.")
+                                onError(AppText.get(R.string.oauth_user_denied))
                                 return
                             }
                             else -> {
@@ -207,7 +209,7 @@ class OAuthManager(
                 // Ignore transient network errors during polling
             }
         }
-        onError("xAI 인증 대기 시간이 초과되었습니다.")
+        onError(AppText.get(R.string.oauth_xai_wait_timeout))
     }
 
     /**
@@ -236,7 +238,7 @@ class OAuthManager(
                 val (deviceAuthId, userCode, intervalSec) = client.newCall(request).execute().use { response ->
                     val body = response.body?.string().orEmpty()
                     if (!response.isSuccessful) {
-                        onError("OpenAI Device 인증 코드 요청 실패 (${response.code}): $body")
+                        onError(AppText.get(R.string.oauth_openai_code_request_failed, response.code, body))
                         return@launch
                     }
                     val root = json.parseToJsonElement(body).jsonObject
@@ -251,7 +253,7 @@ class OAuthManager(
                 }
 
                 if (deviceAuthId.isBlank() || userCode.isBlank()) {
-                    onError("유효한 OpenAI 디바이스 코드를 받지 못했습니다.")
+                    onError(AppText.get(R.string.oauth_openai_no_device_code))
                     return@launch
                 }
 
@@ -264,7 +266,7 @@ class OAuthManager(
                 openExternalBrowser(verificationUrl)
                 pollOpenAiDeviceToken(deviceAuthId, userCode, intervalSec, onTokenReceived, onError)
             } catch (e: Exception) {
-                onError("OpenAI Device 인증 요청 중 오류: ${e.localizedMessage}")
+                onError(AppText.get(R.string.oauth_openai_request_error, e.localizedMessage ?: ""))
             }
         }
     }
@@ -305,14 +307,14 @@ class OAuthManager(
                         val authCode = root["authorization_code"]?.jsonPrimitive?.content.orEmpty()
                         val codeVerifier = root["code_verifier"]?.jsonPrimitive?.content.orEmpty()
                         if (authCode.isBlank() || codeVerifier.isBlank()) {
-                            onError("OpenAI deviceauth/token 응답이 불완전합니다.")
+                            onError(AppText.get(R.string.oauth_openai_token_response_incomplete))
                             return
                         }
                         val exchanged = exchangeOpenAiAuthorizationCode(authCode, codeVerifier)
                         exchanged.onSuccess { result ->
                             withContext(Dispatchers.Main) { onTokenReceived(result) }
                         }.onFailure { err ->
-                            onError(err.message ?: "OpenAI 토큰 교환 실패")
+                            onError(err.message ?: AppText.get(R.string.oauth_openai_token_exchange_failed))
                         }
                         return
                     }
@@ -320,14 +322,14 @@ class OAuthManager(
                     if (response.code == 403 || response.code == 404) {
                         return@use
                     }
-                    onError("OpenAI Device 인증 실패 (${response.code}): $body")
+                    onError(AppText.get(R.string.oauth_openai_auth_failed, response.code, body))
                     return
                 }
             } catch (_: Exception) {
                 // Ignore transient network errors during polling
             }
         }
-        onError("OpenAI 인증 대기 시간이 초과되었습니다 (15분).")
+        onError(AppText.get(R.string.oauth_openai_wait_timeout))
     }
 
     private suspend fun exchangeOpenAiAuthorizationCode(
@@ -351,7 +353,7 @@ class OAuthManager(
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    return@withContext Result.failure(Exception("OpenAI 토큰 교환 실패 (${response.code}): $body"))
+                    return@withContext Result.failure(Exception(AppText.get(R.string.oauth_openai_token_exchange_failed_code, response.code, body)))
                 }
                 Result.success(parseOpenAiTokenResponse(body))
             }
@@ -363,7 +365,7 @@ class OAuthManager(
     private fun parseOpenAiTokenResponse(body: String): OAuthTokenResult {
         val root = json.parseToJsonElement(body).jsonObject
         val accessToken = root["access_token"]?.jsonPrimitive?.content
-            ?: throw Exception("응답에 access_token이 없습니다.")
+            ?: throw Exception(AppText.get(R.string.oauth_missing_access_token))
         val refreshToken = root["refresh_token"]?.jsonPrimitive?.content
         val expiresIn = root["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L
         val idToken = root["id_token"]?.jsonPrimitive?.content
@@ -385,19 +387,19 @@ class OAuthManager(
 
         if (error != null) {
             val errorDesc = uri.getQueryParameter("error_description") ?: error
-            return@withContext Result.failure(Exception("OAuth 인증 거부: $errorDesc"))
+            return@withContext Result.failure(Exception(AppText.get(R.string.oauth_callback_denied, errorDesc)))
         }
 
         if (code == null || state == null) {
-            return@withContext Result.failure(Exception("유효하지 않은 인증 콜백 데이터입니다."))
+            return@withContext Result.failure(Exception(AppText.get(R.string.oauth_invalid_callback)))
         }
 
         val pending = pendingVerifications.remove(state)
-            ?: return@withContext Result.failure(Exception("만료되었거나 일치하지 않는 세션 상태(state)입니다."))
+            ?: return@withContext Result.failure(Exception(AppText.get(R.string.oauth_invalid_state)))
 
         val (provider, codeVerifier) = pending
         val tokenEndpoint = provider.oauthTokenEndpoint
-            ?: return@withContext Result.failure(Exception("토큰 엔드포인트가 정의되지 않았습니다."))
+            ?: return@withContext Result.failure(Exception(AppText.get(R.string.oauth_token_endpoint_missing)))
 
         try {
             val redirectUri = when (provider) {
@@ -432,12 +434,12 @@ class OAuthManager(
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    return@withContext Result.failure(Exception("토큰 교환 실패 (${response.code}): $body"))
+                    return@withContext Result.failure(Exception(AppText.get(R.string.oauth_token_exchange_failed_code, response.code, body)))
                 }
 
                 val root = json.parseToJsonElement(body).jsonObject
                 val accessToken = root["access_token"]?.jsonPrimitive?.content
-                    ?: return@withContext Result.failure(Exception("응답에 access_token이 없습니다."))
+                    ?: return@withContext Result.failure(Exception(AppText.get(R.string.oauth_missing_access_token)))
 
                 val refreshToken = root["refresh_token"]?.jsonPrimitive?.content
                 val expiresIn = root["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L
@@ -471,7 +473,7 @@ class OAuthManager(
         }
 
         val codeVerifier = entry?.second
-            ?: return@withContext Result.failure(Exception("Claude 인증 세션을 찾을 수 없습니다. 다시 브라우저 로그인을 시도해주세요."))
+            ?: return@withContext Result.failure(Exception(AppText.get(R.string.oauth_claude_no_session)))
 
         val jsonPayload = """{"grant_type":"authorization_code","client_id":"$CLAUDE_CLIENT_ID","code":"$code","state":"${state.orEmpty()}","redirect_uri":"$CLAUDE_REDIRECT_URI","code_verifier":"$codeVerifier"}"""
         val request = Request.Builder()
@@ -485,12 +487,12 @@ class OAuthManager(
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    return@withContext Result.failure(Exception("Claude 토큰 교환 실패 (${response.code}): $body"))
+                    return@withContext Result.failure(Exception(AppText.get(R.string.oauth_claude_token_exchange_failed, response.code, body)))
                 }
 
                 val root = json.parseToJsonElement(body).jsonObject
                 val accessToken = root["access_token"]?.jsonPrimitive?.content
-                    ?: return@withContext Result.failure(Exception("응답에 access_token이 없습니다."))
+                    ?: return@withContext Result.failure(Exception(AppText.get(R.string.oauth_missing_access_token)))
 
                 val refreshToken = root["refresh_token"]?.jsonPrimitive?.content
                 val expiresIn = root["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L

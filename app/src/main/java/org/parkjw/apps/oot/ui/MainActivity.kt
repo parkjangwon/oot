@@ -1,6 +1,7 @@
 package org.parkjw.apps.oot.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -13,11 +14,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import org.parkjw.apps.oot.OotApp
+import org.parkjw.apps.oot.R
+import org.parkjw.apps.oot.i18n.AppLanguage
+import org.parkjw.apps.oot.i18n.AppLocale
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.service.TokenMonitorForegroundService
@@ -51,6 +56,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // The UI follows the language chosen in Settings (Korean by default), not the device locale.
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        applyOverrideConfiguration(AppLocale.overrideConfiguration())
+    }
+
+    private fun changeLanguage(language: AppLanguage) {
+        if (language == AppLocale.current) return
+        app.setLanguage(language)
+        // Android 13+ recreates the activity itself once LocaleManager gets the new locale.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) recreate()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkNotificationPermission()
@@ -68,7 +86,8 @@ class MainActivity : ComponentActivity() {
                 val isRefreshing by app.repository.isRefreshing.collectAsState()
 
                 var showAddDialog by remember { mutableStateOf(false) }
-                var showSettings by remember { mutableStateOf(false) }
+                // Saveable so a language change (which recreates the activity) stays on Settings.
+                var showSettings by rememberSaveable { mutableStateOf(false) }
                 val context = LocalContext.current
                 val versionName = remember { context.installedVersionName() }
                 val updateState by updateViewModel.state.collectAsState()
@@ -85,6 +104,7 @@ class MainActivity : ComponentActivity() {
                         accounts = accounts.filter { it.provider.isSelectable },
                         notificationHiddenIds = notificationHiddenIds,
                         autoUpdateCheckEnabled = autoUpdateCheck,
+                        language = AppLocale.current,
                         versionName = versionName,
                         updateState = updateState,
                         onBack = { showSettings = false },
@@ -101,6 +121,7 @@ class MainActivity : ComponentActivity() {
                             app.preferences.setShownInNotification(accountId, shown)
                         },
                         onAutoUpdateCheckChange = { enabled -> app.preferences.setAutoUpdateCheckEnabled(enabled) },
+                        onLanguageChange = ::changeLanguage,
                         onUpdateAction = { action ->
                             when (action) {
                                 UpdateAction.Check -> updateViewModel.manualCheck()
@@ -121,7 +142,7 @@ class MainActivity : ComponentActivity() {
                         } else {
                             Toast.makeText(
                                 this@MainActivity,
-                                ExitBackPressPolicy.EXIT_PROMPT_MESSAGE,
+                                getString(ExitBackPressPolicy.EXIT_PROMPT_MESSAGE),
                                 Toast.LENGTH_SHORT,
                             ).show()
                         }
@@ -212,7 +233,7 @@ class MainActivity : ComponentActivity() {
                         onExchangeClaudeCode = { code, onTokenReceived, onError ->
                             lifecycleScope.launch {
                                 val result = app.oauthManager.exchangeClaudeAuthCode(code)
-                                result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: "토큰 교환 실패") }
+                                result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: getString(R.string.token_exchange_failed)) }
                             }
                         },
                         onSaveAccount = { newAccount ->
@@ -221,7 +242,11 @@ class MainActivity : ComponentActivity() {
                             lifecycleScope.launch {
                                 app.repository.refreshAll()
                                 app.notificationManager.updateNotification(app.repository.vendorUsages.value)
-                                Toast.makeText(this@MainActivity, "${newAccount.name} 프로바이더가 등록되었습니다.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    getString(R.string.toast_provider_added, newAccount.name),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                             }
                         }
                     )
@@ -250,7 +275,7 @@ class MainActivity : ComponentActivity() {
                     val newAccount = ProviderAccount(
                         id = UUID.randomUUID().toString(),
                         provider = tokenResult.provider,
-                        name = "${tokenResult.provider.displayName} (구독)",
+                        name = getString(R.string.account_name_subscription, tokenResult.provider.displayName),
                         authType = AuthType.OAUTH,
                         accessToken = tokenResult.accessToken,
                         refreshToken = tokenResult.refreshToken,
@@ -259,9 +284,17 @@ class MainActivity : ComponentActivity() {
                     app.preferences.saveAccount(newAccount)
                     app.repository.refreshAll()
                     app.notificationManager.updateNotification(app.repository.vendorUsages.value)
-                    Toast.makeText(this@MainActivity, "${tokenResult.provider.displayName} OAuth 연동이 완료되었습니다!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.toast_oauth_connected, tokenResult.provider.displayName),
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }.onFailure { error ->
-                    Toast.makeText(this@MainActivity, "인증 오류: ${error.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.toast_auth_error, error.message.orEmpty()),
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
             }
         }

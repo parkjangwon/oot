@@ -26,7 +26,7 @@ import org.robolectric.annotation.GraphicsMode
 // Real long-press drags (#61). The gesture handler used to restart on the first swap, so no reorder was ever reported.
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "w412dp-h1300dp-xxhdpi")
+@Config(sdk = [35], qualifiers = "ko-w412dp-h1300dp-xxhdpi")
 class DashboardReorderTest {
 
     @get:Rule

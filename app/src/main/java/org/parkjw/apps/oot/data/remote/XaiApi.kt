@@ -5,9 +5,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
+import org.parkjw.apps.oot.i18n.AppText
 import java.time.Instant
 import java.util.Locale
 
@@ -22,10 +24,10 @@ class XaiApi(
                 accountId = account.id,
                 provider = ProviderType.XAI,
                 accountName = account.name,
-                remainingFormatted = "API 키 없음",
-                statusSummary = "키 필요",
+                remainingFormatted = AppText.get(R.string.data_no_api_key),
+                statusSummary = AppText.get(R.string.data_key_needed),
                 isError = true,
-                errorMessage = "xAI API 키 또는 Device 로그인이 필요합니다."
+                errorMessage = AppText.get(R.string.data_xai_key_required)
             )
         }
 
@@ -77,8 +79,8 @@ class XaiApi(
                         accountId = account.id,
                         provider = ProviderType.XAI,
                         accountName = account.name,
-                        remainingFormatted = "구독 활성 ($tier)",
-                        totalLimitFormatted = "정상 작동 중 ($name)",
+                        remainingFormatted = AppText.get(R.string.data_xai_subscription_active, tier),
+                        totalLimitFormatted = AppText.get(R.string.data_working_normal_named, name),
                         usagePercent = null,
                         statusSummary = "xAI $tier",
                         isWarning = false
@@ -105,10 +107,18 @@ class XaiApi(
                         accountId = account.id,
                         provider = ProviderType.XAI,
                         accountName = account.name,
-                        remainingFormatted = if (response.code == 401) "인증 실패 (401)" else "HTTP ${response.code}",
-                        statusSummary = "오류 (${response.code})",
+                        remainingFormatted = if (response.code == 401) {
+                            AppText.get(R.string.data_auth_failed_code, 401)
+                        } else {
+                            "HTTP ${response.code}"
+                        },
+                        statusSummary = AppText.get(R.string.data_error_code, response.code),
                         isError = true,
-                        errorMessage = if (response.code == 401) "유효하지 않은 xAI 인증 토큰/키입니다." else "상태 코드: ${response.code}"
+                        errorMessage = if (response.code == 401) {
+                            AppText.get(R.string.data_xai_token_invalid)
+                        } else {
+                            AppText.get(R.string.data_status_code, response.code)
+                        }
                     )
                 }
 
@@ -128,18 +138,32 @@ class XaiApi(
                         accountId = account.id,
                         provider = ProviderType.XAI,
                         accountName = account.name,
-                        remainingFormatted = String.format(Locale.US, "%,d 토큰 남음", remainingTokens),
-                        totalLimitFormatted = String.format(Locale.US, "한도: %,d 토큰/분", limitTokens),
+                        remainingFormatted = AppText.get(
+                            R.string.data_tokens_left,
+                            String.format(Locale.US, "%,d", remainingTokens)
+                        ),
+                        totalLimitFormatted = AppText.get(
+                            R.string.data_limit_tokens_per_min,
+                            String.format(Locale.US, "%,d", limitTokens)
+                        ),
                         usagePercent = percent,
-                        resetTimeFormatted = resetTokens?.let { "리셋: $it" },
-                        statusSummary = String.format(Locale.US, "%,dk 남음", remainingTokens / 1000),
+                        resetTimeFormatted = resetTokens?.let { AppText.get(R.string.data_reset_value, it) },
+                        statusSummary = AppText.get(
+                            R.string.data_k_left,
+                            String.format(Locale.US, "%,d", remainingTokens / 1000)
+                        ),
                         isWarning = percent > 80f,
                         isCritical = percent > 95f
                     )
                 }
 
-                val summary = if (remainingRequests != null) "남은 요청: $remainingRequests" else "xAI 정상"
-                val limitInfo = limitRequests?.let { "한도: $it req" } ?: "Grok 모델 연동됨"
+                val summary = if (remainingRequests != null) {
+                    AppText.get(R.string.data_requests_left, remainingRequests)
+                } else {
+                    AppText.get(R.string.data_xai_ok)
+                }
+                val limitInfo = limitRequests?.let { AppText.get(R.string.data_limit_reqs, it) }
+                    ?: AppText.get(R.string.data_grok_connected)
 
                 TokenStatus(
                     accountId = account.id,
@@ -147,7 +171,7 @@ class XaiApi(
                     accountName = account.name,
                     remainingFormatted = summary,
                     totalLimitFormatted = limitInfo,
-                    resetTimeFormatted = resetRequests?.let { "리셋: $it" },
+                    resetTimeFormatted = resetRequests?.let { AppText.get(R.string.data_reset_value, it) },
                     statusSummary = summary,
                     isWarning = false
                 )
@@ -157,10 +181,10 @@ class XaiApi(
                 accountId = account.id,
                 provider = ProviderType.XAI,
                 accountName = account.name,
-                remainingFormatted = "네트워크 오류",
-                statusSummary = "통신 실패",
+                remainingFormatted = AppText.get(R.string.data_error_network),
+                statusSummary = AppText.get(R.string.data_comm_failed),
                 isError = true,
-                errorMessage = e.localizedMessage ?: "통신 실패"
+                errorMessage = e.localizedMessage ?: AppText.get(R.string.data_comm_failed)
             )
         }
     }
@@ -171,21 +195,35 @@ class XaiApi(
             String.format(Locale.US, "%s: %.1f%%", name, percent)
         }
         val limitText = buildString {
-            append(String.format(Locale.US, "주간 사용: %.1f%%", billing.usedPercent))
-            if (resetFormatted.isNotBlank()) append(" (리셋: $resetFormatted)")
+            append(AppText.get(R.string.data_used_weekly, String.format(Locale.US, "%.1f", billing.usedPercent)))
+            if (resetFormatted.isNotBlank()) {
+                append(" (${AppText.get(R.string.data_reset_value, resetFormatted)})")
+            }
             if (productBreakdown.isNotBlank()) append(" | $productBreakdown")
-            if (billing.prepaidBalance != null) append(" [잔액 ${billing.prepaidBalance}]")
+            if (billing.prepaidBalance != null) {
+                append(" [${AppText.get(R.string.data_balance_value, billing.prepaidBalance.toString())}]")
+            }
         }
 
         return TokenStatus(
             accountId = account.id,
             provider = ProviderType.XAI,
             accountName = account.name,
-            remainingFormatted = String.format(Locale.US, "주간: %.1f%% 남음", billing.percentLeft),
+            remainingFormatted = AppText.get(
+                R.string.data_weekly_left,
+                String.format(Locale.US, "%.1f", billing.percentLeft)
+            ),
             totalLimitFormatted = limitText,
             usagePercent = billing.usedPercent.toFloat(),
-            resetTimeFormatted = if (resetFormatted.isNotBlank()) "리셋: $resetFormatted" else null,
-            statusSummary = String.format(Locale.US, "주간 %.0f%%", billing.percentLeft),
+            resetTimeFormatted = if (resetFormatted.isNotBlank()) {
+                AppText.get(R.string.data_reset_value, resetFormatted)
+            } else {
+                null
+            },
+            statusSummary = AppText.get(
+                R.string.data_weekly_summary,
+                String.format(Locale.US, "%.0f", billing.percentLeft)
+            ),
             isWarning = billing.usedPercent > 80.0,
             isCritical = billing.usedPercent > 95.0,
             windows = billing.toUsageWindows()
@@ -195,10 +233,14 @@ class XaiApi(
     private fun formatPeriodEnd(periodEnd: Instant?): String {
         if (periodEnd == null) return ""
         val diffMs = periodEnd.toEpochMilli() - System.currentTimeMillis()
-        if (diffMs <= 0) return "곧 리셋"
+        if (diffMs <= 0) return AppText.get(R.string.time_reset_soon)
         val hours = diffMs / (1000 * 60 * 60)
         val days = hours / 24
         val remHours = hours % 24
-        return if (days > 0) "${days}일 ${remHours}시간 후" else "${hours}시간 후"
+        return if (days > 0) {
+            AppText.get(R.string.time_in_days_hours, days, remHours)
+        } else {
+            AppText.get(R.string.time_in_hours, hours)
+        }
     }
 }

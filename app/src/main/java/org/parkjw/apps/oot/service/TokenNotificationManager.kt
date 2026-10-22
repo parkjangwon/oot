@@ -13,17 +13,23 @@ import androidx.core.app.NotificationCompat
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.VendorUsage
+import org.parkjw.apps.oot.i18n.AppLanguage
+import org.parkjw.apps.oot.i18n.AppLocale
 import org.parkjw.apps.oot.notification.NotificationContent
+import org.parkjw.apps.oot.notification.notificationStrings
 import org.parkjw.apps.oot.ui.MainActivity
 import org.parkjw.apps.oot.ui.VendorLogo
 
 class TokenNotificationManager(
-    private val context: Context,
+    private val appContext: Context,
     private val hiddenAccountIds: () -> Set<String> = { emptySet() },
+    private val language: () -> AppLanguage = { AppLocale.current },
 ) {
+    // Every text is read in the language picked in Settings, whatever the device locale is.
+    private val context: Context get() = AppLocale.wrap(appContext, language())
 
     private val notificationManager =
-        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     private val collapsedItemIds = intArrayOf(R.id.item0, R.id.item1, R.id.item2)
     private val collapsedLogoIds = intArrayOf(R.id.logo0, R.id.logo1, R.id.logo2)
@@ -42,7 +48,8 @@ class TokenNotificationManager(
         createNotificationChannel()
     }
 
-    private fun createNotificationChannel() {
+    /** Re-creates the channel so its name and description follow a language change. */
+    fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
@@ -57,6 +64,8 @@ class TokenNotificationManager(
     }
 
     fun buildNotification(allUsages: List<VendorUsage>): Notification {
+        val context = context
+        val strings = context.notificationStrings()
         val usages = NotificationContent.visibleUsages(allUsages, hiddenAccountIds())
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -81,14 +90,14 @@ class TokenNotificationManager(
         if (usages.isEmpty()) {
             return NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_oot)
-                .setContentTitle("OOT: 토큰 모니터")
-                .setContentText(NotificationContent.emptyStateText(registeredCount = allUsages.size))
+                .setContentTitle(context.getString(R.string.notification_empty_title))
+                .setContentText(NotificationContent.emptyStateText(registeredCount = allUsages.size, strings = strings))
                 .setContentIntent(openAppPendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .addAction(
                     android.R.drawable.ic_menu_rotate,
-                    "새로고침",
+                    context.getString(R.string.notification_action_refresh),
                     refreshPendingIntent
                 )
                 .build()
@@ -96,7 +105,7 @@ class TokenNotificationManager(
 
         // Text-only fallback (option C) is the standard contentText/ticker,
         // so the notification stays readable wherever custom views break.
-        val summary = NotificationContent.textFallback(usages)
+        val summary = NotificationContent.textFallback(usages, strings)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_oot)
@@ -108,12 +117,12 @@ class TokenNotificationManager(
             .setOnlyAlertOnce(true)
             .addAction(
                 android.R.drawable.ic_menu_rotate,
-                "새로고침",
+                context.getString(R.string.notification_action_refresh),
                 refreshPendingIntent
             )
 
         if (NotificationContent.FORCE_TEXT_ONLY) {
-            val bigText = NotificationContent.expandedItems(usages)
+            val bigText = NotificationContent.expandedItems(usages, strings)
                 .joinToString("\n") { "${it.name} ${it.text}" }
             return builder
                 .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
@@ -121,16 +130,16 @@ class TokenNotificationManager(
         }
 
         builder
-            .setCustomContentView(collapsedViews(usages))
-            .setCustomBigContentView(expandedViews(usages))
+            .setCustomContentView(collapsedViews(context, usages))
+            .setCustomBigContentView(expandedViews(context, usages))
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
 
         return builder.build()
     }
 
-    private fun collapsedViews(usages: List<VendorUsage>): RemoteViews {
+    private fun collapsedViews(context: Context, usages: List<VendorUsage>): RemoteViews {
         val maxItems = context.resources.getInteger(R.integer.notification_collapsed_items)
-        val items = NotificationContent.collapsedItems(usages, maxItems)
+        val items = NotificationContent.collapsedItems(usages, maxItems, context.notificationStrings())
         val views = RemoteViews(context.packageName, R.layout.notification_collapsed)
         repeat(collapsedItemIds.size) { i ->
             if (i >= items.size) {
@@ -139,7 +148,7 @@ class TokenNotificationManager(
             }
             val item = items[i]
             views.setViewVisibility(collapsedItemIds[i], View.VISIBLE)
-            bindVendorMark(views, collapsedLogoIds[i], collapsedMarkIds[i], item.provider, item.mark)
+            bindVendorMark(context, views, collapsedLogoIds[i], collapsedMarkIds[i], item.provider, item.mark)
             views.setTextViewText(collapsedLabelIds[i], item.label)
             if (item.percent == null) {
                 views.setViewVisibility(collapsedBarIds[i], View.GONE)
@@ -157,8 +166,8 @@ class TokenNotificationManager(
     }
 
     // shortcut: fixed 8 rows; vendors beyond 8 are truncated until RemoteViews supports dynamic rows
-    private fun expandedViews(usages: List<VendorUsage>): RemoteViews {
-        val items = NotificationContent.expandedItems(usages).take(expandedRowIds.size)
+    private fun expandedViews(context: Context, usages: List<VendorUsage>): RemoteViews {
+        val items = NotificationContent.expandedItems(usages, context.notificationStrings()).take(expandedRowIds.size)
         val views = RemoteViews(context.packageName, R.layout.notification_expanded)
         repeat(expandedRowIds.size) { i ->
             if (i >= items.size) {
@@ -167,7 +176,7 @@ class TokenNotificationManager(
             }
             val item = items[i]
             views.setViewVisibility(expandedRowIds[i], View.VISIBLE)
-            bindVendorMark(views, expandedLogoIds[i], expandedMarkIds[i], item.provider, item.mark)
+            bindVendorMark(context, views, expandedLogoIds[i], expandedMarkIds[i], item.provider, item.mark)
             views.setTextViewText(expandedNameIds[i], item.name)
             views.setTextViewText(expandedTextIds[i], item.text)
             if (item.isError) {
@@ -187,6 +196,7 @@ class TokenNotificationManager(
 
     // Mono logos tinted with notification text color; letter mark when no official asset.
     private fun bindVendorMark(
+        context: Context,
         views: RemoteViews,
         logoId: Int,
         markId: Int,

@@ -3,6 +3,7 @@ package org.parkjw.apps.oot.ui.screens
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -27,7 +28,7 @@ import java.time.Instant
 @OptIn(ExperimentalRoborazziApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "w412dp-h1300dp-xxhdpi")
+@Config(sdk = [35], qualifiers = "ko-w412dp-h1300dp-xxhdpi")
 class DashboardScreenshotTest {
 
     @get:Rule
@@ -43,13 +44,13 @@ class DashboardScreenshotTest {
             windows = listOf(
                 UsageWindow(
                     id = "five_hour",
-                    label = "5시간",
+                    label = "5h",
                     remaining = Remaining.Percent(62.0),
                     resetsAt = fixedNow.plus(Duration.ofHours(1).plusMinutes(40)),
                 ),
                 UsageWindow(
                     id = "seven_day",
-                    label = "주간",
+                    label = "7d",
                     remaining = Remaining.Percent(81.0),
                     resetsAt = fixedNow.plus(Duration.ofDays(3)),
                 ),
@@ -62,13 +63,13 @@ class DashboardScreenshotTest {
             windows = listOf(
                 UsageWindow(
                     id = "five_hour",
-                    label = "5시간",
+                    label = "5h",
                     remaining = Remaining.Percent(62.0),
                     resetsAt = fixedNow.plus(Duration.ofHours(2).plusMinutes(15)),
                 ),
                 UsageWindow(
                     id = "seven_day",
-                    label = "주간",
+                    label = "7d",
                     remaining = Remaining.Percent(88.0),
                     resetsAt = fixedNow.plus(Duration.ofDays(4)),
                 ),
@@ -81,14 +82,14 @@ class DashboardScreenshotTest {
             windows = listOf(
                 UsageWindow(
                     id = "five_hour",
-                    label = "5시간",
+                    label = "5h",
                     remaining = Remaining.Percent(98.0),
                     resetsAt = fixedNow.plus(Duration.ofHours(3).plusMinutes(27)),
                 ),
                 // <=20% warns by badge only; the number keeps the default color.
                 UsageWindow(
                     id = "seven_day",
-                    label = "주간",
+                    label = "7d",
                     remaining = Remaining.Percent(14.0),
                     resetsAt = fixedNow.plus(Duration.ofDays(4)),
                 ),
@@ -102,7 +103,7 @@ class DashboardScreenshotTest {
             windows = listOf(
                 UsageWindow(
                     id = "weekly",
-                    label = "주간",
+                    label = "weekly",
                     remaining = Remaining.Percent(4.0),
                     resetsAt = fixedNow.plus(Duration.ofHours(7).plusMinutes(12)),
                 ),
@@ -124,7 +125,7 @@ class DashboardScreenshotTest {
                     add(
                         UsageWindow(
                             id = "key",
-                            label = "키 한도 $20.00",
+                            label = "$20.00",
                             remaining = Remaining.Balance(7.60, "USD"),
                         )
                     )
@@ -147,11 +148,11 @@ class DashboardScreenshotTest {
 
     // Nothing registered: 해요체 title, same as the notification's empty state.
     @Test
-    @Config(qualifiers = "w412dp-h1300dp-notnight-xxhdpi")
+    @Config(qualifiers = "ko-w412dp-h1300dp-notnight-xxhdpi")
     fun dashboardEmptyLight() = captureEmpty(darkTheme = false, fileName = "dashboard-empty-light.png")
 
     @Test
-    @Config(qualifiers = "w412dp-h1300dp-night-xxhdpi")
+    @Config(qualifiers = "ko-w412dp-h1300dp-night-xxhdpi")
     fun dashboardEmptyDark() = captureEmpty(darkTheme = true, fileName = "dashboard-empty-dark.png")
 
     private fun captureEmpty(darkTheme: Boolean, fileName: String) {
@@ -171,7 +172,7 @@ class DashboardScreenshotTest {
     }
 
     @Test
-    @Config(qualifiers = "w412dp-h1300dp-notnight-xxhdpi")
+    @Config(qualifiers = "ko-w412dp-h1300dp-notnight-xxhdpi")
     fun dashboardLight() {
         composeRule.setContent {
             OotTheme(darkTheme = false) {
@@ -192,7 +193,7 @@ class DashboardScreenshotTest {
     }
 
     @Test
-    @Config(qualifiers = "w412dp-h1300dp-night-xxhdpi")
+    @Config(qualifiers = "ko-w412dp-h1300dp-night-xxhdpi")
     fun dashboardDark() {
         composeRule.setContent {
             OotTheme(darkTheme = true) {
@@ -281,6 +282,72 @@ class DashboardScreenshotTest {
         composeRule.onNodeWithText("GLM").assertExists()
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
             File(roborazziSystemPropertyOutputDirectory(), "dashboard-dragging-dark.png"),
+        )
+    }
+
+    // English (#74): the same dashboards with English resources.
+    @Test
+    @Config(qualifiers = "en-w412dp-h1300dp-notnight-xxhdpi")
+    fun dashboardLightEnglish() = captureEnglish(darkTheme = false, fileName = "dashboard-light-en.png")
+
+    @Test
+    @Config(qualifiers = "en-w412dp-h1300dp-night-xxhdpi")
+    fun dashboardDarkEnglish() = captureEnglish(darkTheme = true, fileName = "dashboard-dark-en.png")
+
+    private fun captureEnglish(darkTheme: Boolean, fileName: String) {
+        composeRule.setContent {
+            OotTheme(darkTheme = darkTheme) {
+                DashboardScreen(
+                    vendorUsages = fakeVendorUsages(openRouterKeyLimit = true),
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("$7.60 left of $20.00 key limit").assertExists()
+        composeRule.onNodeWithText("Add provider").assertExists()
+        composeRule.onAllNodesWithText("5-hour")[0].assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), fileName),
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "en-w412dp-h1300dp-notnight-xxhdpi")
+    fun dashboardEmptyLightEnglish() {
+        composeRule.setContent {
+            OotTheme(darkTheme = false) {
+                DashboardScreen(
+                    vendorUsages = emptyList(),
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("No providers yet").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-empty-light-en.png"),
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "en-w412dp-h1300dp-notnight-xxhdpi")
+    fun dashboardErrorsEnglish() {
+        composeRule.setContent {
+            OotTheme(darkTheme = false) {
+                DashboardScreen(
+                    vendorUsages = listOf(
+                        VendorUsage("e1", ProviderType.CLAUDE, "Claude", emptyList(), VendorError.Unauthorized),
+                        VendorUsage("e2", ProviderType.ZAI, "GLM", emptyList(), VendorError.Network),
+                    ),
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("Sign in again", substring = true).assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-errors-light-en.png"),
         )
     }
 }

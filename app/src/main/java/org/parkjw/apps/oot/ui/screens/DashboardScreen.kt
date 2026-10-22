@@ -1,5 +1,6 @@
 package org.parkjw.apps.oot.ui.screens
 
+import android.content.res.Resources
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -64,8 +65,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -81,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.local.AccountPreferences
 import org.parkjw.apps.oot.data.model.Level
 import org.parkjw.apps.oot.data.model.ProviderAccount
@@ -159,6 +163,8 @@ fun DashboardScreen(
     val activeDraggingId = draggingId ?: previewDraggingAccountId
     // The drag handler outlives recompositions, so it must call the latest callback.
     val reorder by rememberUpdatedState(onReorderVendors)
+    val moveUpLabel = stringResource(R.string.dashboard_move_up)
+    val moveDownLabel = stringResource(R.string.dashboard_move_down)
 
     fun moveVendor(from: Int, to: Int) {
         if (from == to || from !in orderedUsages.indices || to !in orderedUsages.indices) return
@@ -205,7 +211,7 @@ fun DashboardScreen(
                         } else {
                             Icon(
                                 imageVector = Icons.Filled.Refresh,
-                                contentDescription = "새로고침",
+                                contentDescription = stringResource(R.string.notification_action_refresh),
                             )
                         }
                     }
@@ -215,7 +221,7 @@ fun DashboardScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = "프로바이더 추가",
+                            contentDescription = stringResource(R.string.dashboard_add_provider),
                         )
                     }
                     IconButton(
@@ -224,7 +230,7 @@ fun DashboardScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
-                            contentDescription = "설정",
+                            contentDescription = stringResource(R.string.settings_title),
                         )
                     }
                 },
@@ -297,7 +303,7 @@ fun DashboardScreen(
                                     customActions = buildList {
                                         if (index > 0) {
                                             add(
-                                                CustomAccessibilityAction("위로 이동") {
+                                                CustomAccessibilityAction(moveUpLabel) {
                                                     moveVendor(index, index - 1)
                                                     true
                                                 },
@@ -305,7 +311,7 @@ fun DashboardScreen(
                                         }
                                         if (index < orderedUsages.lastIndex) {
                                             add(
-                                                CustomAccessibilityAction("아래로 이동") {
+                                                CustomAccessibilityAction(moveDownLabel) {
                                                     moveVendor(index, index + 1)
                                                     true
                                                 },
@@ -400,7 +406,7 @@ fun DashboardScreen(
             },
             text = {
                 Text(
-                    text = "지원 안 함 · 이 프로바이더는 더 이상 지원하지 않으므로 삭제할 수 있습니다.",
+                    text = stringResource(R.string.dashboard_legacy_unsupported_desc),
                     style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -414,7 +420,7 @@ fun DashboardScreen(
                     },
                     colors = ootTextButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) {
-                    Text("프로바이더 삭제")
+                    Text(stringResource(R.string.dashboard_delete_provider))
                 }
             },
             dismissButton = {
@@ -422,7 +428,7 @@ fun DashboardScreen(
                     onClick = { selectedLegacyForDetail = null },
                     colors = ootTextButtonColors(),
                 ) {
-                    Text("닫기")
+                    Text(stringResource(R.string.dashboard_close))
                 }
             },
         )
@@ -498,7 +504,13 @@ fun QuotaSummaryLine(
     modifier: Modifier = Modifier,
 ) {
     val pct = ((window.remaining as? Remaining.Percent)?.percentLeft ?: 0.0).roundToInt().coerceIn(0, 100)
-    val resetText = formatTimeToReset(window.resetsAt, now)
+    val res = LocalContext.current.resources
+    val resetText = formatTimeToReset(res, window.resetsAt, now)
+    val resetSuffix = when {
+        resetText != null -> stringResource(R.string.dashboard_resets_in, resetText)
+        window.resetsAt != null -> stringResource(R.string.time_reset_soon)
+        else -> null
+    }
     val baseStyle = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly)
     val numericSpan = SpanStyle(
         fontFamily = OotMonoFamily,
@@ -510,15 +522,22 @@ fun QuotaSummaryLine(
         MaterialTheme.colorScheme.onSurface
     }
 
+    val leastRemaining = stringResource(R.string.dashboard_least_remaining)
+    val windowName = if (window.id in KNOWN_WINDOW_IDS || (window.label.isNotBlank() && window.label != "primary")) {
+        window.displayLabel()
+    } else {
+        null
+    }
     val summaryAnnotated = buildAnnotatedString {
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-            append("가장 적게 남은 곳  ")
+            append(leastRemaining)
+            append("  ")
         }
         val highlight = buildString {
             append(vendorName)
-            if (window.label.isNotBlank() && window.label != "primary") {
+            if (windowName != null) {
                 append(" ")
-                append(window.label)
+                append(windowName)
             }
             append(" ")
             append(pct)
@@ -527,10 +546,10 @@ fun QuotaSummaryLine(
         withStyle(SpanStyle(color = boldColor, fontWeight = FontWeight.SemiBold)) {
             append(withNumericSpans(highlight, numericSpan))
         }
-        if (resetText != null) {
+        if (resetSuffix != null) {
             withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
                 append(" · ")
-                append(withNumericSpans("$resetText 리셋", numericSpan))
+                append(withNumericSpans(resetSuffix, numericSpan))
             }
         }
     }
@@ -605,12 +624,12 @@ fun VendorCard(
                     if (usage.error == null) {
                         when (worstLevel) {
                             Level.DANGER -> SeverityBadge(
-                                text = "위험",
+                                text = stringResource(R.string.dashboard_level_danger),
                                 containerColor = MaterialTheme.colorScheme.errorContainer,
                                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
                             )
                             Level.WARN -> SeverityBadge(
-                                text = "주의",
+                                text = stringResource(R.string.dashboard_level_warn),
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 contentColor = MaterialTheme.colorScheme.onSurface,
                             )
@@ -625,7 +644,7 @@ fun VendorCard(
             when {
                 !usage.providerType.isSelectable -> {
                     Text(
-                        text = "지원 안 함",
+                        text = stringResource(R.string.dashboard_unsupported),
                         style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -635,7 +654,7 @@ fun VendorCard(
                 }
                 usage.windows.isEmpty() -> {
                     Text(
-                        text = "동기화 대기 중",
+                        text = stringResource(R.string.dashboard_sync_waiting),
                         style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -675,7 +694,7 @@ fun VendorCard(
                             usage.windows.none { it.id == "key" }
                         ) {
                             Text(
-                                text = "키 한도 없음",
+                                text = stringResource(R.string.dashboard_key_limit_missing),
                                 style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -697,7 +716,9 @@ fun LimitRow(
 ) {
     val pctInt = remainingPercent.roundToInt().coerceIn(0, 100)
     val level = progressLevel(pctInt)
-    val resetText = formatTimeToReset(resetsAt, now)
+    val res = LocalContext.current.resources
+    val resetText = formatTimeToReset(res, resetsAt, now)
+        ?: if (resetsAt != null) stringResource(R.string.time_reset_soon) else null
     // <=20% only warns through the card badge; the number turns error-colored at <=5%.
     val numberColor = if (pctInt <= 5) {
         MaterialTheme.colorScheme.error
@@ -730,7 +751,7 @@ fun LimitRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = withNumericSpans("${pctInt}% 남음", numericSpan),
+                text = withNumericSpans(stringResource(R.string.remaining_left, "${pctInt}%"), numericSpan),
                 modifier = Modifier.alignByBaseline(),
                 style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
                 color = numberColor,
@@ -793,7 +814,7 @@ fun BalanceRow(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "남음",
+                text = stringResource(R.string.dashboard_left),
                 modifier = Modifier.alignByBaseline(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -810,7 +831,7 @@ fun BalanceRow(
     }
 }
 
-// OpenRouter key limit row: '키 한도 $20.00 중 $7.60 남음' with a bar (20%/5% levels).
+// OpenRouter key limit row: '$7.60 left of $20.00 key limit' with a bar (20%/5% levels).
 // The limit is parsed back from the window label produced by OpenRouterCodec.
 private val keyLimitAmountRegex = Regex("""\d+(\.\d+)?""")
 
@@ -844,7 +865,11 @@ fun KeyLimitRow(
     ) {
         Text(
             text = withNumericSpans(
-                "$label 중 ${NotificationContent.formatBalance(remaining, currency)} 남음",
+                stringResource(
+                    R.string.dashboard_key_limit_left,
+                    label,
+                    NotificationContent.formatBalance(remaining, currency),
+                ),
                 numericSpan,
             ),
             style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
@@ -873,6 +898,7 @@ fun ProblemBox(
         fontFamily = OotMonoFamily,
         letterSpacing = (-0.2).sp,
     )
+    val res = LocalContext.current.resources
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = ButtonCorner,
@@ -889,7 +915,10 @@ fun ProblemBox(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = withNumericSpans("확인 필요 · ${vendorErrorShortText(error)}", numericSpan),
+                text = withNumericSpans(
+                    stringResource(R.string.status_needs_check) + " · " + vendorErrorShortText(res, error),
+                    numericSpan,
+                ),
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontWeight = FontWeight.SemiBold,
                     lineBreak = WordWrapFriendly,
@@ -938,7 +967,7 @@ fun UnsupportedLegacyCard(
                 )
             }
             Text(
-                text = "지원 안 함",
+                text = stringResource(R.string.dashboard_unsupported),
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontWeight = FontWeight.SemiBold,
                     lineBreak = WordWrapFriendly,
@@ -1084,7 +1113,7 @@ fun AddAccountRow(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "프로바이더 추가",
+                text = stringResource(R.string.dashboard_add_provider),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1116,12 +1145,12 @@ fun EmptyAccountsBanner(
             verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
         ) {
             Text(
-                text = "등록된 프로바이더가 없어요",
+                text = stringResource(R.string.dashboard_empty_title),
                 style = MaterialTheme.typography.titleMedium.copy(lineBreak = WordWrapFriendly),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "Claude, GLM, xAI, OpenRouter, OpenAI 프로바이더를 추가해 남은 한도와 잔액을 확인하세요.",
+                text = stringResource(R.string.dashboard_empty_subtitle),
                 style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1134,7 +1163,7 @@ fun EmptyAccountsBanner(
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("프로바이더 추가")
+                Text(stringResource(R.string.dashboard_add_provider))
             }
         }
     }
@@ -1165,7 +1194,7 @@ private fun VendorDetailDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = usage.providerType.description,
+                    text = stringResource(usage.providerType.descriptionRes),
                     style = MaterialTheme.typography.bodySmall.copy(lineBreak = WordWrapFriendly),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1179,7 +1208,7 @@ private fun VendorDetailDialog(
                 onClick = onDelete,
                 colors = ootTextButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) {
-                Text("프로바이더 삭제")
+                Text(stringResource(R.string.dashboard_delete_provider))
             }
         },
         dismissButton = {
@@ -1187,7 +1216,7 @@ private fun VendorDetailDialog(
                 onClick = onDismiss,
                 colors = ootTextButtonColors(),
             ) {
-                Text("닫기")
+                Text(stringResource(R.string.dashboard_close))
             }
         },
     )
@@ -1204,54 +1233,58 @@ private fun VendorUsage.shortVendorName(): String = when (providerType) {
     ProviderType.OPENCODE_GO -> "OpenCode Go"
 }
 
+@Composable
 private fun VendorUsage.kindChipLabel(): String {
-    if (!providerType.isSelectable) return "지원 안 함"
+    if (!providerType.isSelectable) return stringResource(R.string.dashboard_unsupported)
     if (windows.any { it.remaining is Remaining.Balance } || providerType == ProviderType.OPENROUTER) {
-        return "API 크레딧"
+        return stringResource(R.string.dashboard_kind_api_credit)
     }
-    return "구독"
+    return stringResource(R.string.dashboard_kind_subscription)
 }
 
-private fun UsageWindow.displayLabel(): String = when {
-    label.isBlank() || label == "primary" -> when (id) {
-        "five_hour" -> "5시간"
-        "seven_day", "weekly" -> "주간"
-        "monthly" -> "월간"
-        else -> "주간"
-    }
-    else -> label
+// Windows whose label comes from resources by id (codec labels for them are not shown).
+private val KNOWN_WINDOW_IDS = setOf("five_hour", "seven_day", "weekly", "monthly", "session")
+
+@Composable
+private fun UsageWindow.displayLabel(): String = when (id) {
+    "five_hour" -> stringResource(R.string.window_five_hour)
+    "seven_day", "weekly" -> stringResource(R.string.window_weekly)
+    "monthly" -> stringResource(R.string.window_monthly)
+    "session" -> stringResource(R.string.window_session)
+    else -> if (label.isNotBlank() && label != "primary") label else stringResource(R.string.window_weekly)
 }
 
 private fun UsageWindow.balanceSubtitle(): String? {
     if (label.isBlank() || label == "primary" || label == "credit") return null
-    if (label.startsWith("잔여 크레딧")) return null
+    if (label.startsWith("credit", ignoreCase = true)) return null
     return label
 }
 
-fun vendorErrorShortText(error: VendorError): String = when (error) {
-    VendorError.Unauthorized -> "다시 로그인 필요"
-    VendorError.ScopeMissing -> "권한 범위 부족"
-    VendorError.RateLimited -> "요청 제한 (429)"
-    VendorError.Network -> "네트워크 오류"
-    VendorError.Parse -> "응답 해석 실패"
-    is VendorError.Http -> "HTTP ${error.code}"
-    is VendorError.Unknown -> error.message?.takeIf { it.isNotBlank() } ?: "연결 확인 필요"
+fun vendorErrorShortText(res: Resources, error: VendorError): String = when (error) {
+    VendorError.Unauthorized -> res.getString(R.string.dashboard_error_unauthorized)
+    VendorError.ScopeMissing -> res.getString(R.string.dashboard_error_scope_missing)
+    VendorError.RateLimited -> res.getString(R.string.dashboard_error_rate_limited)
+    VendorError.Network -> res.getString(R.string.dashboard_error_network)
+    VendorError.Parse -> res.getString(R.string.dashboard_error_parse)
+    is VendorError.Http -> res.getString(R.string.dashboard_error_http, error.code)
+    is VendorError.Unknown -> error.message?.takeIf { it.isNotBlank() }
+        ?: res.getString(R.string.dashboard_error_unknown)
 }
 
-fun formatTimeToReset(resetsAt: Instant?, now: Instant): String? {
+fun formatTimeToReset(res: Resources, resetsAt: Instant?, now: Instant): String? {
     if (resetsAt == null) return null
     val diffSeconds = resetsAt.epochSecond - now.epochSecond
-    if (diffSeconds <= 0) return "곧 리셋"
+    if (diffSeconds <= 0) return null
     val totalMinutes = (diffSeconds + 30) / 60
     val days = totalMinutes / (60 * 24)
     val hours = (totalMinutes % (60 * 24)) / 60
     val minutes = totalMinutes % 60
 
     return when {
-        days >= 1 -> "${days}일 후"
-        hours >= 1 && minutes > 0 -> "${hours}시간 ${minutes}분 후"
-        hours >= 1 -> "${hours}시간 후"
-        minutes >= 1 -> "${minutes}분 후"
-        else -> "곧 리셋"
+        days >= 1 -> res.getString(R.string.time_in_days, days)
+        hours >= 1 && minutes > 0 -> res.getString(R.string.time_in_hours_minutes, hours, minutes)
+        hours >= 1 -> res.getString(R.string.time_in_hours, hours)
+        minutes >= 1 -> res.getString(R.string.time_in_minutes, minutes)
+        else -> null // under a minute: callers show "resets soon"
     }
 }

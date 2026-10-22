@@ -6,6 +6,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
@@ -13,6 +16,10 @@ import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorError
 import java.time.Instant
 
+
+// Robolectric: error texts come from string resources (AppText), Korean by default.
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class ClaudeUsageCodecTest {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -63,12 +70,12 @@ class ClaudeUsageCodecTest {
         assertEquals(2, windows.size)
 
         val fiveHour = windows.first { it.id == "five_hour" }
-        assertEquals("5시간", fiveHour.label)
+        assertEquals("5h", fiveHour.label)
         assertEquals(42.5, fiveHour.utilization, 0.001)
         assertEquals(Instant.parse("2026-10-21T18:00:00Z"), fiveHour.resetsAt)
 
         val weekly = windows.first { it.id == "seven_day" }
-        assertEquals("주간", weekly.label)
+        assertEquals("7d", weekly.label)
         assertEquals(10.0, weekly.utilization, 0.001)
         assertEquals(Instant.parse("2026-10-26T00:00:00Z"), weekly.resetsAt)
 
@@ -140,7 +147,7 @@ class ClaudeUsageCodecTest {
 
         assertTrue(summary.contains("path=/api/oauth/usage"))
         assertTrue(summary.contains("http=200"))
-        assertTrue(summary.contains("5시간"))
+        assertTrue(summary.contains("5h"))
         assertTrue(summary.contains("util=42.5%"))
         assertTrue(summary.contains("resets_at=2026-10-21T18:00:00Z"))
         assertFalse(summary.contains(token))

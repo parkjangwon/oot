@@ -5,12 +5,14 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.oauth.OAuthManager
+import org.parkjw.apps.oot.i18n.AppText
 import java.io.IOException
 import java.util.Locale
 
@@ -25,7 +27,7 @@ class OpenAiApi(
         if (credential.isBlank()) {
             return@withContext errorStatus(
                 account,
-                openAiErrorText(VendorError.Unknown("OAuth 로그인 또는 API 키가 필요합니다."))
+                openAiErrorText(VendorError.Unknown(AppText.get(R.string.data_openai_key_required)))
             )
         }
 
@@ -139,29 +141,42 @@ class OpenAiApi(
                         accountId = account.id,
                         provider = ProviderType.OPENAI,
                         accountName = account.name,
-                        remainingFormatted = String.format(Locale.US, "%,d 토큰 남음", remainingTokens),
-                        totalLimitFormatted = String.format(Locale.US, "한도: %,d", limitTokens),
+                        remainingFormatted = AppText.get(
+                            R.string.data_tokens_left,
+                            String.format(Locale.US, "%,d", remainingTokens)
+                        ),
+                        totalLimitFormatted = AppText.get(
+                            R.string.data_limit_value,
+                            String.format(Locale.US, "%,d", limitTokens)
+                        ),
                         usagePercent = percent,
-                        resetTimeFormatted = resetTokens?.let { "리셋: $it" },
-                        statusSummary = String.format(Locale.US, "%,dk 남음", remainingTokens / 1000),
+                        resetTimeFormatted = resetTokens?.let { AppText.get(R.string.data_reset_value, it) },
+                        statusSummary = AppText.get(
+                            R.string.data_k_left,
+                            String.format(Locale.US, "%,d", remainingTokens / 1000)
+                        ),
                         isWarning = percent > 80f,
                         isCritical = percent > 95f
                     )
                 }
 
-                val summary = if (remainingRequests != null) "$remainingRequests req 남음" else "구독 활성화됨"
+                val summary = if (remainingRequests != null) {
+                    AppText.get(R.string.data_reqs_left, remainingRequests)
+                } else {
+                    AppText.get(R.string.data_subscription_active)
+                }
                 TokenStatus(
                     accountId = account.id,
                     provider = ProviderType.OPENAI,
                     accountName = account.name,
                     remainingFormatted = summary,
-                    statusSummary = "OpenAI 정상",
-                    resetTimeFormatted = resetTokens?.let { "리셋: $it" }
+                    statusSummary = AppText.get(R.string.data_openai_ok),
+                    resetTimeFormatted = resetTokens?.let { AppText.get(R.string.data_reset_value, it) }
                 )
             }
         } catch (e: Exception) {
             errorStatus(account, openAiErrorText(VendorError.Network)).copy(
-                errorMessage = e.localizedMessage ?: "연결 실패"
+                errorMessage = e.localizedMessage ?: AppText.get(R.string.data_connection_failed)
             )
         }
     }
@@ -171,7 +186,7 @@ class OpenAiApi(
         provider = ProviderType.OPENAI,
         accountName = account.name,
         remainingFormatted = text,
-        statusSummary = "확인 필요",
+        statusSummary = AppText.get(R.string.status_needs_check),
         isError = true,
         errorMessage = text
     )

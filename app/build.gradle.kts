@@ -109,6 +109,12 @@ android {
         }
     }
 
+    lint {
+        // i18n (#74): user-facing text must come from string resources, in both Korean and English.
+        error += setOf("HardcodedText", "SetTextI18n", "MissingTranslation", "ExtraTranslation", "StringFormatMatches")
+        abortOnError = true
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

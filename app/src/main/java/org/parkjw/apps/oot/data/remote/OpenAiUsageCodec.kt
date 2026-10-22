@@ -5,11 +5,13 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
+import org.parkjw.apps.oot.i18n.AppText
 import java.time.Instant
 import java.util.Locale
 
@@ -28,18 +30,18 @@ fun mapOpenAiHttpError(code: Int): VendorError = when (code) {
 }
 
 fun openAiErrorText(error: VendorError): String = when (error) {
-    VendorError.Unauthorized -> "다시 로그인 필요"
-    VendorError.ScopeMissing -> "다시 로그인 필요(범위)"
-    VendorError.RateLimited -> "요청 제한(429)"
-    VendorError.Network -> "네트워크 오류"
-    VendorError.Parse -> "응답 해석 실패"
-    is VendorError.Http -> "조회 실패 (HTTP ${error.code})"
-    is VendorError.Unknown -> error.message ?: "오류"
+    VendorError.Unauthorized -> AppText.get(R.string.data_error_sign_in_again)
+    VendorError.ScopeMissing -> AppText.get(R.string.data_error_sign_in_again_scope)
+    VendorError.RateLimited -> AppText.get(R.string.data_error_rate_limited)
+    VendorError.Network -> AppText.get(R.string.data_error_network)
+    VendorError.Parse -> AppText.get(R.string.data_error_parse)
+    is VendorError.Http -> AppText.get(R.string.data_error_http, error.code)
+    is VendorError.Unknown -> error.message ?: AppText.get(R.string.data_error_generic)
 }
 
 /**
  * Parses ChatGPT `GET /backend-api/wham/usage` body (Codex backend-client RateLimitStatusPayload).
- * primary_window -> five_hour / "5시간"; secondary_window -> seven_day / "주간".
+ * primary_window -> five_hour; secondary_window -> seven_day (labels come from resources in the UI).
  * Only fields confirmed in codex-backend-openapi-models RateLimitWindowSnapshot:
  * used_percent, limit_window_seconds, reset_after_seconds, reset_at (unix seconds).
  */
@@ -52,9 +54,9 @@ fun parseOpenAiWhamUsage(body: String, json: Json = Json): List<OpenAiWindowUsag
     val rateLimit = root["rate_limit"]?.jsonObject ?: return null
     val windows = mutableListOf<OpenAiWindowUsage>()
 
-    parseWindow(rateLimit["primary_window"]?.jsonObject, id = "five_hour", label = "5시간")
+    parseWindow(rateLimit["primary_window"]?.jsonObject, id = "five_hour", label = "5h")
         ?.let { windows.add(it) }
-    parseWindow(rateLimit["secondary_window"]?.jsonObject, id = "seven_day", label = "주간")
+    parseWindow(rateLimit["secondary_window"]?.jsonObject, id = "seven_day", label = "7d")
         ?.let { windows.add(it) }
 
     return windows.takeIf { it.isNotEmpty() }
@@ -92,20 +94,22 @@ fun openAiOAuthSuccessStatus(account: ProviderAccount, windows: List<OpenAiWindo
         accountId = account.id,
         provider = account.provider,
         accountName = account.name,
-        remainingFormatted = String.format(
-            Locale.US,
-            "5시간: %.0f%% 남음 | 주간: %.0f%% 남음",
-            fiveLeft,
-            weekLeft
+        remainingFormatted = AppText.get(
+            R.string.data_claude_usage_left,
+            String.format(Locale.US, "%.0f", fiveLeft),
+            String.format(Locale.US, "%.0f", weekLeft)
         ),
-        totalLimitFormatted = String.format(
-            Locale.US,
-            "5h 사용: %.0f%% | 주간 사용: %.0f%%",
-            fiveUsed,
-            weekUsed
+        totalLimitFormatted = AppText.get(
+            R.string.data_usage_detail_no_reset,
+            String.format(Locale.US, "%.0f", fiveUsed),
+            String.format(Locale.US, "%.0f", weekUsed)
         ),
         usagePercent = fiveUsed.toFloat(),
-        statusSummary = String.format(Locale.US, "5h %.0f%% | 주 %.0f%%", fiveLeft, weekLeft),
+        statusSummary = AppText.get(
+            R.string.data_claude_summary,
+            String.format(Locale.US, "%.0f", fiveLeft),
+            String.format(Locale.US, "%.0f", weekLeft)
+        ),
         isWarning = fiveUsed > 80.0 || weekUsed > 80.0,
         isCritical = fiveUsed > 95.0 || weekUsed > 95.0,
         windows = listOfNotNull(

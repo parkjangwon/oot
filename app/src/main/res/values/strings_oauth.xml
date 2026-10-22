@@ -1,0 +1,24 @@
+<resources>
+    <string name="oauth_xai_code_request_failed">xAI Device 인증 코드 요청 실패 (%1$d): %2$s</string>
+    <string name="oauth_xai_no_device_code">유효한 xAI 디바이스 코드를 받지 못했습니다.</string>
+    <string name="oauth_xai_request_error">xAI Device 인증 요청 중 오류: %1$s</string>
+    <string name="oauth_auth_expired">인증 시간이 만료되었습니다. 다시 시도해주세요.</string>
+    <string name="oauth_user_denied">사용자가 로그인을 취소하거나 거절했습니다.</string>
+    <string name="oauth_xai_wait_timeout">xAI 인증 대기 시간이 초과되었습니다.</string>
+    <string name="oauth_openai_code_request_failed">OpenAI Device 인증 코드 요청 실패 (%1$d): %2$s</string>
+    <string name="oauth_openai_no_device_code">유효한 OpenAI 디바이스 코드를 받지 못했습니다.</string>
+    <string name="oauth_openai_request_error">OpenAI Device 인증 요청 중 오류: %1$s</string>
+    <string name="oauth_openai_token_response_incomplete">OpenAI deviceauth/token 응답이 불완전합니다.</string>
+    <string name="oauth_openai_token_exchange_failed">OpenAI 토큰 교환 실패</string>
+    <string name="oauth_openai_token_exchange_failed_code">OpenAI 토큰 교환 실패 (%1$d): %2$s</string>
+    <string name="oauth_openai_auth_failed">OpenAI Device 인증 실패 (%1$d): %2$s</string>
+    <string name="oauth_openai_wait_timeout">OpenAI 인증 대기 시간이 초과되었습니다 (15분).</string>
+    <string name="oauth_missing_access_token">응답에 access_token이 없습니다.</string>
+    <string name="oauth_callback_denied">OAuth 인증 거부: %1$s</string>
+    <string name="oauth_invalid_callback">유효하지 않은 인증 콜백 데이터입니다.</string>
+    <string name="oauth_invalid_state">만료되었거나 일치하지 않는 세션 상태(state)입니다.</string>
+    <string name="oauth_token_endpoint_missing">토큰 엔드포인트가 정의되지 않았습니다.</string>
+    <string name="oauth_token_exchange_failed_code">토큰 교환 실패 (%1$d): %2$s</string>
+    <string name="oauth_claude_no_session">Claude 인증 세션을 찾을 수 없습니다. 다시 브라우저 로그인을 시도해주세요.</string>
+    <string name="oauth_claude_token_exchange_failed">Claude 토큰 교환 실패 (%1$d): %2$s</string>
+</resources>

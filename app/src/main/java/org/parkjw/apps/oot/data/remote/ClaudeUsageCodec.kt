@@ -4,11 +4,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
+import org.parkjw.apps.oot.i18n.AppText
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
@@ -29,13 +31,13 @@ fun mapClaudeHttpError(code: Int): VendorError = when (code) {
 }
 
 fun claudeErrorText(error: VendorError): String = when (error) {
-    VendorError.Unauthorized -> "다시 로그인 필요"
-    VendorError.ScopeMissing -> "다시 로그인 필요(범위)"
-    VendorError.RateLimited -> "요청 제한(429)"
-    VendorError.Network -> "네트워크 오류"
-    VendorError.Parse -> "응답 해석 실패"
-    is VendorError.Http -> "조회 실패 (HTTP ${error.code})"
-    is VendorError.Unknown -> error.message ?: "오류"
+    VendorError.Unauthorized -> AppText.get(R.string.data_error_sign_in_again)
+    VendorError.ScopeMissing -> AppText.get(R.string.data_error_sign_in_again_scope)
+    VendorError.RateLimited -> AppText.get(R.string.data_error_rate_limited)
+    VendorError.Network -> AppText.get(R.string.data_error_network)
+    VendorError.Parse -> AppText.get(R.string.data_error_parse)
+    is VendorError.Http -> AppText.get(R.string.data_error_http, error.code)
+    is VendorError.Unknown -> error.message ?: AppText.get(R.string.data_error_generic)
 }
 
 fun parseClaudeInstant(raw: String?): Instant? {
@@ -62,13 +64,13 @@ fun parseClaudeUsage(body: String, json: Json = Json): List<ClaudeWindowUsage>? 
     return listOf(
         ClaudeWindowUsage(
             id = "five_hour",
-            label = "5시간",
+            label = "5h",
             utilization = fiveUtil,
             resetsAt = parseClaudeInstant(fiveHour["resets_at"]?.jsonPrimitive?.content)
         ),
         ClaudeWindowUsage(
             id = "seven_day",
-            label = "주간",
+            label = "7d",
             utilization = weekUtil,
             resetsAt = parseClaudeInstant(sevenDay["resets_at"]?.jsonPrimitive?.content)
         )

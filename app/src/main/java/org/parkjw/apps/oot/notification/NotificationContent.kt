@@ -12,7 +12,33 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 // Pure builders for the persistent notification (issue #5).
-// No Android types here so everything is unit-testable on the JVM.
+// No Android types here so everything is unit-testable on the JVM; text comes in through [NotificationStrings].
+
+/** Localized copy for the notification, read from string resources by the caller (see notificationStrings()). */
+data class NotificationStrings(
+    val needsCheck: String,
+    /** "%1$s 확인 필요": vendor short name. */
+    val vendorNeedsCheck: String,
+    /** "%1$s 남음": amount or percent. */
+    val left: String,
+    val window5h: String,
+    val window7d: String,
+    val emptyNoProviders: String,
+    val emptyAllHidden: String,
+    /** "%1$d일 후" */
+    val inDays: String,
+    /** "%1$d일 %2$d시간 후" */
+    val inDaysHours: String,
+    /** "%1$d시간 후" */
+    val inHours: String,
+    /** "%1$d시간 %2$d분 후" */
+    val inHoursMinutes: String,
+    /** "%1$d분 후" */
+    val inMinutes: String,
+) {
+    fun leftOf(value: String): String = left.format(value)
+    fun vendorNeedsCheck(name: String): String = vendorNeedsCheck.format(name)
+}
 
 object NotificationContent {
 
@@ -72,38 +98,39 @@ object NotificationContent {
     fun formatPercent(remaining: Remaining.Percent): String =
         "${remaining.percentLeft.roundToInt().coerceIn(0, 100)}%"
 
-    fun formatReset(resetsAt: Instant, now: Instant): String {
+    fun formatReset(resetsAt: Instant, now: Instant, strings: NotificationStrings): String {
         val totalMinutes = Duration.between(now, resetsAt).toMinutes()
         if (totalMinutes <= 0) return ""
-        if (totalMinutes >= 1440) return "${totalMinutes / 1440}일 후"
+        if (totalMinutes >= 1440) return strings.inDays.format(totalMinutes / 1440)
         if (totalMinutes >= 60) {
             val hours = totalMinutes / 60
             val minutes = totalMinutes % 60
-            return if (minutes == 0L) "${hours}시간 후" else "${hours}시간 ${minutes}분 후"
+            return if (minutes == 0L) strings.inHours.format(hours) else strings.inHoursMinutes.format(hours, minutes)
         }
-        return "${totalMinutes}분 후"
+        return strings.inMinutes.format(totalMinutes)
     }
 
     // Notification reset text (#58): days keep their hours, e.g. "2일 3시간 후"; shorter spans as formatReset.
-    fun formatNotificationReset(resetsAt: Instant, now: Instant): String {
+    fun formatNotificationReset(resetsAt: Instant, now: Instant, strings: NotificationStrings): String {
         val totalMinutes = Duration.between(now, resetsAt).toMinutes()
-        if (totalMinutes < 1440) return formatReset(resetsAt, now)
+        if (totalMinutes < 1440) return formatReset(resetsAt, now, strings)
         val days = totalMinutes / 1440
         val hours = (totalMinutes % 1440) / 60
-        return if (hours == 0L) "${days}일 후" else "${days}일 ${hours}시간 후"
+        return if (hours == 0L) strings.inDays.format(days) else strings.inDaysHours.format(days, hours)
     }
 
-    // Labels stay short here: named windows read "5H" / "7D" and other labels lose the " 모델" suffix (issue #58).
-    private fun windowLabel(window: UsageWindow): String =
+    // Labels stay short here: the 5-hour window reads "5H" and the weekly one "7D" (issue #58, notification
+    // only); other named windows (e.g. a model group) use their label without a trailing " model" word.
+    private fun windowLabel(window: UsageWindow, strings: NotificationStrings): String =
         when {
-            window.id == "five_hour" -> "5H "
-            window.id == "seven_day" || window.id == "weekly" -> "7D "
+            window.id == "five_hour" -> "${strings.window5h} "
+            window.id == "seven_day" || window.id == "weekly" -> "${strings.window7d} "
             window.label == "primary" || window.label.isBlank() -> ""
-            else -> "${window.label.removeSuffix(" 모델")} "
+            else -> "${window.label.substringBefore(' ')} "
         }
 
     // OpenRouter card view: amount = min(account balance, key remaining);
-    // bar percent only when the key has a limit (parsed back from the "키 한도 $N.NN" label).
+    // bar percent only when the key has a limit (parsed back from the "$N.NN" label).
     data class OpenRouterView(val amountLeft: Double, val currency: String, val keyPercent: Int?)
 
     fun keyLimitAmount(label: String): Double? =
@@ -129,18 +156,15 @@ object NotificationContent {
         percent?.let { Remaining.Percent(it.toDouble()).level } ?: Level.OK
 
     // Accounts switched off in Settings stay on the dashboard but leave every notification form; order is kept.
-    const val EMPTY_NO_PROVIDERS = "등록된 프로바이더가 없어요. 앱에서 추가해 주세요."
-    const val EMPTY_ALL_HIDDEN = "알림에 표시할 프로바이더를 모두 껐어요. 설정에서 켜 주세요."
-
-    // Shown when nothing is left to list: nothing registered, or every provider switched off in "알림에 표시".
-    fun emptyStateText(registeredCount: Int): String =
-        if (registeredCount == 0) EMPTY_NO_PROVIDERS else EMPTY_ALL_HIDDEN
+    // Shown when nothing is left to list: nothing registered, or every provider switched off in "Show in notification".
+    fun emptyStateText(registeredCount: Int, strings: NotificationStrings): String =
+        if (registeredCount == 0) strings.emptyNoProviders else strings.emptyAllHidden
 
     fun visibleUsages(usages: List<VendorUsage>, hiddenAccountIds: Set<String>): List<VendorUsage> =
         usages.filter { it.accountId !in hiddenAccountIds }
 
-    // User order as given; errored vendors stay in place ("확인 필요").
-    fun collapsedItems(usages: List<VendorUsage>, maxItems: Int): List<CollapsedItem> =
+    // User order as given; errored vendors stay in place ("check needed").
+    fun collapsedItems(usages: List<VendorUsage>, maxItems: Int, strings: NotificationStrings): List<CollapsedItem> =
         usages.take(maxItems.coerceAtLeast(0)).map { usage ->
             val p = usage.providerType
             openRouterView(usage)?.let { or ->
@@ -155,14 +179,14 @@ object NotificationContent {
             }
             when (val remaining = usage.representative?.remaining) {
                 null ->
-                    CollapsedItem(p, mark(p), "${shortName(p)} 확인 필요", null, true, Level.OK)
+                    CollapsedItem(p, mark(p), strings.vendorNeedsCheck(shortName(p)), null, true, Level.OK)
                 is Remaining.Balance ->
                     CollapsedItem(p, mark(p), formatBalance(remaining.amountLeft, remaining.currency), null, false, Level.OK)
                 is Remaining.Percent ->
                     CollapsedItem(
                         p,
                         mark(p),
-                        "${formatPercent(remaining)} 남음",
+                        strings.leftOf(formatPercent(remaining)),
                         remaining.percentLeft.roundToInt().coerceIn(0, 100),
                         false,
                         remaining.level
@@ -171,22 +195,26 @@ object NotificationContent {
         }
 
     // One line per registered vendor, user order.
-    fun expandedItems(usages: List<VendorUsage>, now: Instant = Instant.now()): List<ExpandedItem> =
+    fun expandedItems(
+        usages: List<VendorUsage>,
+        strings: NotificationStrings,
+        now: Instant = Instant.now(),
+    ): List<ExpandedItem> =
         usages.map { usage ->
             val p = usage.providerType
             val itemMark = mark(p)
             val name = shortName(p)
             if (usage.error != null) {
-                return@map ExpandedItem(p, itemMark, name, "확인 필요", null, true, Level.OK)
+                return@map ExpandedItem(p, itemMark, name, strings.needsCheck, null, true, Level.OK)
             }
             val representative = usage.representative
-                ?: return@map ExpandedItem(p, itemMark, name, "확인 필요", null, true, Level.OK)
+                ?: return@map ExpandedItem(p, itemMark, name, strings.needsCheck, null, true, Level.OK)
             openRouterView(usage)?.let { or ->
                 return@map ExpandedItem(
                     p,
                     itemMark,
                     name,
-                    "${formatBalance(or.amountLeft, or.currency)} 남음",
+                    strings.leftOf(formatBalance(or.amountLeft, or.currency)),
                     or.keyPercent,
                     false,
                     openRouterLevel(or.keyPercent)
@@ -194,12 +222,12 @@ object NotificationContent {
             }
             when (val remaining = representative.remaining) {
                 is Remaining.Balance ->
-                    ExpandedItem(p, itemMark, name, "${formatBalance(remaining.amountLeft, remaining.currency)} 남음", null, false, Level.OK)
+                    ExpandedItem(p, itemMark, name, strings.leftOf(formatBalance(remaining.amountLeft, remaining.currency)), null, false, Level.OK)
                 is Remaining.Percent -> {
                     // Representative window only (5-hour when present, else least remaining), plus its reset.
-                    val text = "${windowLabel(representative)}${formatPercent(remaining)} 남음"
+                    val text = windowLabel(representative, strings) + strings.leftOf(formatPercent(remaining))
                     val reset = representative.resetsAt
-                        ?.let { formatNotificationReset(it, now) }
+                        ?.let { formatNotificationReset(it, now, strings) }
                         ?.takeIf { it.isNotEmpty() }
                         ?.let { " · $it" }
                         ?: ""
@@ -217,7 +245,7 @@ object NotificationContent {
         }
 
     // Text-only fallback (option C): user order, e.g. "Claude 62% · GLM 98% · OpenRouter $12.40"
-    fun textFallback(usages: List<VendorUsage>): String =
+    fun textFallback(usages: List<VendorUsage>, strings: NotificationStrings): String =
         usages.joinToString(" · ") { usage ->
             val openRouter = openRouterView(usage)
             val label = when {
@@ -225,7 +253,7 @@ object NotificationContent {
                 else -> when (val remaining = usage.representative?.remaining) {
                     is Remaining.Balance -> formatBalance(remaining.amountLeft, remaining.currency)
                     is Remaining.Percent -> formatPercent(remaining)
-                    null -> "확인 필요"
+                    null -> strings.needsCheck
                 }
             }
             "${shortName(usage.providerType)} $label"

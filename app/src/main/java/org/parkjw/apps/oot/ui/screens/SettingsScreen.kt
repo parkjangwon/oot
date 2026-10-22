@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.dp
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderAccount
+import org.parkjw.apps.oot.i18n.AppLanguage
 import org.parkjw.apps.oot.ui.theme.CardCorner
 import org.parkjw.apps.oot.ui.theme.OotNumeric
 import org.parkjw.apps.oot.ui.theme.OotSpacing
@@ -67,6 +69,7 @@ fun SettingsScreen(
     accounts: List<ProviderAccount>,
     notificationHiddenIds: Set<String>,
     autoUpdateCheckEnabled: Boolean,
+    language: AppLanguage,
     versionName: String,
     updateState: UpdateUiState,
     onBack: () -> Unit,
@@ -74,6 +77,7 @@ fun SettingsScreen(
     onSetRefreshInterval: (Int) -> Unit,
     onNotificationShownChange: (accountId: String, shown: Boolean) -> Unit,
     onAutoUpdateCheckChange: (Boolean) -> Unit,
+    onLanguageChange: (AppLanguage) -> Unit,
     onUpdateAction: (UpdateAction) -> Unit,
     onOpenSourceCode: () -> Unit,
     modifier: Modifier = Modifier,
@@ -110,6 +114,12 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = OotSpacing.lg),
         ) {
+            // First, so it can be found without reading the current language.
+            SectionHeader(stringResource(R.string.settings_section_language))
+            SettingsGroup {
+                LanguageSegment(selected = language, onSelect = onLanguageChange)
+            }
+
             SectionHeader(stringResource(R.string.settings_section_notifications))
             SettingsGroup {
                 SwitchRow(
@@ -255,6 +265,45 @@ private fun IntervalSegment(
                     horizontal = OotSpacing.md,
                     vertical = OotSpacing.xs,
                 ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LanguageSegment(
+    selected: AppLanguage,
+    onSelect: (AppLanguage) -> Unit,
+) {
+    val ink = MaterialTheme.extendedColors
+    val options = listOf(
+        AppLanguage.KOREAN to stringResource(R.string.settings_language_korean),
+        AppLanguage.ENGLISH to stringResource(R.string.settings_language_english),
+    )
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = OotSpacing.md, vertical = OotSpacing.sm)
+            .testTag("settings_language"),
+    ) {
+        options.forEachIndexed { index, (value, label) ->
+            SegmentedButton(
+                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                onClick = { onSelect(value) },
+                selected = selected == value,
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = ink.inkButton,
+                    activeContentColor = ink.onInkButton,
+                    inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    inactiveContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
+                border = SegmentedButtonDefaults.borderStroke(ink.hairlineStrong),
+                label = {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                },
             )
         }
     }

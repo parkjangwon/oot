@@ -1,0 +1,101 @@
+<resources>
+    <!-- Shared vendor error texts (claudeErrorText / openAiErrorText) -->
+    <string name="data_error_sign_in_again">Sign in again</string>
+    <string name="data_error_sign_in_again_scope">Sign in again (missing scope)</string>
+    <string name="data_error_rate_limited">Rate limited (429)</string>
+    <string name="data_error_network">Network error</string>
+    <string name="data_error_parse">Couldn\'t read the response</string>
+    <string name="data_error_http">Couldn\'t load usage (HTTP %1$d)</string>
+    <string name="data_error_generic">Error</string>
+    <string name="data_error_code">Error (%1$d)</string>
+
+    <!-- Shared status fragments -->
+    <string name="data_no_token_key">No token or key</string>
+    <string name="data_no_api_key">No API key</string>
+    <string name="data_key_needed">Key needed</string>
+    <string name="data_fetch_failed">Couldn\'t load usage</string>
+    <string name="data_auth_failed">Authentication failed</string>
+    <string name="data_auth_failed_code">Authentication failed (%1$d)</string>
+    <string name="data_auth_error_code">Auth error (%1$d)</string>
+    <string name="data_connection_failed">Connection failed</string>
+    <string name="data_comm_failed">Connection failed</string>
+    <string name="data_network_failed">Network error</string>
+    <string name="data_reset_value">Reset: %1$s</string>
+    <string name="data_tokens_left">%1$s tokens left</string>
+    <string name="data_k_left">%1$sk left</string>
+    <string name="data_limit_value">Limit: %1$s</string>
+    <string name="data_limit_tokens_per_min">Limit: %1$s tokens/min</string>
+    <string name="data_limit_reqs">Limit: %1$s requests</string>
+    <string name="data_status_code">Status code: %1$d</string>
+    <string name="data_requests_left">Requests left: %1$s</string>
+    <string name="data_reqs_left">%1$s requests left</string>
+    <string name="data_no_usage_info">No usage info</string>
+    <string name="data_no_balance">No balance info</string>
+    <string name="data_subscription_active">Subscription active</string>
+    <string name="data_working_normal">Working normally</string>
+    <string name="data_working_normal_named">Working normally (%1$s)</string>
+    <string name="data_status_ok">OK</string>
+    <string name="data_window_percent_left">%1$s %2$d%% left</string>
+    <string name="data_window_used">%1$s used: %2$d%%</string>
+    <string name="data_window_left">%1$s: %2$d%% left</string>
+
+    <!-- Claude / OpenAI usage lines -->
+    <string name="data_claude_usage_left">5h: %1$s%% left | Weekly: %2$s%% left</string>
+    <string name="data_used_5h">5h used: %1$s%%</string>
+    <string name="data_used_weekly">Weekly used: %1$s%%</string>
+    <string name="data_usage_detail_no_reset">5h used: %1$s%% | Weekly used: %2$s%%</string>
+    <string name="data_claude_summary">5h %1$s%% | Week %2$s%%</string>
+
+    <!-- Per-provider copy -->
+    <string name="data_claude_key_required">Add a Claude API key or sign in with OAuth.</string>
+    <string name="data_claude_connected">Connected (Anthropic API)</string>
+    <string name="data_openai_key_required">Sign in with OAuth or add an API key.</string>
+    <string name="data_openai_ok">OpenAI OK</string>
+    <string name="data_deepseek_key_required">Add a DeepSeek API key.</string>
+    <string name="data_deepseek_parse_failed">Couldn\'t read the DeepSeek response.</string>
+    <string name="data_deepseek_empty_balance">DeepSeek balance info is empty.</string>
+    <string name="data_deepseek_key_invalid">Check your DeepSeek API key.</string>
+    <string name="data_deepseek_server_error">DeepSeek server error (%1$d)</string>
+    <string name="data_ollama_key_required">Add an Ollama Cloud API key.</string>
+    <string name="data_ollama_parse_failed">Couldn\'t read the Ollama Cloud response.</string>
+    <string name="data_ollama_empty_usage">Ollama Cloud usage info is empty.</string>
+    <string name="data_ollama_key_invalid">Check your Ollama Cloud API key.</string>
+    <string name="data_ollama_server_error">Ollama Cloud server error (%1$d)</string>
+    <string name="data_opencodego_key_required">Add an OpenCode Go API key.</string>
+    <string name="data_opencodego_parse_failed">Couldn\'t read the OpenCode Go response.</string>
+    <string name="data_opencodego_empty_usage">OpenCode Go usage info is empty.</string>
+    <string name="data_opencodego_key_invalid">Check your OpenCode Go API key.</string>
+    <string name="data_opencodego_no_subscription">No OpenCode Go subscription</string>
+    <string name="data_no_subscription">No subscription</string>
+    <string name="data_opencodego_server_error">OpenCode Go server error (%1$d)</string>
+    <string name="data_openrouter_key_required">Add an OpenRouter API key.</string>
+    <string name="data_openrouter_key_invalid">Invalid OpenRouter API key.</string>
+    <string name="data_openrouter_server_error">OpenRouter server error</string>
+    <string name="data_xai_key_required">Add an xAI API key or use xAI device sign-in.</string>
+    <string name="data_xai_token_invalid">Invalid xAI auth token or key.</string>
+    <string name="data_xai_subscription_active">Subscription active (%1$s)</string>
+    <string name="data_xai_ok">xAI OK</string>
+    <string name="data_grok_connected">Grok models connected</string>
+    <string name="data_weekly_left">Weekly: %1$s%% left</string>
+    <string name="data_weekly_summary">Weekly %1$s%%</string>
+    <string name="data_balance_value">Balance %1$s</string>
+    <string name="data_zai_key_required">Add a Z.ai Coding Plan API key.</string>
+    <string name="data_zai_key_invalid">Check your Z.ai Coding Plan API key.</string>
+    <string name="data_zai_plan_active">Z.ai Coding Plan (%1$s) active</string>
+    <string name="data_zai_ok">Z.ai OK</string>
+    <string name="data_zai_auth_failed">Z.ai authentication failed</string>
+    <string name="data_zai_server_error">Z.ai server error (%1$d)</string>
+    <string name="data_reset_in_days_hours">Resets in %1$dd %2$dh</string>
+    <string name="data_reset_in_hours_minutes">Resets in %1$dh %2$dm</string>
+    <string name="data_reset_in_minutes">Resets in %1$dm</string>
+    <string name="data_reset_at">Reset (%1$s)</string>
+
+    <!-- Rate-limit backoff -->
+    <string name="data_previous_value">(previous)</string>
+    <string name="data_previous_value_short">(previous)</string>
+    <string name="data_rate_limited_cached">Rate limited (429). Showing the last checked value.</string>
+    <string name="data_rate_limited_short">Rate limited (429)</string>
+    <string name="data_rate_limited_retry">Usage check rate limited (429). Retrying next cycle.</string>
+    <string name="data_rate_limit_waiting">Rate limited (waiting)</string>
+    <string name="data_rate_limit_backoff">Waiting out the rate limit</string>
+</resources>

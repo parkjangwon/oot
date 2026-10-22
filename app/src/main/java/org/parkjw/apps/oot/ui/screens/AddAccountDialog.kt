@@ -17,11 +17,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
@@ -90,7 +92,7 @@ fun AddAccountDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         title = {
             Text(
-                text = "프로바이더 연결",
+                text = stringResource(R.string.add_account_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -111,7 +113,7 @@ fun AddAccountDialog(
                         value = selectedProvider.displayName,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("프로바이더") },
+                        label = { Text(stringResource(R.string.add_account_provider_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isProviderDropdownExpanded) },
                         modifier = Modifier
                             .menuAnchor()
@@ -126,7 +128,7 @@ fun AddAccountDialog(
                                 text = {
                                     Column {
                                         Text(provider.displayName, fontWeight = FontWeight.SemiBold)
-                                        Text(provider.description, style = MaterialTheme.typography.labelSmall)
+                                        Text(stringResource(provider.descriptionRes), style = MaterialTheme.typography.labelSmall)
                                     }
                                 },
                                 onClick = {
@@ -149,7 +151,7 @@ fun AddAccountDialog(
                 OutlinedTextField(
                     value = accountName,
                     onValueChange = { accountName = it },
-                    label = { Text("표시 이름") },
+                    label = { Text(stringResource(R.string.add_account_display_name_label)) },
                     placeholder = { Text(selectedProvider.displayName) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -166,14 +168,14 @@ fun AddAccountDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         when (selectedProvider) {
-                            ProviderType.ZAI -> "Z.ai 콘솔(키 발급) 열기"
-                            ProviderType.OPENROUTER -> "OpenRouter 키 페이지 열기"
-                            ProviderType.CLAUDE -> "Claude Console 키 발급 열기"
-                            ProviderType.OPENAI -> "OpenAI Platform 키 발급 열기"
-                            ProviderType.XAI -> "xAI Console 키 발급 열기"
-                            ProviderType.DEEPSEEK -> "DeepSeek 플랫폼 키 발급 열기"
-                            ProviderType.OLLAMA_CLOUD -> "Ollama 키 페이지 열기"
-                            ProviderType.OPENCODE_GO -> "OpenCode 키 페이지 열기"
+                            ProviderType.ZAI -> stringResource(R.string.add_account_open_zai)
+                            ProviderType.OPENROUTER -> stringResource(R.string.add_account_open_openrouter)
+                            ProviderType.CLAUDE -> stringResource(R.string.add_account_open_claude)
+                            ProviderType.OPENAI -> stringResource(R.string.add_account_open_openai)
+                            ProviderType.XAI -> stringResource(R.string.add_account_open_xai)
+                            ProviderType.DEEPSEEK -> stringResource(R.string.add_account_open_deepseek)
+                            ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_open_ollama_cloud)
+                            ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_open_opencode_go)
                         }
                     )
                 }
@@ -191,12 +193,12 @@ fun AddAccountDialog(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "🔑 xAI Device Flow 로그인 (RFC 8628)",
+                                text = stringResource(R.string.add_account_xai_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "SuperGrok / X 계정으로 외부 브라우저에서 인증하고 주간 사용량 및 한도를 확인합니다.",
+                                text = stringResource(R.string.add_account_xai_desc),
                                 style = MaterialTheme.typography.bodySmall
                             )
 
@@ -232,7 +234,7 @@ fun AddAccountDialog(
                                 ) {
                                     Icon(Icons.Filled.VpnKey, contentDescription = null)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("xAI Device 인증 시작")
+                                    Text(stringResource(R.string.add_account_xai_start))
                                 }
                             } else {
                                 Column(
@@ -242,24 +244,25 @@ fun AddAccountDialog(
                                 ) {
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                     if (xaiUserCode != null) {
+                                        val code = xaiUserCode ?: ""
                                         Text(
-                                            text = "인증 코드: ${xaiUserCode}",
+                                            text = stringResource(R.string.add_account_auth_code_value, code),
                                             fontWeight = FontWeight.Bold,
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                         Text(
-                                            text = "(코드가 클립보드에 복사되었습니다)",
+                                            text = stringResource(R.string.add_account_code_copied),
                                             style = MaterialTheme.typography.labelSmall
                                         )
                                     }
                                     Text(
-                                        text = "외부 브라우저에서 인증 완료를 대기 중입니다...",
+                                        text = stringResource(R.string.add_account_xai_waiting),
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                     xaiVerificationUrl?.let { url ->
                                         TextButton(onClick = { onOpenExternalBrowser(url) }) {
-                                            Text("인증 브라우저 다시 열기")
+                                            Text(stringResource(R.string.add_account_reopen_browser))
                                         }
                                     }
                                 }
@@ -288,12 +291,12 @@ fun AddAccountDialog(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "ChatGPT로 로그인 (5h/주간 한도)",
+                                text = stringResource(R.string.add_account_openai_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Sign in with ChatGPT device 코드로 연동하면 Codex와 같은 5시간·주간 사용 한도를 표시합니다.",
+                                text = stringResource(R.string.add_account_openai_desc),
                                 style = MaterialTheme.typography.bodySmall
                             )
 
@@ -331,7 +334,7 @@ fun AddAccountDialog(
                                 ) {
                                     Icon(Icons.Filled.VpnKey, contentDescription = null)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("ChatGPT로 로그인")
+                                    Text(stringResource(R.string.add_account_openai_signin))
                                 }
                             } else {
                                 Column(
@@ -341,24 +344,25 @@ fun AddAccountDialog(
                                 ) {
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                     if (openAiUserCode != null) {
+                                        val code = openAiUserCode ?: ""
                                         Text(
-                                            text = "인증 코드: $openAiUserCode",
+                                            text = stringResource(R.string.add_account_auth_code_value, code),
                                             fontWeight = FontWeight.Bold,
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                         Text(
-                                            text = "(코드가 클립보드에 복사되었습니다)",
+                                            text = stringResource(R.string.add_account_code_copied),
                                             style = MaterialTheme.typography.labelSmall
                                         )
                                     }
                                     Text(
-                                        text = "브라우저에서 코드 입력 후 승인될 때까지 대기 중...",
+                                        text = stringResource(R.string.add_account_openai_waiting),
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                     openAiVerificationUrl?.let { url ->
                                         TextButton(onClick = { onOpenExternalBrowser(url) }) {
-                                            Text("인증 브라우저 다시 열기")
+                                            Text(stringResource(R.string.add_account_reopen_browser))
                                         }
                                     }
                                 }
@@ -387,12 +391,12 @@ fun AddAccountDialog(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "🌐 Claude 브라우저 로그인 (5h/주간 쿼터 모니터링)",
+                                text = stringResource(R.string.add_account_claude_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Claude Pro/Max 계정 로그인 시 5시간 롤링 세션 및 주간 사용량과 리셋 타이머가 자동 연동됩니다.",
+                                text = stringResource(R.string.add_account_claude_desc),
                                 style = MaterialTheme.typography.bodySmall
                             )
 
@@ -406,7 +410,7 @@ fun AddAccountDialog(
                             ) {
                                 Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("외부 브라우저로 Claude 로그인")
+                                Text(stringResource(R.string.add_account_claude_login_browser))
                             }
 
                             AnimatedVisibility(visible = showClaudeCodeInput) {
@@ -414,8 +418,8 @@ fun AddAccountDialog(
                                     OutlinedTextField(
                                         value = claudeAuthCode,
                                         onValueChange = { claudeAuthCode = it },
-                                        label = { Text("인증 코드 (code#state)") },
-                                        placeholder = { Text("브라우저에 표시된 코드 복사/붙여넣기") },
+                                        label = { Text(stringResource(R.string.add_account_claude_code_label)) },
+                                        placeholder = { Text(stringResource(R.string.add_account_claude_code_placeholder)) },
                                         singleLine = true,
                                         trailingIcon = {
                                             IconButton(onClick = {
@@ -424,7 +428,7 @@ fun AddAccountDialog(
                                                     claudeAuthCode = text.trim()
                                                 }
                                             }) {
-                                                Icon(Icons.Filled.ContentPaste, contentDescription = "붙여넣기")
+                                                Icon(Icons.Filled.ContentPaste, contentDescription = stringResource(R.string.add_account_paste))
                                             }
                                         },
                                         modifier = Modifier.fillMaxWidth()
@@ -461,11 +465,11 @@ fun AddAccountDialog(
                                         if (isClaudeExchanging) {
                                             CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Text("토큰 교환 중...")
+                                            Text(stringResource(R.string.add_account_exchanging))
                                         } else {
                                             Icon(Icons.Filled.CheckCircle, contentDescription = null)
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Text("인증 코드로 토큰 발급 및 등록")
+                                            Text(stringResource(R.string.add_account_issue_register_token))
                                         }
                                     }
 
@@ -481,7 +485,7 @@ fun AddAccountDialog(
                 // Standard API Key / Token input
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "또는 직접 API Key / 토큰 등록:",
+                        text = stringResource(R.string.add_account_manual_key_hint),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -489,18 +493,18 @@ fun AddAccountDialog(
                     OutlinedTextField(
                         value = apiKey,
                         onValueChange = { apiKey = it },
-                        label = { Text("API Key / 토큰") },
+                        label = { Text(stringResource(R.string.add_account_api_key_label)) },
                         placeholder = {
                             Text(
                                 when (selectedProvider) {
-                                    ProviderType.ZAI -> "Z.ai 코딩 플랜 API Key"
+                                    ProviderType.ZAI -> stringResource(R.string.add_account_key_placeholder_zai)
                                     ProviderType.OPENROUTER -> "sk-or-v1-..."
-                                    ProviderType.CLAUDE -> "sk-ant-... 또는 세션 키"
-                                    ProviderType.OPENAI -> "sk-proj-... 또는 API Key"
-                                    ProviderType.XAI -> "xai-... API Key"
+                                    ProviderType.CLAUDE -> stringResource(R.string.add_account_key_placeholder_claude)
+                                    ProviderType.OPENAI -> stringResource(R.string.add_account_key_placeholder_openai)
+                                    ProviderType.XAI -> stringResource(R.string.add_account_key_placeholder_xai)
                                     ProviderType.DEEPSEEK -> "sk-..."
-                                    ProviderType.OLLAMA_CLOUD -> "Ollama Cloud API Key"
-                                    ProviderType.OPENCODE_GO -> "OpenCode Go API Key"
+                                    ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_key_placeholder_ollama_cloud)
+                                    ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_key_placeholder_opencode_go)
                                 }
                             )
                         },
@@ -514,12 +518,14 @@ fun AddAccountDialog(
                                         apiKey = text.trim().removeSurrounding("\"").removeSurrounding("'")
                                     }
                                 }) {
-                                    Icon(Icons.Filled.ContentPaste, contentDescription = "붙여넣기")
+                                    Icon(Icons.Filled.ContentPaste, contentDescription = stringResource(R.string.add_account_paste))
                                 }
                                 IconButton(onClick = { showApiKey = !showApiKey }) {
                                     Icon(
                                         imageVector = if (showApiKey) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                        contentDescription = if (showApiKey) "Hide" else "Show"
+                                        contentDescription = stringResource(
+                                            if (showApiKey) R.string.add_account_hide_key else R.string.add_account_show_key,
+                                        ),
                                     )
                                 }
                             }
@@ -529,14 +535,14 @@ fun AddAccountDialog(
 
                     Text(
                         text = when (selectedProvider) {
-                            ProviderType.ZAI -> "💡 공식 모니터링 엔드포인트(api.z.ai/api/monitor/usage/quota/limit)를 통해 남은 5시간/주간 쿼터와 크레딧을 정확히 측정합니다."
-                            ProviderType.OPENROUTER -> "💡 OpenRouter API 키를 등록하면 실시간 남은 달러($) 잔액과 키 한도를 확인합니다."
-                            ProviderType.CLAUDE -> "💡 Anthropic Console API 키(sk-ant-...) 또는 OAuth 토큰을 입력해주세요."
-                            ProviderType.OPENAI -> "💡 ChatGPT 로그인(5h/주간) 또는 API 키(sk-...)로 레이트 리밋을 조회합니다."
-                            ProviderType.XAI -> "💡 xAI Console API 키 또는 Grok OAuth 토큰으로 주간 한도를 모니터링합니다."
-                            ProviderType.DEEPSEEK -> "💡 DeepSeek API 키를 등록하면 남은 API 크레딧 잔액을 확인합니다."
-                            ProviderType.OLLAMA_CLOUD -> "💡 Ollama Cloud API 키를 등록하면 세션/주간 사용량과 구매 크레딧을 확인합니다."
-                            ProviderType.OPENCODE_GO -> "💡 OpenCode Go API 키를 등록하면 5시간/주간/월간 사용량을 확인합니다."
+                            ProviderType.ZAI -> stringResource(R.string.add_account_helper_zai)
+                            ProviderType.OPENROUTER -> stringResource(R.string.add_account_helper_openrouter)
+                            ProviderType.CLAUDE -> stringResource(R.string.add_account_helper_claude)
+                            ProviderType.OPENAI -> stringResource(R.string.add_account_helper_openai)
+                            ProviderType.XAI -> stringResource(R.string.add_account_helper_xai)
+                            ProviderType.DEEPSEEK -> stringResource(R.string.add_account_helper_deepseek)
+                            ProviderType.OLLAMA_CLOUD -> stringResource(R.string.add_account_helper_ollama_cloud)
+                            ProviderType.OPENCODE_GO -> stringResource(R.string.add_account_helper_opencode_go)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -547,7 +553,7 @@ fun AddAccountDialog(
                 OutlinedTextField(
                     value = customEndpoint,
                     onValueChange = { customEndpoint = it },
-                    label = { Text("커스텀 엔드포인트 (선택)") },
+                    label = { Text(stringResource(R.string.add_account_custom_endpoint_label)) },
                     placeholder = { Text(selectedProvider.baseUrl) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -578,7 +584,7 @@ fun AddAccountDialog(
                 colors = ootInkButtonColors(),
                 enabled = apiKey.isNotBlank()
             ) {
-                Text("저장하기")
+                Text(stringResource(R.string.add_account_save))
             }
         },
         dismissButton = {
@@ -586,7 +592,7 @@ fun AddAccountDialog(
                 onClick = onDismiss,
                 colors = ootTextButtonColors()
             ) {
-                Text("취소")
+                Text(stringResource(R.string.add_account_cancel))
             }
         }
     )

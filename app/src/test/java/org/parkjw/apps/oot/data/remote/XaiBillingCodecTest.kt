@@ -35,7 +35,7 @@ class XaiBillingCodecTest {
 
         val weekly = windows.single()
         assertEquals("weekly", weekly.id)
-        assertEquals("주간", weekly.label)
+        assertEquals("weekly", weekly.label)
         assertEquals(75.0, (weekly.remaining as Remaining.Percent).percentLeft, 0.001)
         assertEquals(Instant.parse("2026-10-28T00:00:00Z"), weekly.resetsAt)
         assertComplete(weekly, expectReset = true)

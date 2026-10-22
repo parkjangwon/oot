@@ -100,7 +100,7 @@ class MainActivityBackNavigationTest {
         }
         composeRule.waitForIdle()
         assertFalse(activity.isFinishing)
-        assertEquals(ExitBackPressPolicy.EXIT_PROMPT_MESSAGE, ShadowToast.getTextOfLatestToast())
+        assertEquals(activity.getString(ExitBackPressPolicy.EXIT_PROMPT_MESSAGE), ShadowToast.getTextOfLatestToast())
 
         // Back after >2s shows toast again and does not finish
         ShadowToast.reset()
@@ -110,7 +110,7 @@ class MainActivityBackNavigationTest {
         }
         composeRule.waitForIdle()
         assertFalse(activity.isFinishing)
-        assertEquals(ExitBackPressPolicy.EXIT_PROMPT_MESSAGE, ShadowToast.getTextOfLatestToast())
+        assertEquals(activity.getString(ExitBackPressPolicy.EXIT_PROMPT_MESSAGE), ShadowToast.getTextOfLatestToast())
 
         // Second back within 2s calls finish()
         now += 1_000L

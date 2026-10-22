@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
@@ -14,6 +15,7 @@ import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.oauth.OAuthManager
+import org.parkjw.apps.oot.i18n.AppText
 import java.io.IOException
 import java.time.Instant
 import java.util.Locale
@@ -34,10 +36,10 @@ class ClaudeApi(
                 accountId = account.id,
                 provider = ProviderType.CLAUDE,
                 accountName = account.name,
-                remainingFormatted = "토큰/키 없음",
-                statusSummary = "키 필요",
+                remainingFormatted = AppText.get(R.string.data_no_token_key),
+                statusSummary = AppText.get(R.string.data_key_needed),
                 isError = true,
-                errorMessage = "Claude API 키 또는 OAuth 인증이 필요합니다."
+                errorMessage = AppText.get(R.string.data_claude_key_required)
             )
         }
 
@@ -85,11 +87,20 @@ class ClaudeApi(
                             accountId = account.id,
                             provider = ProviderType.CLAUDE,
                             accountName = account.name,
-                            remainingFormatted = String.format(Locale.US, "%,d 토큰 남음", tokensRemaining),
-                            totalLimitFormatted = String.format(Locale.US, "한도: %,d 토큰/분", tokensLimit),
+                            remainingFormatted = AppText.get(
+                                R.string.data_tokens_left,
+                                String.format(Locale.US, "%,d", tokensRemaining)
+                            ),
+                            totalLimitFormatted = AppText.get(
+                                R.string.data_limit_tokens_per_min,
+                                String.format(Locale.US, "%,d", tokensLimit)
+                            ),
                             usagePercent = percent,
-                            resetTimeFormatted = tokensReset?.let { "리셋: $it" },
-                            statusSummary = String.format(Locale.US, "%,dk 남음", tokensRemaining / 1000),
+                            resetTimeFormatted = tokensReset?.let { AppText.get(R.string.data_reset_value, it) },
+                            statusSummary = AppText.get(
+                                R.string.data_k_left,
+                                String.format(Locale.US, "%,d", tokensRemaining / 1000)
+                            ),
                             isWarning = percent > 80f,
                             isCritical = percent > 95f
                         )
@@ -99,9 +110,9 @@ class ClaudeApi(
                         accountId = account.id,
                         provider = ProviderType.CLAUDE,
                         accountName = account.name,
-                        remainingFormatted = "연결 정상 (Anthropic API)",
-                        totalLimitFormatted = "정상 작동 중",
-                        statusSummary = "정상",
+                        remainingFormatted = AppText.get(R.string.data_claude_connected),
+                        totalLimitFormatted = AppText.get(R.string.data_working_normal),
+                        statusSummary = AppText.get(R.string.data_status_ok),
                         isWarning = false
                     )
                 }
@@ -199,11 +210,16 @@ class ClaudeApi(
         val fiveHourResetText = formatReset(fiveHour?.resetsAt)
         val weeklyResetText = formatReset(weekly?.resetsAt)
 
-        val remainingText = String.format(Locale.US, "5시간: %.0f%% 남음 | 주간: %.0f%% 남음", fiveHourRemaining, weeklyRemaining)
+        val remainingText = AppText.get(
+            R.string.data_claude_usage_left,
+            String.format(Locale.US, "%.0f", fiveHourRemaining),
+            String.format(Locale.US, "%.0f", weeklyRemaining)
+        )
         val limitText = buildString {
-            append(String.format(Locale.US, "5h 사용: %.0f%%", fiveHourPct))
+            append(AppText.get(R.string.data_used_5h, String.format(Locale.US, "%.0f", fiveHourPct)))
             if (fiveHourResetText.isNotBlank()) append(" ($fiveHourResetText)")
-            append(String.format(Locale.US, " | 주간 사용: %.0f%%", weeklyPct))
+            append(" | ")
+            append(AppText.get(R.string.data_used_weekly, String.format(Locale.US, "%.0f", weeklyPct)))
             if (weeklyResetText.isNotBlank()) append(" ($weeklyResetText)")
         }
 
@@ -215,12 +231,16 @@ class ClaudeApi(
             totalLimitFormatted = limitText,
             usagePercent = fiveHourPct.toFloat(),
             resetTimeFormatted = if (fiveHourResetText.isNotBlank()) "5h $fiveHourResetText" else null,
-            statusSummary = String.format(Locale.US, "5h %.0f%% | 주 %.0f%%", fiveHourRemaining, weeklyRemaining),
+            statusSummary = AppText.get(
+                R.string.data_claude_summary,
+                String.format(Locale.US, "%.0f", fiveHourRemaining),
+                String.format(Locale.US, "%.0f", weeklyRemaining)
+            ),
             isWarning = fiveHourPct > 80.0 || weeklyPct > 80.0,
             isCritical = fiveHourPct > 95.0 || weeklyPct > 95.0,
             windows = listOf(
-                UsageWindow("five_hour", "5시간", Remaining.Percent(fiveHourRemaining), fiveHour?.resetsAt),
-                UsageWindow("seven_day", "주간", Remaining.Percent(weeklyRemaining), weekly?.resetsAt)
+                UsageWindow("five_hour", "5h", Remaining.Percent(fiveHourRemaining), fiveHour?.resetsAt),
+                UsageWindow("seven_day", "7d", Remaining.Percent(weeklyRemaining), weekly?.resetsAt)
             )
         )
     }
@@ -230,7 +250,7 @@ class ClaudeApi(
         provider = ProviderType.CLAUDE,
         accountName = account.name,
         remainingFormatted = text,
-        statusSummary = "확인 필요",
+        statusSummary = AppText.get(R.string.status_needs_check),
         isError = true,
         errorMessage = text
     )
@@ -238,11 +258,15 @@ class ClaudeApi(
     private fun formatReset(resetsAt: Instant?): String {
         if (resetsAt == null) return ""
         val diffMs = resetsAt.toEpochMilli() - System.currentTimeMillis()
-        if (diffMs <= 0) return "곧 리셋"
+        if (diffMs <= 0) return AppText.get(R.string.time_reset_soon)
         val hours = diffMs / (1000 * 60 * 60)
         val days = hours / 24
         val remHours = hours % 24
-        return if (days > 0) "${days}일 ${remHours}시간 후" else "${hours}시간 후"
+        return if (days > 0) {
+            AppText.get(R.string.time_in_days_hours, days, remHours)
+        } else {
+            AppText.get(R.string.time_in_hours, hours)
+        }
     }
 
     companion object {
