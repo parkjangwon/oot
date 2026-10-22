@@ -28,6 +28,7 @@ import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.oauth.OAuthTokenResult
+import org.parkjw.apps.oot.data.remote.isAllowedCustomEndpoint
 import org.parkjw.apps.oot.ui.theme.ButtonCorner
 import org.parkjw.apps.oot.ui.theme.DialogCorner
 import org.parkjw.apps.oot.ui.theme.ootInkButtonColors
@@ -85,6 +86,7 @@ fun AddAccountDialog(
 
     val clipboardManager = LocalClipboardManager.current
     val scrollState = rememberScrollState()
+    val customEndpointValid = isAllowedCustomEndpoint(customEndpoint)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -553,6 +555,12 @@ fun AddAccountDialog(
                     onValueChange = { customEndpoint = it },
                     label = { Text(stringResource(R.string.add_account_custom_endpoint_label)) },
                     placeholder = { Text(selectedProvider.baseUrl) },
+                    supportingText = if (!customEndpointValid) {
+                        { Text(stringResource(R.string.add_account_custom_endpoint_https_only)) }
+                    } else {
+                        null
+                    },
+                    isError = !customEndpointValid,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -580,7 +588,7 @@ fun AddAccountDialog(
                 },
                 shape = ButtonCorner,
                 colors = ootInkButtonColors(),
-                enabled = apiKey.isNotBlank()
+                enabled = apiKey.isNotBlank() && customEndpointValid
             ) {
                 Text(stringResource(R.string.add_account_save))
             }

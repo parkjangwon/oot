@@ -43,6 +43,7 @@
     <string name="add_account_helper_ollama_cloud">Ollama Cloud API 키를 등록하면 세션·주간 사용량과 구매 크레딧을 확인해요.</string>
     <string name="add_account_helper_opencode_go">OpenCode Go API 키를 등록하면 5시간·주간·월간 사용량을 확인해요.</string>
     <string name="add_account_custom_endpoint_label">커스텀 엔드포인트 (선택)</string>
+    <string name="add_account_custom_endpoint_https_only">https://로 시작하는 주소만 쓸 수 있어요.</string>
     <string name="add_account_save">저장하기</string>
     <string name="add_account_cancel">취소</string>
     <string name="add_account_key_placeholder_xai">xai-... API 키</string>

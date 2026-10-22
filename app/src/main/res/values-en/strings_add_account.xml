@@ -43,6 +43,7 @@
     <string name="add_account_helper_ollama_cloud">Add an Ollama Cloud API key to check session/weekly usage and purchased credits.</string>
     <string name="add_account_helper_opencode_go">Add an OpenCode Go API key to check 5-hour/weekly/monthly usage.</string>
     <string name="add_account_custom_endpoint_label">Custom endpoint (optional)</string>
+    <string name="add_account_custom_endpoint_https_only">Only https:// addresses can be used.</string>
     <string name="add_account_save">Save</string>
     <string name="add_account_cancel">Cancel</string>
     <string name="add_account_key_placeholder_xai">xai-... API key</string>
