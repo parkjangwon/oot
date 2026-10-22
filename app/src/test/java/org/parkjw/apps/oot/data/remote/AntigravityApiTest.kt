@@ -77,7 +77,7 @@ class AntigravityApiTest {
     }.build()
 
     private fun api(secret: String = "secret-test-000") =
-        AntigravityApi(client, json, OAuthManager(context, client, json, antigravityClientSecret = secret)) {
+        AntigravityApi(client, json, OAuthManager(context, client, json, antigravityClientSecret = secret, antigravityClientId = "client-id-test-000")) {
             refreshedAccounts += it
         }
 
@@ -235,5 +235,45 @@ class AntigravityApiTest {
         route = { throw IOException("offline") }
 
         assertEquals("네트워크 오류", fetch().errorMessage)
+    }
+
+    // -- Google's refusal on the card (phone test: accepted vs rejected client) --
+
+    private val serviceDisabled = """
+        {"error": {"code": 403, "message": "Cloud Code API has not been used in project 1234 before or it is disabled.",
+          "status": "PERMISSION_DENIED",
+          "details": [{"@type": "type.googleapis.com/google.rpc.ErrorInfo", "reason": "SERVICE_DISABLED"}]}}
+    """.trimIndent()
+
+    @Test
+    fun `loadCodeAssist refusal shows the HTTP status and Google's reason, not the message`() {
+        route = { call -> if (call.url == loadUrl) 403 to serviceDisabled else 200 to "{}" }
+
+        val status = fetch()
+
+        assertTrue(status.isError)
+        assertEquals("조회 실패 (HTTP 403 PERMISSION_DENIED · SERVICE_DISABLED)", status.errorMessage)
+        assertEquals(listOf(loadUrl), calls.map { it.url })
+    }
+
+    @Test
+    fun `both quota endpoints refused shows the summary's status and reason`() {
+        route = { call ->
+            when (call.url) {
+                loadUrl -> 200 to assistBody
+                summaryUrl -> 403 to """{"error": {"code": 403, "status": "PERMISSION_DENIED", "message": "x"}}"""
+                modelsUrl -> 404 to "{}"
+                else -> 404 to "{}"
+            }
+        }
+
+        assertEquals("조회 실패 (HTTP 403 PERMISSION_DENIED)", fetch().errorMessage)
+    }
+
+    @Test
+    fun `a refusal without Google's envelope still shows the status`() {
+        route = { call -> if (call.url == loadUrl) 500 to "oops" else 200 to "{}" }
+
+        assertEquals("조회 실패 (HTTP 500)", fetch().errorMessage)
     }
 }

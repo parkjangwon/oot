@@ -74,7 +74,7 @@ class AntigravityApi(
     private fun fetchQuota(token: String): AntigravityQuotaResult {
         val assist = post(LOAD_CODE_ASSIST_URL, token, LOAD_CODE_ASSIST_BODY)
             ?: return AntigravityQuotaResult.Failure(VendorError.Network)
-        if (assist.code !in 200..299) return AntigravityQuotaResult.Failure(mapAntigravityHttpError(assist.code))
+        if (assist.code !in 200..299) return AntigravityQuotaResult.Failure(antigravityHttpError(assist.code, assist.body, json))
         val codeAssist = parseAntigravityCodeAssist(assist.body, json)
             ?: return AntigravityQuotaResult.Failure(VendorError.Parse)
         // Google refused the OAuth client this token came from, so its quota would be a placeholder: sign in again.
@@ -82,12 +82,18 @@ class AntigravityApi(
 
         val quotaBody = buildJsonObject { codeAssist.projectId?.let { put("project", it) } }.toString()
         // Summary first; anything but success or 401 falls back to the model list, like CodexBar.
-        val summary = post(SUMMARY_URL, token, quotaBody)?.let { parseAntigravityQuotaSummary(it.code, it.body, json) }
+        val summaryHttp = post(SUMMARY_URL, token, quotaBody)
+        val summary = summaryHttp?.let { parseAntigravityQuotaSummary(it.code, it.body, json) }
         when {
             summary is AntigravityQuotaResult.Success -> return summary
             summary is AntigravityQuotaResult.Failure && summary.error == VendorError.Unauthorized -> return summary
         }
         val models = post(MODELS_URL, token, quotaBody) ?: return AntigravityQuotaResult.Failure(VendorError.Network)
+        if (models.code !in 200..299) {
+            // Both quota endpoints refused: show the summary's reason when it had one, else the model list's.
+            val failed = summaryHttp?.takeIf { it.code !in 200..299 } ?: models
+            return AntigravityQuotaResult.Failure(antigravityHttpError(failed.code, failed.body, json))
+        }
         return parseAntigravityAvailableModels(models.code, models.body, json)
     }
 

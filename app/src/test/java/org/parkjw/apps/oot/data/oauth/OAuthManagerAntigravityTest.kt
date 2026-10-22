@@ -12,6 +12,7 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
@@ -63,8 +64,10 @@ class OAuthManagerAntigravityTest {
                 .build()
         }.build()
 
-    private fun manager(secret: String = "secret-test-000", client: OkHttpClient = fakeClient()) =
-        OAuthManager(context, client, json, antigravityClientSecret = secret)
+    private val clientId = "client-id-test-000.apps.example.invalid"
+
+    private fun manager(secret: String = "secret-test-000", id: String = clientId, client: OkHttpClient = fakeClient()) =
+        OAuthManager(context, client, json, antigravityClientSecret = secret, antigravityClientId = id)
 
     private fun startLogin(manager: OAuthManager): android.net.Uri {
         manager.startAntigravityOAuthFlow({ tokens += it }, { errors += it })
@@ -116,6 +119,49 @@ class OAuthManagerAntigravityTest {
         assertTrue(requests.isEmpty())
     }
 
+    @Test
+    fun `without a client id sign-in stops before the browser with the same message`() {
+        val manager = manager(id = "")
+        assertFalse(manager.isAntigravityConfigured)
+        startLoginExpectingError(manager)
+
+        assertEquals(listOf("이 빌드에는 Antigravity 로그인 설정이 없어요"), errors.toList())
+        assertNull(shadowOf(context).nextStartedActivity)
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun `without a client id a pasted code and a refresh never reach Google`() {
+        val manager = manager(id = "  ")
+
+        assertTrue(runBlocking { manager.exchangeAntigravityCode("4/0Abc") }.isFailure)
+        assertSame(account, runBlocking { manager.refreshTokenIfNeeded(account) })
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun `the injected client id is what Google sees and only both values together configure login`() {
+        assertTrue(manager().isAntigravityConfigured)
+        assertFalse(manager(secret = "").isAntigravityConfigured)
+        assertEquals(clientId, manager().getClientIdForProvider(ProviderType.ANTIGRAVITY))
+    }
+
+    @Test
+    fun `sign-in asks for cloud-platform, userinfo email and openid`() {
+        assumeTrue(portIsFree())
+        val authUri = startLogin(manager())
+        val scopes = authUri.getQueryParameter("scope")!!.split(" ")
+        assertTrue(scopes.containsAll(listOf(
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/userinfo.email",
+            "openid",
+        )))
+
+        // end the login so the port is released for the next test
+        assertEquals(200, get("/?state=${authUri.getQueryParameter("state")}&error=access_denied"))
+        waitFor { errors.isNotEmpty() }
+    }
+
     private fun startLoginExpectingError(manager: OAuthManager) =
         manager.startAntigravityOAuthFlow({ tokens += it }, { errors += it })
 
@@ -149,7 +195,7 @@ class OAuthManagerAntigravityTest {
         assertEquals(
             mapOf(
                 "grant_type" to "refresh_token",
-                "client_id" to OAuthManager.ANTIGRAVITY_CLIENT_ID,
+                "client_id" to clientId,
                 "refresh_token" to "rt-test-000",
                 "client_secret" to "secret-test-000"
             ),
@@ -166,7 +212,7 @@ class OAuthManagerAntigravityTest {
         val state = authUri.getQueryParameter("state")!!
 
         assertEquals("S256", authUri.getQueryParameter("code_challenge_method"))
-        assertEquals(OAuthManager.ANTIGRAVITY_CLIENT_ID, authUri.getQueryParameter("client_id"))
+        assertEquals(clientId, authUri.getQueryParameter("client_id"))
         assertEquals("http://127.0.0.1:$port", authUri.getQueryParameter("redirect_uri"))
 
         // A stale tab and a probe get an answer but do not end the login.
@@ -181,7 +227,7 @@ class OAuthManagerAntigravityTest {
         assertEquals("authorization_code", form["grant_type"])
         assertEquals("code-test-000", form["code"])
         assertEquals("secret-test-000", form["client_secret"])
-        assertEquals(OAuthManager.ANTIGRAVITY_CLIENT_ID, form["client_id"])
+        assertEquals(clientId, form["client_id"])
         assertEquals(authUri.getQueryParameter("redirect_uri"), form["redirect_uri"])
         val digest = MessageDigest.getInstance("SHA-256").digest(form["code_verifier"]!!.toByteArray(Charsets.US_ASCII))
         assertEquals(

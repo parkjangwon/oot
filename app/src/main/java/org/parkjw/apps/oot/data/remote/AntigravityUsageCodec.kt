@@ -33,6 +33,25 @@ sealed interface AntigravityQuotaResult {
 fun mapAntigravityHttpError(code: Int): VendorError =
     if (code == 401) VendorError.Unauthorized else mapClaudeHttpError(code)
 
+// Google's error envelope reduced to its codes: `error.status` and each `error.details[].reason`,
+// e.g. "PERMISSION_DENIED · SERVICE_DISABLED". The free-text message is left out (it can name the project).
+fun googleErrorReason(body: String, json: Json = Json): String? {
+    val error = parseObject(body, json)?.get("error") as? JsonObject ?: return null
+    val status = error.string("status")
+    val reasons = (error["details"] as? JsonArray).orEmpty()
+        .mapNotNull { (it as? JsonObject)?.string("reason") }
+    return (listOfNotNull(status) + reasons).distinct().joinToString(" · ").ifBlank { null }
+}
+
+// 401 still means "refresh and retry" and 429 still backs off; any other failure shows Google's status and reason
+// on the card, so a phone test tells an accepted client from a rejected one (e.g. 403 PERMISSION_DENIED · SERVICE_DISABLED).
+fun antigravityHttpError(code: Int, body: String, json: Json = Json): VendorError = when (code) {
+    401, 429 -> mapAntigravityHttpError(code)
+    else -> VendorError.Unknown(
+        "조회 실패 (HTTP $code" + (googleErrorReason(body, json)?.let { " $it" } ?: "") + ")"
+    )
+}
+
 data class AntigravityCodeAssist(val projectId: String?, val clientRejected: Boolean)
 
 // loadCodeAssist: the Cloud Code project id, and whether Google refused this OAuth client for consumer sign-in
