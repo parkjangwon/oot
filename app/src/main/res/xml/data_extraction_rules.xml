@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ backup and device-transfer rules.
+  The credential store is encrypted with an Android Keystore key that never leaves
+  this device, so a restored or transferred copy could never be decrypted. Its
+  contents are also re-authenticated by the user, not restored.
+  The language preference (datastore/language.preferences_pb) stays included.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude
+            domain="sharedpref"
+            path="oot_secure_prefs.xml" />
+        <!-- Credential file name used by older versions, kept out as well. -->
+        <exclude
+            domain="sharedpref"
+            path="oot_fallback_prefs.xml" />
+        <!-- Update download progress is device/session state. -->
+        <exclude
+            domain="file"
+            path="datastore/update.preferences_pb" />
+    </cloud-backup>
+
+    <device-transfer>
+        <exclude
+            domain="sharedpref"
+            path="oot_secure_prefs.xml" />
+        <exclude
+            domain="sharedpref"
+            path="oot_fallback_prefs.xml" />
+        <exclude
+            domain="file"
+            path="datastore/update.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>

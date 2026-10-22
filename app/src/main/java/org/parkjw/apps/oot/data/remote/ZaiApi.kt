@@ -33,7 +33,8 @@ class ZaiApi(
             )
         }
 
-        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.ZAI.baseUrl
+        val baseUrl = resolveBaseUrl(account.customEndpoint, ProviderType.ZAI.baseUrl)
+            ?: return@withContext customEndpointErrorStatus(account)
         // Official Z.ai GLM Coding Plan monitoring endpoint
         val quotaLimitUrl = "$baseUrl/api/monitor/usage/quota/limit"
         val authHeader = "Bearer $credential"

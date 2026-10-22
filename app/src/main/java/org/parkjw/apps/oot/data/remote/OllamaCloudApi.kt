@@ -29,7 +29,8 @@ class OllamaCloudApi(
             )
         }
 
-        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.OLLAMA_CLOUD.baseUrl
+        val baseUrl = resolveBaseUrl(account.customEndpoint, ProviderType.OLLAMA_CLOUD.baseUrl)
+            ?: return@withContext customEndpointErrorStatus(account)
         val request = Request.Builder()
             .url("$baseUrl/api/balance")
             .addHeader("Authorization", "Bearer $credential")
