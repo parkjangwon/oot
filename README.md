@@ -90,7 +90,7 @@ Release builds are signed in CI and cut from tags: a tag `vX.Y.Z` must match `ve
 
 ## Privacy & security
 
-Tokens and API keys are stored locally in encrypted storage (`EncryptedSharedPreferences`, Android Keystore). The app contains no analytics or telemetry — it only talks to the vendors you add and to GitHub Releases for update checks. Deleting an account removes its credentials from the device; see [token revocation](docs/token-revocation.md) for provider-side revocation.
+Tokens and API keys are stored locally in encrypted storage (`EncryptedSharedPreferences`, Android Keystore). The app contains no analytics or telemetry — it only talks to the vendors you add and to GitHub Releases for update checks. Deleting an account removes its credentials from the device; provider-side revocation is not enabled for any provider yet (see [token revocation](docs/token-revocation.md)).
 
 ## License
 
