@@ -68,6 +68,28 @@ class AccountPreferences(context: Context) {
         persistOrder(current.map { it.id })
     }
 
+    /**
+     * Persist a token refresh only for an account that is still stored (#96). Keeps the position, the user's
+     * name and enable toggle, and writes nothing when the user removed the account while the refresh was in flight.
+     */
+    @Synchronized
+    fun updateAccountIfPresent(account: ProviderAccount): Boolean {
+        val current = _accounts.value.toMutableList()
+        val index = current.indexOfFirst { it.id == account.id }
+        if (index < 0) return false
+        current[index] = current[index].copy(
+            apiKey = account.apiKey,
+            accessToken = account.accessToken,
+            refreshToken = account.refreshToken,
+            tokenExpiresAt = account.tokenExpiresAt,
+            accountEmail = account.accountEmail,
+            chatgptAccountId = account.chatgptAccountId,
+        )
+        _accounts.value = current
+        persistAccounts(current)
+        return true
+    }
+
     @Synchronized
     fun deleteAccount(accountId: String) {
         val current = _accounts.value.filter { it.id != accountId }

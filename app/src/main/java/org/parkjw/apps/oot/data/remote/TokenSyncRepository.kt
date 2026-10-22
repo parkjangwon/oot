@@ -29,8 +29,8 @@ class TokenSyncRepository(
     private val openRouterApi = OpenRouterApi(client, json)
     private val xaiApi = XaiApi(client, json)
     private val zaiApi = ZaiApi(client, json)
-    private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.saveAccount(it) }
-    private val openAiApi = OpenAiApi(client, json, oauthManager) { preferences.saveAccount(it) }
+    private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.updateAccountIfPresent(it) }
+    private val openAiApi = OpenAiApi(client, json, oauthManager) { preferences.updateAccountIfPresent(it) }
     private val deepSeekApi = DeepSeekApi(client, json)
     private val ollamaCloudApi = OllamaCloudApi(client, json)
     private val openCodeGoApi = OpenCodeGoApi(client, json)
@@ -71,7 +71,7 @@ class TokenSyncRepository(
                 val updatedAccount = if (account.authType == AuthType.OAUTH && account.isTokenExpired) {
                     val refreshed = oauthManager.refreshTokenIfNeeded(account)
                     if (refreshed != account) {
-                        preferences.saveAccount(refreshed)
+                        preferences.updateAccountIfPresent(refreshed)
                     }
                     refreshed
                 } else {

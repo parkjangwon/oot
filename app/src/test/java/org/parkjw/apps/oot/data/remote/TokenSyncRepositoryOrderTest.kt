@@ -166,6 +166,63 @@ class TokenSyncRepositoryOrderTest {
 
         assertEquals(listOf("or", "glm", "ds"), repo.usageIds())
     }
+
+    // #96: the refreshed copy (with new tokens) must not re-add an account deleted while the refresh was in flight.
+    @Test
+    fun `a token refresh for a provider deleted mid-refresh does not bring it back after a restart`() {
+        val prefs = AccountPreferences(context).also {
+            it.saveAccount(
+                ProviderAccount(
+                    id = "claude",
+                    provider = ProviderType.CLAUDE,
+                    name = "claude",
+                    authType = AuthType.OAUTH,
+                    accessToken = "at-old",
+                    refreshToken = "rt-old",
+                    tokenExpiresAt = 1L,
+                ),
+            )
+        }
+        val entered = CountDownLatch(1)
+        val gate = CountDownLatch(1)
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            val response = if (request.url.encodedPath.endsWith("/v1/oauth/token")) {
+                entered.countDown()
+                gate.await(10, TimeUnit.SECONDS)
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(
+                        """{"access_token":"at-new","refresh_token":"rt-new","expires_in":3600}"""
+                            .toResponseBody("application/json".toMediaType()),
+                    )
+                    .build()
+            } else {
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(503)
+                    .message("fake")
+                    .body("{}".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+            response
+        }.build()
+        val repo = repository(prefs, client)
+
+        val refresh = thread { runBlocking { repo.refreshAll() } }
+        assertTrue(entered.await(10, TimeUnit.SECONDS))
+        prefs.deleteAccount("claude")
+        gate.countDown()
+        refresh.join(10_000)
+
+        assertEquals(emptyList<String>(), repo.usageIds())
+        assertEquals(emptyList<String>(), AccountPreferences(context).accounts.value.map { it.id })
+    }
+
     // The "알림에 표시" toggle (#56) goes through the same committed storage and must survive the same restart.
     @Test
     fun `after a restart the notification keeps the drag order and leaves out hidden providers`() {

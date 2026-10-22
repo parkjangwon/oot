@@ -89,6 +89,43 @@ class AccountPreferencesPersistenceTest {
     }
 
     @Test
+    fun `a refresh update keeps the order, the name and the enable toggle`() {
+        val prefs = prefsWith("a", "b", "c")
+        prefs.setAccountOrder(listOf("c", "a", "b"))
+        prefs.saveAccount(account("a").copy(name = "Renamed"))
+        prefs.toggleAccount("a", false)
+
+        // The copy a refresh started from still says name "a" and enabled.
+        val refreshed = account("a").copy(accessToken = "at-new", refreshToken = "rt-new", tokenExpiresAt = 123L)
+        assertTrue(prefs.updateAccountIfPresent(refreshed))
+
+        assertEquals(listOf("c", "a", "b"), prefs.ids())
+        val updated = prefs.accounts.value.first { it.id == "a" }
+        assertEquals("Renamed", updated.name)
+        assertFalse(updated.isEnabled)
+        assertEquals("at-new", updated.accessToken)
+        assertEquals(123L, updated.tokenExpiresAt)
+
+        val restarted = restart()
+        assertEquals(listOf("c", "a", "b"), restarted.ids())
+        val stored = restarted.accounts.value.first { it.id == "a" }
+        assertEquals("Renamed", stored.name)
+        assertFalse(stored.isEnabled)
+        assertEquals("at-new", stored.accessToken)
+    }
+
+    @Test
+    fun `a refresh for a deleted provider writes nothing and does not re-add it`() {
+        val prefs = prefsWith("a", "b")
+        prefs.deleteAccount("a")
+
+        assertFalse(prefs.updateAccountIfPresent(account("a").copy(accessToken = "at-new")))
+
+        assertEquals(listOf("b"), prefs.ids())
+        assertEquals(listOf("b"), restart().ids())
+    }
+
+    @Test
     fun `disabling and enabling a provider keeps the order`() {
         val prefs = prefsWith("a", "b", "c")
         prefs.setAccountOrder(listOf("c", "a", "b"))
