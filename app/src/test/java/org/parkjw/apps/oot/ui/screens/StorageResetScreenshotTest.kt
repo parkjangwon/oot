@@ -165,7 +165,10 @@ class StorageResetScreenshotTest {
         english: Boolean = false,
         resetting: Boolean = false,
     ) {
+        // The spinner is indeterminate: pause the test clock and step into its animation so the capture shows an arc.
+        if (resetting) composeRule.mainClock.autoAdvance = false
         setDashboard(darkTheme, resetting = resetting)
+        if (resetting) composeRule.mainClock.advanceTimeBy(450)
         composeRule.onNodeWithText("Claude").assertExists()
         when {
             resetting -> composeRule.onNodeWithText("초기화하는 중…").assertExists()

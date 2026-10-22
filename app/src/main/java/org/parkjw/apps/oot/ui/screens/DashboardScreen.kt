@@ -1403,7 +1403,10 @@ fun SecureStorageNoticeCard(
                     onClick = onResetClick,
                     enabled = !resetting,
                     shape = ButtonCorner,
-                    colors = ootOutlinedButtonColors(),
+                    // While resetting the label is the status, so keep it at secondary-text contrast, not the 38% disabled alpha.
+                    colors = ootOutlinedButtonColors(
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                     border = BorderStroke(1.dp, MaterialTheme.extendedColors.hairlineStrong),
                     modifier = Modifier.height(40.dp),
                 ) {
