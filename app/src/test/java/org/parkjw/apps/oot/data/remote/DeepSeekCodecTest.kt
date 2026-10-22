@@ -80,6 +80,15 @@ class DeepSeekCodecTest {
         )
     }
 
+    @Test
+    fun `null currency falls back to USD instead of the text null`() {
+        val windows = DeepSeekCodec.parse(
+            """{"balance_infos": [{"currency": null, "total_balance": "5.00"}]}""",
+            json
+        )!!
+        assertEquals("USD", (windows.single().remaining as Remaining.Balance).currency)
+    }
+
     // -- empty fixture --
 
     @Test

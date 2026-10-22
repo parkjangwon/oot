@@ -3,6 +3,7 @@ package org.parkjw.apps.oot.data.remote
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import org.parkjw.apps.oot.data.model.Remaining
@@ -23,7 +24,7 @@ object OllamaCloudCodec {
         val allowanceUsd = (included["allowance_usd"] as? JsonPrimitive)?.doubleOrNull
         if (creditBalance != null && allowanceUsd != null && allowanceUsd > 0.0) {
             // Credit plans: monthly allowance window from balance/allowance.
-            val until = ((included["period"] as? JsonObject)?.get("until") as? JsonPrimitive)?.content
+            val until = ((included["period"] as? JsonObject)?.get("until") as? JsonPrimitive)?.contentOrNull
             windows += UsageWindow(
                 id = "monthly",
                 label = "monthly",
@@ -38,7 +39,7 @@ object OllamaCloudCodec {
                         id = "session",
                         label = "session",
                         remaining = Remaining.Percent(pct.coerceIn(0.0, 100.0)),
-                        resetsAt = parseClaudeInstant((session["resets_at"] as? JsonPrimitive)?.content)
+                        resetsAt = parseClaudeInstant((session["resets_at"] as? JsonPrimitive)?.contentOrNull)
                     )
                 }
             }
@@ -48,7 +49,7 @@ object OllamaCloudCodec {
                         id = "weekly",
                         label = "weekly",
                         remaining = Remaining.Percent(pct.coerceIn(0.0, 100.0)),
-                        resetsAt = parseClaudeInstant((weekly["resets_at"] as? JsonPrimitive)?.content)
+                        resetsAt = parseClaudeInstant((weekly["resets_at"] as? JsonPrimitive)?.contentOrNull)
                     )
                 }
             }

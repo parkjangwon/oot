@@ -3,6 +3,7 @@ package org.parkjw.apps.oot.data.remote
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import org.parkjw.apps.oot.data.model.Remaining
@@ -32,7 +33,7 @@ object OpenCodeGoCodec {
             id = id,
             label = label,
             remaining = Remaining.Percent((100.0 - used).coerceIn(0.0, 100.0)),
-            resetsAt = parseClaudeInstant((source["resetsAt"] as? JsonPrimitive)?.content)
+            resetsAt = parseClaudeInstant((source["resetsAt"] as? JsonPrimitive)?.contentOrNull)
         )
     }
 
