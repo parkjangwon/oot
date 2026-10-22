@@ -33,7 +33,9 @@ class OAuthManager(
     private val client: OkHttpClient,
     private val json: Json,
     // Antigravity's Google client is an installed-app client: every token call needs its secret (empty = not configured).
-    private val antigravityClientSecret: String = BuildConfig.ANTIGRAVITY_CLIENT_SECRET
+    private val antigravityClientSecret: String = BuildConfig.ANTIGRAVITY_CLIENT_SECRET,
+    // Injected at build time with the secret (OOT_ANTIGRAVITY_CLIENT_ID); empty = this build has no Antigravity login.
+    private val antigravityClientId: String = BuildConfig.ANTIGRAVITY_CLIENT_ID
 ) {
     // Session state holding pending PKCE verifiers: key = state, value = (provider, verifier)
     private val pendingVerifications = mutableMapOf<String, Pair<ProviderType, String>>()
@@ -48,7 +50,7 @@ class OAuthManager(
     @Volatile private var antigravitySession: LoginSession? = null
     @Volatile private var loopbackServer: ServerSocket? = null
 
-    val isAntigravityConfigured: Boolean get() = antigravityClientSecret.isNotBlank()
+    val isAntigravityConfigured: Boolean get() = antigravityClientId.isNotBlank() && antigravityClientSecret.isNotBlank()
 
     fun startOAuthFlow(provider: ProviderType) {
         val authEndpoint = provider.oauthAuthEndpoint ?: return
@@ -423,7 +425,7 @@ class OAuthManager(
 
         val uri = Uri.parse("https://accounts.google.com/o/oauth2/auth").buildUpon()
             .appendQueryParameter("response_type", "code")
-            .appendQueryParameter("client_id", ANTIGRAVITY_CLIENT_ID)
+            .appendQueryParameter("client_id", antigravityClientId)
             .appendQueryParameter("redirect_uri", ANTIGRAVITY_REDIRECT_URI)
             .appendQueryParameter("scope", ProviderType.ANTIGRAVITY.defaultScopes.joinToString(" "))
             .appendQueryParameter("code_challenge", codeChallenge)
@@ -578,7 +580,7 @@ class OAuthManager(
         try {
             val formBody = FormBody.Builder()
                 .add("grant_type", "authorization_code")
-                .add("client_id", ANTIGRAVITY_CLIENT_ID)
+                .add("client_id", antigravityClientId)
                 .add("client_secret", antigravityClientSecret)
                 .add("code", code)
                 .add("redirect_uri", ANTIGRAVITY_REDIRECT_URI)
@@ -827,7 +829,7 @@ class OAuthManager(
         return when (provider) {
             ProviderType.CLAUDE -> CLAUDE_CLIENT_ID
             ProviderType.XAI -> XAI_CLIENT_ID
-            ProviderType.ANTIGRAVITY -> ANTIGRAVITY_CLIENT_ID
+            ProviderType.ANTIGRAVITY -> antigravityClientId
             ProviderType.OPENAI -> OPENAI_CLIENT_ID
             else -> "oot-client"
         }
@@ -888,7 +890,6 @@ class OAuthManager(
         // Official Client ID UUIDs
         const val CLAUDE_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
         const val XAI_CLIENT_ID = "b1a00492-073a-47ea-816f-4c329264a828"
-        const val ANTIGRAVITY_CLIENT_ID = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
 
         // Codex: codex-rs/login/src/auth/manager.rs CLIENT_ID + server.rs DEFAULT_ISSUER
         const val OPENAI_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
