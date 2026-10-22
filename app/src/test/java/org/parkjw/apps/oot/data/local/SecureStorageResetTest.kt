@@ -85,7 +85,8 @@ class SecureStorageResetTest {
         assertFalse(before.isServiceEnabled.value)
         assertEquals(30, before.refreshIntervalMinutes.value)
         assertFalse(before.isAutoUpdateCheckEnabled.value)
-        assertEquals(setOf("a"), before.notificationHiddenAccountIds.value)
+        // The accounts are gone, so the ids hidden in the notification are dropped with them.
+        assertEquals(emptySet<String>(), before.notificationHiddenAccountIds.value)
 
         val after = AccountPreferences(context, resetStorage())
         assertTrue(after.isSecureStorageAvailable)
@@ -94,6 +95,44 @@ class SecureStorageResetTest {
         assertEquals(30, after.refreshIntervalMinutes.value)
         assertFalse(after.isAutoUpdateCheckEnabled.value)
         assertEquals(emptySet<String>(), after.notificationHiddenAccountIds.value)
+    }
+
+    @Test
+    fun `settings are restored into the memory fallback when the store cannot reopen`() {
+        val attempts = AtomicInteger(0)
+        val storage = resetStorage(openEncrypted = { c ->
+            // Opens on the first call, then every reopen attempt throws (SecureStorage retries once).
+            if (attempts.incrementAndGet() >= 2) throw IllegalStateException("keystore unavailable")
+            c.getSharedPreferences(TEST_ENCRYPTED_STORE, Context.MODE_PRIVATE)
+        })
+        val prefs = AccountPreferences(context, storage)
+        prefs.saveAccount(account("a"))
+        prefs.setServiceEnabled(false)
+        prefs.setRefreshInterval(30)
+        prefs.setAutoUpdateCheckEnabled(false)
+
+        assertFalse(prefs.resetSecureStorage())
+
+        assertFalse(prefs.isSecureStorageAvailable)
+        assertTrue(prefs.accounts.value.isEmpty())
+        assertEquals(emptySet<String>(), prefs.notificationHiddenAccountIds.value)
+        assertEquals("false", storage.getString("oot_service_enabled"))
+        assertEquals("30", storage.getString("oot_refresh_interval"))
+        assertEquals("false", storage.getString("oot_auto_update_check"))
+    }
+
+    @Test
+    fun `an account saved with a generation captured before a reset is dropped`() {
+        val prefs = AccountPreferences(context, resetStorage())
+        prefs.saveAccount(account("a"))
+        val old = prefs.resetGeneration()
+
+        assertTrue(prefs.resetSecureStorage())
+        assertFalse(prefs.saveAccountIfCurrent(account("b"), old))
+        assertTrue(prefs.accounts.value.isEmpty())
+
+        assertTrue(prefs.saveAccountIfCurrent(account("c"), prefs.resetGeneration()))
+        assertEquals(listOf("c"), prefs.accounts.value.map { it.id })
     }
 
     @Test

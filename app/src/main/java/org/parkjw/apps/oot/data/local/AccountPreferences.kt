@@ -37,6 +37,10 @@ class AccountPreferences(
     private val _notificationHiddenAccountIds = MutableStateFlow<Set<String>>(emptySet())
     val notificationHiddenAccountIds: StateFlow<Set<String>> = _notificationHiddenAccountIds.asStateFlow()
 
+    // Bumped by every secure-storage reset: work that started before it must not write its account back.
+    @Volatile
+    private var resetGeneration = 0
+
     init {
         loadSettings()
     }
@@ -129,43 +133,63 @@ class AccountPreferences(
         persistNotificationHidden(hidden)
     }
 
+    @Synchronized
     fun setServiceEnabled(enabled: Boolean) {
         _isServiceEnabled.value = enabled
         secureStorage.putString(KEY_SERVICE_ENABLED, enabled.toString())
     }
 
+    @Synchronized
     fun setRefreshInterval(minutes: Int) {
         _refreshIntervalMinutes.value = minutes
         secureStorage.putString(KEY_REFRESH_INTERVAL, minutes.toString())
     }
 
+    @Synchronized
     fun setAutoUpdateCheckEnabled(enabled: Boolean) {
         _isAutoUpdateCheckEnabled.value = enabled
         secureStorage.putString(KEY_AUTO_UPDATE_CHECK, enabled.toString())
     }
 
+    fun resetGeneration(): Int = resetGeneration
+
+    /**
+     * Saves an account only when no reset happened after [generation] was read, so a sign-in that finishes while
+     * the store is being reset cannot put the account back. Returns whether the account was saved.
+     */
+    @Synchronized
+    fun saveAccountIfCurrent(account: ProviderAccount, generation: Int): Boolean {
+        if (generation != resetGeneration) return false
+        saveAccount(account)
+        return true
+    }
+
     /**
      * Removes the stored accounts and reopens the encrypted store with a fresh key.
-     * Settings that are not credentials are written back after a successful reopen.
+     *
+     * The accounts stay cleared even when the reopen fails; settings that are not credentials are always restored,
+     * into the store's memory fallback while it is unavailable.
      */
     @Synchronized
     fun resetSecureStorage(): Boolean {
+        resetGeneration++
         val serviceEnabled = _isServiceEnabled.value
         val refreshInterval = _refreshIntervalMinutes.value
         val autoUpdateCheck = _isAutoUpdateCheckEnabled.value
-        val hidden = _notificationHiddenAccountIds.value
 
         _accounts.value = emptyList()
+        _notificationHiddenAccountIds.value = emptySet()
 
-        if (!secureStorage.reset()) return false
+        val reopened = secureStorage.reset()
 
+        // Accounts are gone either way; settings are always restored (memory while the store is unavailable).
         secureStorage.putString(KEY_SERVICE_ENABLED, serviceEnabled.toString())
         secureStorage.putString(KEY_REFRESH_INTERVAL, refreshInterval.toString())
         secureStorage.putString(KEY_AUTO_UPDATE_CHECK, autoUpdateCheck.toString())
-        persistNotificationHidden(hidden)
+        persistNotificationHidden(emptySet())
         persistAccounts(emptyList())
         persistOrder(emptyList())
-        return true
+        return reopened
     }
 
     private fun persistAccounts(list: List<ProviderAccount>) {

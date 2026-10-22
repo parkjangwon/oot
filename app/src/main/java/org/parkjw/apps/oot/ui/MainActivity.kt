@@ -215,20 +215,21 @@ class MainActivity : ComponentActivity() {
                         snackbarHostState = snackbarHostState,
                         onResetSecureStorage = {
                             lifecycleScope.launch {
+                                app.oauthManager.cancelPendingFlows()
+                                app.repository.onAccountsReset()
                                 val reset = withContext(Dispatchers.IO) {
                                     app.preferences.resetSecureStorage()
                                 }
                                 secureStorageAvailable = app.preferences.isSecureStorageAvailable
-                                if (reset) {
-                                    showAddDialog = true
-                                    snackbarHostState.showSnackbar(
-                                        getString(R.string.secure_storage_reset_done),
-                                    )
-                                } else {
-                                    snackbarHostState.showSnackbar(
-                                        getString(R.string.secure_storage_reset_failed),
-                                    )
-                                }
+                                if (reset) showAddDialog = true
+                                app.repository.refreshAll()
+                                app.notificationManager.updateNotification(app.repository.vendorUsages.value)
+                                snackbarHostState.showSnackbar(
+                                    getString(
+                                        if (reset) R.string.secure_storage_reset_done
+                                        else R.string.secure_storage_reset_failed,
+                                    ),
+                                )
                             }
                         },
                     )
@@ -244,23 +245,32 @@ class MainActivity : ComponentActivity() {
                             app.oauthManager.openExternalBrowser(url)
                         },
                         onStartXaiDeviceFlow = { onCodeReceived, onTokenReceived, onError ->
+                            val generation = app.preferences.resetGeneration()
                             app.oauthManager.startXaiDeviceFlow(
                                 onCodeReceived = onCodeReceived,
-                                onTokenReceived = onTokenReceived,
+                                onTokenReceived = { result ->
+                                    if (generation == app.preferences.resetGeneration()) onTokenReceived(result)
+                                },
                                 onError = onError
                             )
                         },
                         onStartOpenAiDeviceFlow = { onCodeReceived, onTokenReceived, onError ->
+                            val generation = app.preferences.resetGeneration()
                             app.oauthManager.startOpenAiDeviceFlow(
                                 onCodeReceived = onCodeReceived,
-                                onTokenReceived = onTokenReceived,
+                                onTokenReceived = { result ->
+                                    if (generation == app.preferences.resetGeneration()) onTokenReceived(result)
+                                },
                                 onError = onError
                             )
                         },
                         onExchangeClaudeCode = { code, onTokenReceived, onError ->
                             lifecycleScope.launch {
+                                val generation = app.preferences.resetGeneration()
                                 val result = app.oauthManager.exchangeClaudeAuthCode(code)
-                                result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: getString(R.string.token_exchange_failed)) }
+                                if (generation == app.preferences.resetGeneration()) {
+                                    result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: getString(R.string.token_exchange_failed)) }
+                                }
                             }
                         },
                         onSaveAccount = { newAccount ->
@@ -297,6 +307,7 @@ class MainActivity : ComponentActivity() {
         val uri: Uri = intent?.data ?: return
         if (uri.scheme == "oot" && uri.host == "oauth") {
             lifecycleScope.launch {
+                val generation = app.preferences.resetGeneration()
                 val result = app.oauthManager.handleOAuthCallback(uri)
                 result.onSuccess { tokenResult ->
                     val newAccount = ProviderAccount(
@@ -308,7 +319,8 @@ class MainActivity : ComponentActivity() {
                         refreshToken = tokenResult.refreshToken,
                         tokenExpiresAt = tokenResult.expiresAt
                     )
-                    app.preferences.saveAccount(newAccount)
+                    // A reset while the callback was in flight cleared the accounts: do not put this one back.
+                    if (!app.preferences.saveAccountIfCurrent(newAccount, generation)) return@onSuccess
                     app.repository.refreshAll()
                     app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                     Toast.makeText(

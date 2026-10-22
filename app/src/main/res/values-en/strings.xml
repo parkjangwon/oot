@@ -66,7 +66,7 @@
     <string name="secure_storage_reset_confirm">Reset</string>
     <string name="secure_storage_reset_cancel">Cancel</string>
     <string name="secure_storage_reset_done">Storage reset. Add your accounts again.</string>
-    <string name="secure_storage_reset_failed">Couldn\'t reset storage. Try clearing app data.</string>
+    <string name="secure_storage_reset_failed">Accounts were removed, but secure storage still can\'t be opened. Try clearing app data.</string>
     <string name="toast_provider_added">%1$s added</string>
     <string name="toast_oauth_connected">%1$s connected</string>
     <string name="toast_auth_error">Sign-in failed: %1$s</string>
