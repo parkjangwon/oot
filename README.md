@@ -56,7 +56,7 @@ Screenshots use sample data only.
 | :--- | :--- | :--- |
 | <img src="docs/screenshots/vendors/vendor-claude.png" alt="" width="20" align="center"> **Claude** | API key or OAuth | OAuth: 5-hour and weekly usage windows as % left, with reset times. API key: remaining rate-limit tokens |
 | <img src="docs/screenshots/vendors/vendor-openai.png" alt="" width="20" align="center"> **OpenAI** | ChatGPT sign-in (OAuth) or API key | ChatGPT plan 5-hour and weekly windows as % left, with reset times; with an API key, remaining rate-limit tokens |
-| <img src="docs/screenshots/vendors/vendor-xai.png" alt="" width="20" align="center"> **xAI (Grok)** | API key or device-code login | Device-code login: weekly subscription quota as % left, with reset time. API key: account tier or remaining rate-limit tokens |
+| <img src="docs/screenshots/vendors/vendor-xai.png" alt="" width="20" align="center"> **xAI (Grok)** | API key or device-code login | Weekly subscription quota as % left, with reset time, when the billing endpoint answers (device-code login); otherwise the account tier or remaining rate-limit tokens |
 | <img src="docs/screenshots/vendors/vendor-zai.png" alt="" width="20" align="center"> **Z.ai (GLM)** | API key | GLM coding plan 5-hour and weekly quota as % left, with reset times |
 | <img src="docs/screenshots/vendors/vendor-openrouter.png" alt="" width="20" align="center"> **OpenRouter** | API key | Account credits in $, plus the key's own limit and what is left of it, when the key has one |
 | <img src="docs/screenshots/vendors/vendor-deepseek.png" alt="" width="20" align="center"> **DeepSeek** | API key | Remaining balance (USD or CNY) |
@@ -79,7 +79,7 @@ All trademarks and logos are the property of their respective owners and are use
 - JDK 21 and the Android SDK (compileSdk 35 — see `app/build.gradle.kts`).
 
 ```bash
-./gradlew assembleDebug assembleRelease testDebugUnitTest lintDebug  # build, tests and lint (same as CI)
+./gradlew assembleDebug assembleRelease testDebugUnitTest lintDebug  # build, tests and lint (the Gradle command CI runs)
 ./gradlew recordRoborazziDebug                                       # screenshots
 ```
 
