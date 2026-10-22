@@ -1117,7 +1117,7 @@ fun EmptyAccountsBanner(
             verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
         ) {
             Text(
-                text = "등록된 프로바이더가 없습니다",
+                text = "등록된 프로바이더가 없어요",
                 style = MaterialTheme.typography.titleMedium.copy(lineBreak = WordWrapFriendly),
                 color = MaterialTheme.colorScheme.onSurface,
             )
