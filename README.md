@@ -60,7 +60,7 @@ Screenshots use sample data only.
 1. Download `oot-vX.Y.Z.apk` from [the latest release](https://github.com/parkjangwon/oot/releases/latest).
 2. Open the file. If Android blocks the install, allow installs from unknown sources for the app you opened it with, then try again.
 
-**Important:** v1.1.0 is signed with a new release key. If you have an older oot build installed that was signed with a different key, uninstall it first and add your accounts again. Later updates can then be installed in-app.
+**Important:** v1.1.0 is signed with a new release key. If you have an older oot build installed that was signed with a different key, uninstall it first and add your providers again. Later updates can then be installed in-app.
 
 ## Build from source
 

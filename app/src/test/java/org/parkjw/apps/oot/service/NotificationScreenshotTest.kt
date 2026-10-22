@@ -31,7 +31,7 @@ class NotificationScreenshotTest {
     // Reset is rounded down to whole minutes when rendered; +30s keeps "N분" stable while the test runs.
     private fun resetIn(minutes: Long): Instant = Instant.now().plusSeconds(minutes * 60 + 30)
 
-    // Mirrors the debug demo (DebugDemoNotificationReceiver) plus one vendor whose text is too long to fit.
+    // Mirrors the debug demo (DebugDemoNotificationReceiver) with a long account name that must not reach the row text.
     private fun fakeUsages(): List<VendorUsage> = listOf(
         VendorUsage(
             accountId = "demo-claude",
@@ -64,20 +64,17 @@ class NotificationScreenshotTest {
             providerType = ProviderType.OPENROUTER,
             displayName = "or-demo@example.com",
             windows = listOf(
-                UsageWindow("credit", "credit", Remaining.Balance(12.40))
+                UsageWindow("credit", "credit", Remaining.Balance(12.40)),
+                UsageWindow("key", "키 한도 $20.00", Remaining.Balance(7.60))
             )
         ),
         VendorUsage(
-            accountId = "demo-antigravity-long",
+            accountId = "demo-antigravity",
             providerType = ProviderType.ANTIGRAVITY,
             displayName = "antigravity-very-long-demo-account-name@example.com",
             windows = listOf(
-                UsageWindow(
-                    "google",
-                    "Gemini 3 Pro 고급 추론 일일 한도 (아주 긴 라벨 예시)",
-                    Remaining.Percent(38.0),
-                    resetIn(4 * 60 + 20)
-                )
+                UsageWindow("google", "Google 모델", Remaining.Percent(62.0), resetIn(2 * 60)),
+                UsageWindow("third_party", "타사 모델", Remaining.Percent(18.0), resetIn(75))
             )
         )
     )

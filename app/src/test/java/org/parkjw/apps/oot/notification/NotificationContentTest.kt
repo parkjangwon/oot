@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.parkjw.apps.oot.data.model.Level
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
@@ -35,13 +36,14 @@ class NotificationContentTest {
         VendorUsage("id", provider, "acc", emptyList(), VendorError.Network)
 
     @Test
-    fun `collapsed puts errored vendors first then ascending remaining`() {
+    fun `collapsed follows user order and keeps errors in place`() {
         val high = vendor(90.0)
         val low = vendor(10.0, ProviderType.ZAI)
         val bal = balance(12.4)
         val err = errored()
         val items = NotificationContent.collapsedItems(listOf(high, bal, err, low), maxItems = 3)
-        assertEquals(listOf("X", "G", "Cl"), items.map { it.mark })
+        assertEquals(listOf("Cl", "R", "X"), items.map { it.mark })
+        assertTrue(items[2].isError)
     }
 
     @Test
@@ -102,11 +104,11 @@ class NotificationContentTest {
     }
 
     @Test
-    fun `text fallback joins sorted vendors`() {
+    fun `text fallback joins vendors in user order`() {
         val text = NotificationContent.textFallback(
             listOf(balance(12.4), errored(), vendor(62.0), vendor(98.0, ProviderType.ZAI))
         )
-        assertEquals("xAI 확인 필요 · Claude 62% · GLM 98% · OpenRouter $12.40", text)
+        assertEquals("OpenRouter $12.40 · xAI 확인 필요 · Claude 62% · GLM 98%", text)
     }
 
     @Test
@@ -208,6 +210,50 @@ class NotificationContentTest {
         assertNull(item.percent)
     }
 
+    private fun openRouterWithKeyLimit(
+        credit: Double,
+        keyRemaining: Double,
+        keyLimitLabel: String = "키 한도 $20.00"
+    ) = VendorUsage(
+        "id", ProviderType.OPENROUTER, "acc",
+        listOf(
+            UsageWindow("credit", "credit", Remaining.Balance(credit)),
+            UsageWindow("key", keyLimitLabel, Remaining.Balance(keyRemaining))
+        )
+    )
+
+    @Test
+    fun `openrouter notification shows smaller of balance and key remaining`() {
+        val item = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(12.4, 7.6))).single()
+        assertEquals("$7.60 남음", item.text)
+        assertEquals(38, item.percent)
+        assertEquals(Level.OK, item.level)
+    }
+
+    @Test
+    fun `openrouter key bar uses warning and danger levels`() {
+        val warn = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(100.0, 3.0))).single()
+        assertEquals(15, warn.percent)
+        assertEquals(Level.WARN, warn.level)
+        val danger = NotificationContent.expandedItems(listOf(openRouterWithKeyLimit(100.0, 0.4))).single()
+        assertEquals(2, danger.percent)
+        assertEquals(Level.DANGER, danger.level)
+    }
+
+    @Test
+    fun `openrouter without key limit has no bar`() {
+        val usage = VendorUsage(
+            "id", ProviderType.OPENROUTER, "acc",
+            listOf(UsageWindow("credit", "credit", Remaining.Balance(12.4)))
+        )
+        val expanded = NotificationContent.expandedItems(listOf(usage)).single()
+        assertEquals("$12.40 남음", expanded.text)
+        assertNull(expanded.percent)
+        val collapsed = NotificationContent.collapsedItems(listOf(usage), 3).single()
+        assertEquals("$12.40", collapsed.label)
+        assertNull(collapsed.percent)
+    }
+
     @Test
     fun `primary window label is hidden`() {
         val v = VendorUsage(
@@ -239,5 +285,39 @@ class NotificationContentTest {
             assertFalse(text.contains("sonnet"))
             assertFalse(text.contains("tok"))
         }
+    }
+
+    private fun antigravity(googlePercent: Double?, thirdPartyPercent: Double): VendorUsage = VendorUsage(
+        "id", ProviderType.ANTIGRAVITY, "acc",
+        listOfNotNull(
+            googlePercent?.let {
+                UsageWindow("google", "Google 모델", Remaining.Percent(it), now.plusSeconds(120 * 60))
+            },
+            UsageWindow("third_party", "타사 모델", Remaining.Percent(thirdPartyPercent), now.plusSeconds(30 * 60))
+        )
+    )
+
+    @Test
+    fun `antigravity expanded line shows only the Google window and its reset`() {
+        val item = NotificationContent.expandedItems(listOf(antigravity(62.0, 10.0)), now = now).single()
+        assertEquals("Antigravity", item.name)
+        assertEquals("Google 62% 남음 · 2시간 후 리셋", item.text)
+        assertEquals(62, item.percent)
+        assertFalse(item.text.contains("타사"))
+    }
+
+    @Test
+    fun `antigravity collapsed and text fallback use the Google window`() {
+        val usage = antigravity(62.0, 10.0)
+        val item = NotificationContent.collapsedItems(listOf(usage), maxItems = 3).single()
+        assertEquals("62% 남음", item.label)
+        assertEquals(62, item.percent)
+        assertEquals("Antigravity 62%", NotificationContent.textFallback(listOf(usage)))
+    }
+
+    @Test
+    fun `antigravity without a Google window falls back to its lowest window`() {
+        val item = NotificationContent.expandedItems(listOf(antigravity(null, 10.0)), now = now).single()
+        assertEquals("타사 10% 남음 · 30분 후 리셋", item.text)
     }
 }

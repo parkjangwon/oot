@@ -49,7 +49,8 @@ class DebugDemoNotificationReceiver : BroadcastReceiver() {
                 providerType = ProviderType.OPENROUTER,
                 displayName = "or-demo@example.com",
                 windows = listOf(
-                    UsageWindow("credit", "credit", Remaining.Balance(12.40))
+                    UsageWindow("credit", "credit", Remaining.Balance(12.40)),
+                    UsageWindow("key", "키 한도 $20.00", Remaining.Balance(7.60))
                 )
             )
         )
