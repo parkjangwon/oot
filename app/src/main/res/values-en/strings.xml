@@ -61,10 +61,7 @@
     <string name="exit_prompt">Press back again to exit</string>
     <string name="secure_storage_unavailable">Secure storage could not be opened. Account changes may be lost when the app restarts.</string>
     <string name="toast_provider_added">%1$s added</string>
-    <string name="toast_oauth_connected">%1$s connected</string>
-    <string name="toast_auth_error">Sign-in failed: %1$s</string>
     <string name="token_exchange_failed">Couldn\'t get a token</string>
-    <string name="account_name_subscription">%1$s (subscription)</string>
 
     <string name="provider_desc_openrouter">OpenRouter credits and balance</string>
     <string name="provider_desc_claude">Anthropic Claude usage and rate limits</string>
