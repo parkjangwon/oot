@@ -165,4 +165,42 @@ class TokenSyncRepositoryOrderTest {
 
         assertEquals(listOf("or", "glm", "ds"), repo.usageIds())
     }
+    // The "알림에 표시" toggle (#56) goes through the same committed storage and must survive the same restart.
+    @Test
+    fun `after a restart the notification keeps the drag order and leaves out hidden providers`() {
+        val prefs = prefsWithAll()
+        repository(prefs).applyAccountOrder(dragged)
+        prefs.setShownInNotification("ds", false)
+
+        val restartedPrefs = AccountPreferences(context)
+        val restarted = repository(restartedPrefs)
+        runBlocking { restarted.refreshAll() }
+
+        // The dashboard keeps every provider in the dragged order.
+        assertEquals(dragged, restarted.usageIds())
+        assertEquals(setOf("ds"), restartedPrefs.notificationHiddenAccountIds.value)
+        val notification = TokenNotificationManager(context) { restartedPrefs.notificationHiddenAccountIds.value }
+            .buildNotification(restarted.vendorUsages.value)
+        assertEquals(
+            "GLM 확인 필요 · OpenRouter 확인 필요 · xAI 확인 필요",
+            notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString(),
+        )
+    }
+
+    @Test
+    fun `hiding and showing never reorders, and a new provider goes last and is shown`() {
+        val prefs = prefsWithAll()
+        val repo = repository(prefs)
+        repo.applyAccountOrder(dragged)
+        prefs.setShownInNotification("glm", false)
+        prefs.setShownInNotification("glm", true)
+        prefs.saveAccount(ProviderAccount(id = "ds2", provider = ProviderType.DEEPSEEK, name = "ds2", authType = AuthType.API_KEY, apiKey = "sk-test-000"))
+
+        val restartedPrefs = AccountPreferences(context)
+        val restarted = repository(restartedPrefs)
+        runBlocking { restarted.refreshAll() }
+
+        assertEquals(dragged + "ds2", restarted.usageIds())
+        assertEquals(emptySet<String>(), restartedPrefs.notificationHiddenAccountIds.value)
+    }
 }

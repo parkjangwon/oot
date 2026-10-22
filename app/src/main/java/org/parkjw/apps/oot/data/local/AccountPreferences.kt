@@ -94,6 +94,7 @@ class AccountPreferences(context: Context) {
         persistAccounts(current)
     }
 
+    @Synchronized
     fun setShownInNotification(accountId: String, shown: Boolean) {
         val hidden = _notificationHiddenAccountIds.value.let { if (shown) it - accountId else it + accountId }
         _notificationHiddenAccountIds.value = hidden
@@ -135,7 +136,8 @@ class AccountPreferences(context: Context) {
 
     private fun persistNotificationHidden(accountIds: Set<String>) {
         try {
-            secureStorage.putString(KEY_NOTIFICATION_HIDDEN, json.encodeToString(accountIds))
+            // Same path as the drag order: committed, so a toggle survives a force-stop right after it.
+            secureStorage.putStringNow(KEY_NOTIFICATION_HIDDEN, json.encodeToString(accountIds))
         } catch (e: Exception) {
             e.printStackTrace()
         }
