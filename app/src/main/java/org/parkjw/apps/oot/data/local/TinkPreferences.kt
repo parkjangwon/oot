@@ -69,7 +69,11 @@ internal fun openTinkPreferences(
     deleteLegacy: (Context) -> Unit = ::deleteLegacyEncryptedPreferences,
 ): SharedPreferences {
     val store = AeadPreferences(context.getSharedPreferences(TINK_PREFS_NAME, Context.MODE_PRIVATE), openAead(context))
-    if (store.getString(MIGRATED_KEY, null) == MIGRATED_VALUE) {
+    // A corrupt marker must not block legacy import: treat decrypt failure as "not migrated".
+    val migrated = runCatching { store.getString(MIGRATED_KEY, null) }
+        .onFailure { Log.w(TAG, "could not read migration marker: $MIGRATED_KEY") }
+        .getOrNull()
+    if (migrated == MIGRATED_VALUE) {
         deleteLegacy(context)
         return store
     }

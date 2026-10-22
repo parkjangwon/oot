@@ -193,6 +193,20 @@ class TinkMigrationTest {
     }
 
     @Test
+    fun `an unreadable migration marker still migrates from a readable legacy store`() {
+        seedOld()
+        tinkFile().edit().putString("oot_tink_migrated", "not-a-sealed-value").commit()
+
+        val storage = SecureStorage(context, openEncrypted = { open() })
+
+        assertEquals(StorageStatus.ENCRYPTED, storage.status)
+        assertTrue(storage.getString("oot_accounts", null)!!.contains("sk-test-000"))
+        assertEquals("30", storage.getString("oot_refresh_interval", null))
+        assertTrue(oldStore().all.isEmpty())
+        assertEquals("1", open(legacy = null).getString("oot_tink_migrated", null))
+    }
+
+    @Test
     fun `a value already in the Tink store wins over the old one and the rest still migrates`() {
         seedOld()
         open(legacy = null).edit().putString("oot_refresh_interval", "99").commit()
