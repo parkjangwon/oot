@@ -10,8 +10,15 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import org.parkjw.apps.oot.data.model.ProviderAccount
 
-class AccountPreferences(context: Context) {
-    private val secureStorage = SecureStorage(context)
+class AccountPreferences(
+    context: Context,
+    private val secureStorage: SecureStorage = SecureStorage(
+        context,
+        resolveConflict = { key, encrypted, legacy -> mergeStoredValue(key, encrypted, legacy) },
+    ),
+) {
+    val isSecureStorageAvailable: Boolean get() = secureStorage.status == StorageStatus.ENCRYPTED
+
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = false }
 
     private val _accounts = MutableStateFlow<List<ProviderAccount>>(emptyList())
@@ -184,6 +191,35 @@ class AccountPreferences(context: Context) {
         ): List<ProviderAccount> {
             val byId = accounts.associateBy { it.id }
             return mergeAccountOrder(savedOrder, accounts.map { it.id }).mapNotNull { byId[it] }
+        }
+
+        private val mergeJson = Json { ignoreUnknownKeys = true; prettyPrint = false }
+
+        /** Resolves a key found in both the encrypted and the legacy plaintext store. */
+        internal fun mergeStoredValue(key: String, encrypted: String, legacy: String): String = when (key) {
+            KEY_ACCOUNTS -> mergeAccounts(encrypted, legacy)
+            KEY_NOTIFICATION_HIDDEN, KEY_ACCOUNT_ORDER -> mergeIdLists(encrypted, legacy)
+            else -> legacy
+        }
+
+        private fun mergeAccounts(encrypted: String, legacy: String): String {
+            val byId = LinkedHashMap<String, ProviderAccount>()
+            decodeAccounts(mergeJson, legacy).accounts.forEach { byId[it.id] = it }
+            decodeAccounts(mergeJson, encrypted).accounts.forEach { byId.putIfAbsent(it.id, it) }
+            return mergeJson.encodeToString(byId.values.toList())
+        }
+
+        private fun mergeIdLists(encrypted: String, legacy: String): String {
+            val ids = LinkedHashSet<String>()
+            ids += decodeIdList(mergeJson, legacy)
+            ids += decodeIdList(mergeJson, encrypted)
+            return mergeJson.encodeToString(ids.toList())
+        }
+
+        private fun decodeIdList(json: Json, raw: String): List<String> = try {
+            json.decodeFromString<List<String>>(raw)
+        } catch (e: Exception) {
+            emptyList()
         }
 
         private const val KEY_ACCOUNTS = "oot_accounts"
