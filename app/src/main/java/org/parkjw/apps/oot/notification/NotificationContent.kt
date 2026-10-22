@@ -57,7 +57,7 @@ object NotificationContent {
         ProviderType.CLAUDE -> "Cl"
         ProviderType.OPENAI -> "O"
         ProviderType.XAI -> "X"
-        ProviderType.ZAI -> "G"
+        ProviderType.ZAI -> "Z"
         ProviderType.ANTIGRAVITY -> "A"
         ProviderType.DEEPSEEK -> "D"
         ProviderType.OLLAMA_CLOUD -> "OL"
