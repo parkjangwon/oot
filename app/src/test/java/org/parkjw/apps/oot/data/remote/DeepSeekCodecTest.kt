@@ -54,6 +54,32 @@ class DeepSeekCodecTest {
         assertEquals("USD", usd.currency)
     }
 
+    // -- null or wrong-typed nested values --
+
+    @Test
+    fun `null balance_infos is treated as missing`() {
+        assertNull(DeepSeekCodec.parse("""{"balance_infos": null}""", json))
+        assertNull(DeepSeekCodec.parse("""{"balance_infos": {}}""", json))
+    }
+
+    @Test
+    fun `null or non-object balance entries are skipped`() {
+        val windows = DeepSeekCodec.parse(
+            """{"balance_infos": [null, "oops", {"total_balance": "5.00"}]}""",
+            json
+        )!!
+        assertEquals(1, windows.size)
+        assertEquals(5.0, (windows.single().remaining as Remaining.Balance).amountLeft, 0.001)
+    }
+
+    @Test
+    fun `non-primitive balance fields are treated as missing`() {
+        assertEquals(
+            emptyList<Nothing>(),
+            DeepSeekCodec.parse("""{"balance_infos": [{"total_balance": {}}]}""", json)
+        )
+    }
+
     // -- empty fixture --
 
     @Test
