@@ -3,14 +3,12 @@ package org.parkjw.apps.oot.data.local
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 
 enum class StorageStatus { ENCRYPTED, UNAVAILABLE }
 
 class SecureStorage internal constructor(
     context: Context,
-    openEncrypted: (Context) -> SharedPreferences = ::openEncryptedPreferences,
+    openEncrypted: (Context) -> SharedPreferences = { openTinkPreferences(it) },
     private val legacyPrefsName: String = LEGACY_PREFS_NAME,
     // A legacy plaintext file can be an orphan left by v1.3.1 after a transient failure, older than the
     // encrypted store, and stale OAuth refresh tokens must not overwrite newer ones: the encrypted value wins.
@@ -186,21 +184,6 @@ class SecureStorage internal constructor(
     }
 }
 
-private const val ENCRYPTED_PREFS_NAME = "oot_secure_prefs"
 private const val LEGACY_PREFS_NAME = "oot_fallback_prefs"
 private const val MARKER_KEY = "oot_legacy_migrated"
 private const val MARKER_VALUE = "1"
-
-private fun openEncryptedPreferences(context: Context): SharedPreferences {
-    val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-
-    return EncryptedSharedPreferences.create(
-        context,
-        ENCRYPTED_PREFS_NAME,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
-}
