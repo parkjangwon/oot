@@ -1,6 +1,7 @@
 package org.parkjw.apps.oot.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -47,6 +48,7 @@ class SettingsScreenScreenshotTest {
                 )
             }
         }
+        composeRule.onNodeWithText("GitHub").assertExists()
         composeRule.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
     }
 

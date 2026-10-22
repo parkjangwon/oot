@@ -13,7 +13,7 @@
     <string name="settings_refresh_interval_minutes">%1$d분</string>
     <string name="settings_refresh_interval_battery_note">짧은 간격은 배터리를 더 써요</string>
     <string name="settings_version">버전</string>
-    <string name="settings_source_code">소스 코드</string>
+    <string name="settings_source_code">GitHub</string>
     <string name="update_check">업데이트 확인</string>
     <string name="update_auto">자동으로 업데이트 확인</string>
     <string name="update_auto_desc">앱을 켤 때 하루 한 번 확인해요</string>

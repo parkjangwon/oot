@@ -3,39 +3,104 @@ package org.parkjw.apps.oot.data.remote
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.parkjw.apps.oot.data.model.AuthType
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
+import org.parkjw.apps.oot.data.model.VendorError
+import org.parkjw.apps.oot.data.oauth.OAuthManager
+import java.io.IOException
 import java.util.Locale
 
 class OpenAiApi(
     private val client: OkHttpClient,
-    private val json: Json
+    private val json: Json,
+    private val oauthManager: OAuthManager? = null,
+    private val onAccountRefreshed: (ProviderAccount) -> Unit = {}
 ) {
     suspend fun fetchStatus(account: ProviderAccount): TokenStatus = withContext(Dispatchers.IO) {
-        val credential = account.activeCredential()
+        val credential = account.activeCredential().trim()
         if (credential.isBlank()) {
-            return@withContext TokenStatus(
-                accountId = account.id,
-                provider = ProviderType.OPENAI,
-                accountName = account.name,
-                remainingFormatted = "인증 토큰 없음",
-                statusSummary = "토큰 필요",
-                isError = true,
-                errorMessage = "OAuth 로그인 또는 API 키가 필요합니다."
+            return@withContext errorStatus(
+                account,
+                openAiErrorText(VendorError.Unknown("OAuth 로그인 또는 API 키가 필요합니다."))
             )
         }
 
-        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.OPENAI.baseUrl
-        val authHeader = if (credential.startsWith("Bearer ", ignoreCase = true)) credential else "Bearer $credential"
+        val isOAuth = account.authType == AuthType.OAUTH ||
+            credential.startsWith("Bearer ", ignoreCase = true)
+        val cleanToken = credential.removePrefix("Bearer ").trim()
 
-        try {
-            // Check models & rate-limits
+        if (isOAuth) {
+            return@withContext fetchWhamUsage(account, cleanToken, allowRefresh = true)
+        }
+
+        fetchApiKeyStatus(account, cleanToken)
+    }
+
+    private suspend fun fetchWhamUsage(
+        account: ProviderAccount,
+        token: String,
+        allowRefresh: Boolean
+    ): TokenStatus {
+        val requestBuilder = Request.Builder()
+            .url(WHAM_USAGE_URL)
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("Accept", "application/json")
+        account.chatgptAccountId?.takeIf { it.isNotBlank() }?.let {
+            requestBuilder.addHeader("ChatGPT-Account-Id", it)
+        }
+        val request = requestBuilder.build()
+
+        val response = try {
+            client.newCall(request).execute()
+        } catch (_: IOException) {
+            return errorStatus(account, openAiErrorText(VendorError.Network))
+        } catch (_: Exception) {
+            return errorStatus(account, openAiErrorText(VendorError.Network))
+        }
+
+        response.use { resp ->
+            when {
+                resp.isSuccessful -> {
+                    val body = resp.body?.string().orEmpty()
+                    val windows = parseOpenAiWhamUsage(body, json)
+                        ?: return errorStatus(account, openAiErrorText(VendorError.Parse))
+                    return openAiOAuthSuccessStatus(account, windows)
+                }
+                resp.code == 401 -> {
+                    if (!allowRefresh || oauthManager == null) {
+                        return errorStatus(account, openAiErrorText(VendorError.Unauthorized))
+                    }
+                    val refreshed = try {
+                        oauthManager.refreshTokenIfNeeded(account, force = true)
+                    } catch (_: Exception) {
+                        account
+                    }
+                    if (refreshed == account || refreshed.refreshToken.isNullOrBlank()) {
+                        return errorStatus(account, openAiErrorText(VendorError.Unauthorized))
+                    }
+                    onAccountRefreshed(refreshed)
+                    return fetchWhamUsage(
+                        refreshed,
+                        refreshed.activeCredential().trim().removePrefix("Bearer ").trim(),
+                        allowRefresh = false
+                    )
+                }
+                else -> {
+                    return errorStatus(account, openAiErrorText(mapOpenAiHttpError(resp.code)))
+                }
+            }
+        }
+    }
+
+    private fun fetchApiKeyStatus(account: ProviderAccount, credential: String): TokenStatus {
+        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.OPENAI.baseUrl
+        val authHeader = "Bearer $credential"
+
+        return try {
             val request = Request.Builder()
                 .url("$baseUrl/models")
                 .addHeader("Authorization", authHeader)
@@ -51,25 +116,9 @@ class OpenAiApi(
                         )
                     }
                     if (response.code == 401) {
-                        return@withContext TokenStatus(
-                            accountId = account.id,
-                            provider = ProviderType.OPENAI,
-                            accountName = account.name,
-                            remainingFormatted = "인증 만료/실패",
-                            statusSummary = "인증 실패 (401)",
-                            isError = true,
-                            errorMessage = "인증이 만료되었습니다. 다시 로그인해주세요."
-                        )
+                        return errorStatus(account, openAiErrorText(VendorError.Unauthorized))
                     }
-                    return@withContext TokenStatus(
-                        accountId = account.id,
-                        provider = ProviderType.OPENAI,
-                        accountName = account.name,
-                        remainingFormatted = "HTTP ${response.code}",
-                        statusSummary = "오류 (${response.code})",
-                        isError = true,
-                        errorMessage = "서버 응답 코드: ${response.code}"
-                    )
+                    return errorStatus(account, openAiErrorText(mapOpenAiHttpError(response.code)))
                 }
 
                 val limitTokens = response.header("x-ratelimit-limit-tokens")?.toLongOrNull()
@@ -79,9 +128,11 @@ class OpenAiApi(
 
                 if (limitTokens != null && remainingTokens != null && limitTokens > 0) {
                     val used = limitTokens - remainingTokens
-                    val percent = ((used.toDouble() / limitTokens.toDouble()) * 100).toFloat().coerceIn(0f, 100f)
+                    val percent = ((used.toDouble() / limitTokens.toDouble()) * 100)
+                        .toFloat()
+                        .coerceIn(0f, 100f)
 
-                    return@withContext TokenStatus(
+                    return TokenStatus(
                         accountId = account.id,
                         provider = ProviderType.OPENAI,
                         accountName = account.name,
@@ -106,15 +157,24 @@ class OpenAiApi(
                 )
             }
         } catch (e: Exception) {
-            TokenStatus(
-                accountId = account.id,
-                provider = ProviderType.OPENAI,
-                accountName = account.name,
-                remainingFormatted = "네트워크 오류",
-                statusSummary = "연결 실패",
-                isError = true,
+            errorStatus(account, openAiErrorText(VendorError.Network)).copy(
                 errorMessage = e.localizedMessage ?: "연결 실패"
             )
         }
+    }
+
+    private fun errorStatus(account: ProviderAccount, text: String): TokenStatus = TokenStatus(
+        accountId = account.id,
+        provider = ProviderType.OPENAI,
+        accountName = account.name,
+        remainingFormatted = text,
+        statusSummary = "확인 필요",
+        isError = true,
+        errorMessage = text
+    )
+
+    companion object {
+        // Codex backend-client PathStyle::ChatGptApi + rate_limit_status_url
+        const val WHAM_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
     }
 }

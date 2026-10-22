@@ -11,9 +11,11 @@ import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import org.parkjw.apps.oot.R
+import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.notification.NotificationContent
 import org.parkjw.apps.oot.ui.MainActivity
+import org.parkjw.apps.oot.ui.VendorLogo
 
 class TokenNotificationManager(private val context: Context) {
 
@@ -21,11 +23,13 @@ class TokenNotificationManager(private val context: Context) {
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     private val collapsedItemIds = intArrayOf(R.id.item0, R.id.item1, R.id.item2)
+    private val collapsedLogoIds = intArrayOf(R.id.logo0, R.id.logo1, R.id.logo2)
     private val collapsedMarkIds = intArrayOf(R.id.mark0, R.id.mark1, R.id.mark2)
     private val collapsedBarIds = intArrayOf(R.id.bar0, R.id.bar1, R.id.bar2)
     private val collapsedLabelIds = intArrayOf(R.id.label0, R.id.label1, R.id.label2)
 
     private val expandedRowIds = intArrayOf(R.id.row0, R.id.row1, R.id.row2, R.id.row3, R.id.row4, R.id.row5, R.id.row6, R.id.row7)
+    private val expandedLogoIds = intArrayOf(R.id.logo0, R.id.logo1, R.id.logo2, R.id.logo3, R.id.logo4, R.id.logo5, R.id.logo6, R.id.logo7)
     private val expandedMarkIds = intArrayOf(R.id.mark0, R.id.mark1, R.id.mark2, R.id.mark3, R.id.mark4, R.id.mark5, R.id.mark6, R.id.mark7)
     private val expandedNameIds = intArrayOf(R.id.name0, R.id.name1, R.id.name2, R.id.name3, R.id.name4, R.id.name5, R.id.name6, R.id.name7)
     private val expandedTextIds = intArrayOf(R.id.text0, R.id.text1, R.id.text2, R.id.text3, R.id.text4, R.id.text5, R.id.text6, R.id.text7)
@@ -72,9 +76,9 @@ class TokenNotificationManager(private val context: Context) {
 
         if (usages.isEmpty()) {
             return NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_oot_token)
+                .setSmallIcon(R.drawable.ic_stat_oot)
                 .setContentTitle("OOT: 토큰 모니터")
-                .setContentText("등록된 AI 계정이 없습니다. 앱에서 추가해주세요.")
+                .setContentText("등록된 프로바이더가 없습니다. 앱에서 추가해주세요.")
                 .setContentIntent(openAppPendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
@@ -91,7 +95,7 @@ class TokenNotificationManager(private val context: Context) {
         val summary = NotificationContent.textFallback(usages)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_oot_token)
+            .setSmallIcon(R.drawable.ic_stat_oot)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(summary)
             .setTicker(summary)
@@ -131,7 +135,7 @@ class TokenNotificationManager(private val context: Context) {
             }
             val item = items[i]
             views.setViewVisibility(collapsedItemIds[i], View.VISIBLE)
-            views.setTextViewText(collapsedMarkIds[i], item.mark)
+            bindVendorMark(views, collapsedLogoIds[i], collapsedMarkIds[i], item.provider, item.mark)
             views.setTextViewText(collapsedLabelIds[i], item.label)
             if (item.percent == null) {
                 views.setViewVisibility(collapsedBarIds[i], View.GONE)
@@ -159,7 +163,7 @@ class TokenNotificationManager(private val context: Context) {
             }
             val item = items[i]
             views.setViewVisibility(expandedRowIds[i], View.VISIBLE)
-            views.setTextViewText(expandedMarkIds[i], item.mark)
+            bindVendorMark(views, expandedLogoIds[i], expandedMarkIds[i], item.provider, item.mark)
             views.setTextViewText(expandedNameIds[i], item.name)
             views.setTextViewText(expandedTextIds[i], item.text)
             if (item.isError) {
@@ -175,6 +179,29 @@ class TokenNotificationManager(private val context: Context) {
             }
         }
         return views
+    }
+
+    // Mono logos tinted with notification text color; letter mark when no official asset.
+    private fun bindVendorMark(
+        views: RemoteViews,
+        logoId: Int,
+        markId: Int,
+        provider: ProviderType,
+        mark: String,
+    ) {
+        val logo = VendorLogo.of(provider)
+        val tint = context.getColor(R.color.notif_text_primary)
+        if (logo != null) {
+            views.setViewVisibility(logoId, View.VISIBLE)
+            views.setViewVisibility(markId, View.GONE)
+            views.setImageViewResource(logoId, logo.mono)
+            views.setInt(logoId, "setColorFilter", tint)
+        } else {
+            views.setViewVisibility(logoId, View.GONE)
+            views.setViewVisibility(markId, View.VISIBLE)
+            views.setTextViewText(markId, mark)
+            views.setTextColor(markId, tint)
+        }
     }
 
     fun updateNotification(usages: List<VendorUsage>) {

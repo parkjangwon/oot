@@ -37,7 +37,7 @@ Screenshots use sample data only.
   - Low items are highlighted at **20% left** and turn red at **5%**.
 - **Persistent notification**
   - Collapsed: a single line with the 2–3 lowest items, errored vendors first.
-  - Expanded: one line per vendor, showing the lower of its windows and that window's reset time.
+  - Expanded: one line per vendor, showing its 5-hour window when it has one (otherwise its lowest window) and that window's reset time.
   - Every notification also carries a plain-text summary (for example `Claude 62% · OpenRouter $12.40`), so it stays readable on devices that render custom notification layouts poorly.
 - **In-app update**
   - Checks GitHub Releases on launch, at most once a day (toggle in Settings).
@@ -60,7 +60,7 @@ Screenshots use sample data only.
 1. Download `oot-vX.Y.Z.apk` from [the latest release](https://github.com/parkjangwon/oot/releases/latest).
 2. Open the file. If Android blocks the install, allow installs from unknown sources for the app you opened it with, then try again.
 
-**Important:** v1.1.0 is signed with a new release key. If you have an older oot build installed that was signed with a different key, uninstall it first and add your accounts again. Later updates can then be installed in-app.
+**Important:** v1.1.0 is signed with a new release key. If you have an older oot build installed that was signed with a different key, uninstall it first and add your providers again. Later updates can then be installed in-app.
 
 ## Build from source
 
@@ -81,3 +81,5 @@ Tokens and API keys are stored locally in encrypted storage (`EncryptedSharedPre
 ## License
 
 No license has been chosen yet.
+
+Vendor logos are trademarks of their respective owners. See [docs/third-party-logos.md](docs/third-party-logos.md).

@@ -14,6 +14,14 @@ val hasReleaseSigning =
         System.getenv("OOT_KEY_PASSWORD"),
     ).all { !it.isNullOrBlank() }
 
+// Antigravity's Google OAuth client is an installed-app client and needs its client secret on every token call.
+// Never committed: CI passes it from a repository secret, local builds use the env var or a gradle property.
+val antigravityClientSecret =
+    (System.getenv("OOT_ANTIGRAVITY_CLIENT_SECRET")?.takeIf { it.isNotBlank() }
+        ?: providers.gradleProperty("OOT_ANTIGRAVITY_CLIENT_SECRET").orNull)
+        .orEmpty()
+        .trim()
+
 val appVersionName = version.toString()
 
 val appVersionCode =
@@ -45,6 +53,11 @@ android {
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
+        buildConfigField(
+            "String",
+            "ANTIGRAVITY_CLIENT_SECRET",
+            "\"${antigravityClientSecret.replace("\\", "\\\\").replace("\"", "\\\"")}\"",
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

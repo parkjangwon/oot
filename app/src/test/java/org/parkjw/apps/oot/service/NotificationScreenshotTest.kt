@@ -28,45 +28,56 @@ import java.time.Instant
 @Config(sdk = [35])
 class NotificationScreenshotTest {
 
-    // Same fake set as the debug demo (DebugDemoNotificationReceiver).
-    private fun fakeUsages(): List<VendorUsage> {
-        val now = Instant.now()
-        return listOf(
-            VendorUsage(
-                accountId = "demo-claude",
-                providerType = ProviderType.CLAUDE,
-                displayName = "claude-demo@example.com",
-                windows = listOf(
-                    UsageWindow("five_hour", "5시간", Remaining.Percent(62.0), now.plusSeconds(100 * 60)),
-                    UsageWindow("seven_day", "주간", Remaining.Percent(81.0), null)
-                )
-            ),
-            VendorUsage(
-                accountId = "demo-glm",
-                providerType = ProviderType.ZAI,
-                displayName = "glm-demo@example.com",
-                windows = listOf(
-                    UsageWindow("monthly", "월간", Remaining.Percent(98.0), null)
-                )
-            ),
-            VendorUsage(
-                accountId = "demo-xai",
-                providerType = ProviderType.XAI,
-                displayName = "xai-demo@example.com",
-                windows = listOf(
-                    UsageWindow("primary", "primary", Remaining.Percent(14.0), null)
-                )
-            ),
-            VendorUsage(
-                accountId = "demo-openrouter",
-                providerType = ProviderType.OPENROUTER,
-                displayName = "or-demo@example.com",
-                windows = listOf(
-                    UsageWindow("credit", "credit", Remaining.Balance(12.40))
-                )
+    // Reset is rounded down to whole minutes when rendered; +30s keeps "N분" stable while the test runs.
+    private fun resetIn(minutes: Long): Instant = Instant.now().plusSeconds(minutes * 60 + 30)
+
+    // Mirrors the debug demo (DebugDemoNotificationReceiver) with a long account name that must not reach the row text.
+    private fun fakeUsages(): List<VendorUsage> = listOf(
+        VendorUsage(
+            accountId = "demo-claude",
+            providerType = ProviderType.CLAUDE,
+            displayName = "claude-demo@example.com",
+            windows = listOf(
+                UsageWindow("five_hour", "5시간", Remaining.Percent(62.0), resetIn(100)),
+                UsageWindow("seven_day", "주간", Remaining.Percent(81.0), resetIn(3 * 24 * 60))
+            )
+        ),
+        VendorUsage(
+            accountId = "demo-glm",
+            providerType = ProviderType.ZAI,
+            displayName = "glm-demo@example.com",
+            windows = listOf(
+                UsageWindow("five_hour", "5시간", Remaining.Percent(98.0), resetIn(3 * 60 + 27)),
+                UsageWindow("seven_day", "주간", Remaining.Percent(71.0), resetIn(4 * 24 * 60))
+            )
+        ),
+        VendorUsage(
+            accountId = "demo-xai",
+            providerType = ProviderType.XAI,
+            displayName = "xai-demo@example.com",
+            windows = listOf(
+                UsageWindow("weekly", "주간", Remaining.Percent(14.0), resetIn(2 * 24 * 60))
+            )
+        ),
+        VendorUsage(
+            accountId = "demo-openrouter",
+            providerType = ProviderType.OPENROUTER,
+            displayName = "or-demo@example.com",
+            windows = listOf(
+                UsageWindow("credit", "credit", Remaining.Balance(12.40)),
+                UsageWindow("key", "키 한도 $20.00", Remaining.Balance(7.60))
+            )
+        ),
+        VendorUsage(
+            accountId = "demo-antigravity",
+            providerType = ProviderType.ANTIGRAVITY,
+            displayName = "antigravity-very-long-demo-account-name@example.com",
+            windows = listOf(
+                UsageWindow("google", "Google 모델", Remaining.Percent(62.0), resetIn(2 * 60)),
+                UsageWindow("third_party", "타사 모델", Remaining.Percent(18.0), resetIn(75))
             )
         )
-    }
+    )
 
     @Test
     @Config(qualifiers = "w360dp-h800dp-notnight")
@@ -96,6 +107,38 @@ class NotificationScreenshotTest {
     @Config(qualifiers = "w412dp-h800dp-night")
     fun notifExpanded412Dark() {
         captureExpanded(412, "notif-expanded-412-dark.png")
+    }
+
+    // 3x (xxhdpi) captures, the density real phones render notifications at.
+    // Qualifier order matters: night mode must come before the density (Robolectric rejects ...-xxhdpi-night).
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifCollapsed412Light3x() {
+        captureCollapsed(412, "notif-collapsed-412-light-3x.png")
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifExpanded412Light3x() {
+        captureExpanded(412, "notif-expanded-412-light-3x.png")
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
+    fun notifCollapsed412Dark3x() {
+        captureCollapsed(412, "notif-collapsed-412-dark-3x.png")
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
+    fun notifExpanded412Dark3x() {
+        captureExpanded(412, "notif-expanded-412-dark-3x.png")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-notnight-xxhdpi")
+    fun notifCollapsed360Light3x() {
+        captureCollapsed(360, "notif-collapsed-360-light-3x.png")
     }
 
     // 14% used to pick the amber "warn" entry; that color no longer exists.

@@ -1,158 +1,154 @@
 package org.parkjw.apps.oot.data.remote
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.parkjw.apps.oot.data.model.AuthType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
+import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.TokenStatus
+import org.parkjw.apps.oot.data.model.UsageWindow
+import org.parkjw.apps.oot.data.model.VendorError
+import org.parkjw.apps.oot.data.oauth.OAuthManager
 import java.util.Locale
 
+// Google Antigravity quota through the Cloud Code endpoints documented by the open-source CodexBar provider.
+// Only an OAuth access token can read it; the parsing lives in AntigravityUsageCodec.
 class AntigravityApi(
     private val client: OkHttpClient,
-    private val json: Json
+    private val json: Json,
+    private val oauthManager: OAuthManager,
+    private val onAccountRefreshed: (ProviderAccount) -> Unit
 ) {
+    private class HttpResult(val code: Int, val body: String)
+
     suspend fun fetchStatus(account: ProviderAccount): TokenStatus = withContext(Dispatchers.IO) {
         val credential = account.activeCredential().trim()
-        if (credential.isBlank()) {
-            return@withContext TokenStatus(
-                accountId = account.id,
-                provider = ProviderType.ANTIGRAVITY,
-                accountName = account.name,
-                remainingFormatted = "토큰 없음",
-                statusSummary = "로그인 필요",
-                isError = true,
-                errorMessage = "Google Antigravity OAuth 로그인 또는 Gemini API Key를 등록해주세요."
-            )
+        if (credential.isBlank()) return@withContext errorStatus(account, "Google 로그인 필요")
+        // A Gemini API key cannot read Cloud Code quota.
+        if (credential.startsWith("AIza")) return@withContext errorStatus(account, "Google 로그인 필요 (API 키 미지원)")
+
+        var result = fetchQuota(credential.bearerToken())
+        if (result is AntigravityQuotaResult.Failure && result.error == VendorError.Unauthorized) {
+            result = refreshAndRetry(account) ?: result
         }
-
-        val isOAuth = account.authType == AuthType.OAUTH || credential.startsWith("Bearer ", ignoreCase = true) || !credential.startsWith("AIza")
-        val cleanToken = credential.removePrefix("Bearer ").trim()
-
-        if (isOAuth) {
-            val userinfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo"
-            val tokeninfoUrl = "https://oauth2.googleapis.com/tokeninfo?access_token=$cleanToken"
-
-            try {
-                val userReq = Request.Builder()
-                    .url(userinfoUrl)
-                    .addHeader("Authorization", "Bearer $cleanToken")
-                    .build()
-
-                client.newCall(userReq).execute().use { response ->
-                    if (response.code == 429) {
-                        return@withContext rateLimitedTokenStatus(
-                            account,
-                            ProviderType.ANTIGRAVITY,
-                            response.header("Retry-After"),
-                        )
-                    }
-                    if (response.code == 401) {
-                        return@withContext TokenStatus(
-                            accountId = account.id,
-                            provider = ProviderType.ANTIGRAVITY,
-                            accountName = account.name,
-                            remainingFormatted = "인증 만료 (401)",
-                            statusSummary = "재로그인 필요",
-                            isError = true,
-                            errorMessage = "Google OAuth 토큰이 만료되었습니다. 다시 로그인해주세요."
-                        )
-                    }
-
-                    if (response.isSuccessful) {
-                        val body = response.body?.string().orEmpty()
-                        val root = try { json.parseToJsonElement(body).jsonObject } catch (e: Exception) { null }
-                        val email = root?.get("email")?.jsonPrimitive?.content ?: account.name
-                        val name = root?.get("name")?.jsonPrimitive?.content ?: ""
-
-                        // Check token expiry via tokeninfo
-                        var expiryMinutes: Long? = null
-                        try {
-                            val tokenReq = Request.Builder().url(tokeninfoUrl).build()
-                            client.newCall(tokenReq).execute().use { tResp ->
-                                if (tResp.isSuccessful) {
-                                    val tBody = tResp.body?.string().orEmpty()
-                                    val tRoot = try { json.parseToJsonElement(tBody).jsonObject } catch (e: Exception) { null }
-                                    val expSeconds = tRoot?.get("expires_in")?.jsonPrimitive?.longOrNull
-                                    if (expSeconds != null) {
-                                        expiryMinutes = expSeconds / 60
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            // ignore
-                        }
-
-                        val expiryText = expiryMinutes?.let { " (토큰 갱신: ${it}분 후)" } ?: ""
-                        val subtitle = buildString {
-                            append("계정: $email$expiryText")
-                            append(" | Gemini 2.0 / Pro / Flash 에이전트 활성")
-                        }
-
-                        return@withContext TokenStatus(
-                            accountId = account.id,
-                            provider = ProviderType.ANTIGRAVITY,
-                            accountName = account.name,
-                            remainingFormatted = "Google Antigravity 연동됨",
-                            totalLimitFormatted = subtitle,
-                            statusSummary = "AGY 정상",
-                            isWarning = false
-                        )
-                    }
+        when (val outcome = result) {
+            is AntigravityQuotaResult.Success -> successStatus(account, outcome.windows)
+            is AntigravityQuotaResult.Failure ->
+                if (outcome.error == VendorError.RateLimited) {
+                    rateLimitedTokenStatus(account, ProviderType.ANTIGRAVITY, retryAfterHeader = null)
+                } else {
+                    errorStatus(account, claudeErrorText(outcome.error))
                 }
-            } catch (e: Exception) {
-                // fall through
-            }
-        } else {
-            // Gemini API Key check
-            val geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=$cleanToken"
-            try {
-                val req = Request.Builder().url(geminiUrl).build()
-                client.newCall(req).execute().use { response ->
-                    if (response.isSuccessful) {
-                        return@withContext TokenStatus(
-                            accountId = account.id,
-                            provider = ProviderType.ANTIGRAVITY,
-                            accountName = account.name,
-                            remainingFormatted = "Gemini API 정상 연동",
-                            totalLimitFormatted = "Gemini 2.0 / 1.5 Pro 모델 활성",
-                            statusSummary = "Gemini 정상",
-                            isWarning = false
-                        )
-                    } else if (response.code == 429) {
-                        return@withContext rateLimitedTokenStatus(
-                            account,
-                            ProviderType.ANTIGRAVITY,
-                            response.header("Retry-After"),
-                        )
-                    } else {
-                        return@withContext TokenStatus(
-                            accountId = account.id,
-                            provider = ProviderType.ANTIGRAVITY,
-                            accountName = account.name,
-                            remainingFormatted = "인증 실패 (${response.code})",
-                            statusSummary = "키 오류",
-                            isError = true,
-                            errorMessage = "유효하지 않은 Gemini API Key입니다."
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                // fall through
-            }
         }
+    }
 
-        TokenStatus(
+    // 401: refresh once and retry. Null means there was nothing to refresh with, so the 401 stands.
+    private suspend fun refreshAndRetry(account: ProviderAccount): AntigravityQuotaResult? {
+        if (!oauthManager.isAntigravityConfigured) {
+            return AntigravityQuotaResult.Failure(VendorError.Unknown(OAuthManager.ANTIGRAVITY_NOT_CONFIGURED))
+        }
+        if (account.refreshToken.isNullOrBlank()) return null
+        val refreshed = try {
+            oauthManager.refreshTokenIfNeeded(account, force = true)
+        } catch (e: Exception) {
+            Log.w(TAG, "token refresh attempt threw error=${e.javaClass.simpleName}")
+            return null
+        }
+        if (refreshed == account) {
+            Log.w(TAG, "token refresh failed -> Unauthorized")
+            return null
+        }
+        onAccountRefreshed(refreshed)
+        Log.i(TAG, "token refresh ok, retrying quota once")
+        return fetchQuota(refreshed.activeCredential().bearerToken())
+    }
+
+    private fun fetchQuota(token: String): AntigravityQuotaResult {
+        val assist = post(LOAD_CODE_ASSIST_URL, token, LOAD_CODE_ASSIST_BODY)
+            ?: return AntigravityQuotaResult.Failure(VendorError.Network)
+        if (assist.code !in 200..299) return AntigravityQuotaResult.Failure(mapAntigravityHttpError(assist.code))
+        val codeAssist = parseAntigravityCodeAssist(assist.body, json)
+            ?: return AntigravityQuotaResult.Failure(VendorError.Parse)
+        // Google refused the OAuth client this token came from, so its quota would be a placeholder: sign in again.
+        if (codeAssist.clientRejected) return AntigravityQuotaResult.Failure(VendorError.ScopeMissing)
+
+        val quotaBody = buildJsonObject { codeAssist.projectId?.let { put("project", it) } }.toString()
+        // Summary first; anything but success or 401 falls back to the model list, like CodexBar.
+        val summary = post(SUMMARY_URL, token, quotaBody)?.let { parseAntigravityQuotaSummary(it.code, it.body, json) }
+        when {
+            summary is AntigravityQuotaResult.Success -> return summary
+            summary is AntigravityQuotaResult.Failure && summary.error == VendorError.Unauthorized -> return summary
+        }
+        val models = post(MODELS_URL, token, quotaBody) ?: return AntigravityQuotaResult.Failure(VendorError.Network)
+        return parseAntigravityAvailableModels(models.code, models.body, json)
+    }
+
+    // Logs only the endpoint path and status: never tokens, headers or bodies.
+    private fun post(url: String, token: String, body: String): HttpResult? {
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $token")
+            .header("User-Agent", USER_AGENT)
+            .post(body.toRequestBody(JSON_MEDIA_TYPE))
+            .build()
+        val path = request.url.encodedPath
+        return try {
+            client.newCall(request).execute().use { response ->
+                Log.i(TAG, "response endpoint=$path http=${response.code}")
+                HttpResult(response.code, response.body?.string().orEmpty())
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "request failed endpoint=$path error=${e.javaClass.simpleName}")
+            null
+        }
+    }
+
+    private fun successStatus(account: ProviderAccount, windows: List<UsageWindow>): TokenStatus {
+        val text = windows.joinToString(" | ") {
+            String.format(Locale.US, "%s: %.0f%% 남음", it.label, (it.remaining as Remaining.Percent).percentLeft)
+        }
+        return TokenStatus(
             accountId = account.id,
             provider = ProviderType.ANTIGRAVITY,
             accountName = account.name,
-            remainingFormatted = "연동 상태 확인 중",
-            totalLimitFormatted = "정상 작동 중",
-            statusSummary = "AGY 연동됨",
-            isWarning = false
+            remainingFormatted = text,
+            statusSummary = text,
+            windows = windows
         )
+    }
+
+    private fun errorStatus(account: ProviderAccount, text: String): TokenStatus = TokenStatus(
+        accountId = account.id,
+        provider = ProviderType.ANTIGRAVITY,
+        accountName = account.name,
+        remainingFormatted = text,
+        statusSummary = "확인 필요",
+        isError = true,
+        errorMessage = text
+    )
+
+    private fun String.bearerToken(): String = removePrefix("Bearer ").trim()
+
+    companion object {
+        private const val TAG = "oot.Antigravity"
+        private const val LOAD_CODE_ASSIST_URL = "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist"
+        private const val MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
+
+        // The quota summary is served from the daily host.
+        private const val SUMMARY_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary"
+        private const val LOAD_CODE_ASSIST_BODY =
+            """{"metadata":{"ideType":"ANTIGRAVITY","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}}"""
+
+        // Cloud Code only answers quota calls for the Hub client family, so pin CodexBar's compatibility identity.
+        private const val USER_AGENT = "antigravity/hub/2.9.1 linux/arm64"
+        private val JSON_MEDIA_TYPE = "application/json".toMediaType()
     }
 }
