@@ -6,7 +6,7 @@ import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorUsage
 import org.parkjw.apps.oot.data.model.level
-import org.parkjw.apps.oot.data.model.sortedByRemaining
+import org.parkjw.apps.oot.data.remote.ANTIGRAVITY_GOOGLE_WINDOW_ID
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
@@ -87,14 +87,59 @@ object NotificationContent {
         return "${totalMinutes}분 후"
     }
 
+    // Labels stay short here: the "Google 모델" window reads "Google".
     private fun windowLabel(window: UsageWindow): String =
-        if (window.label == "primary" || window.label.isBlank()) "" else "${window.label} "
+        if (window.label == "primary" || window.label.isBlank()) "" else "${window.label.removeSuffix(" 모델")} "
 
-    // Errored vendors first ("확인 필요"), then lowest remaining ascending.
+    // Antigravity shows only its Google-model window, whatever the other window holds.
+    private fun notificationWindow(usage: VendorUsage): UsageWindow? =
+        if (usage.providerType == ProviderType.ANTIGRAVITY) {
+            usage.windows.firstOrNull { it.id == ANTIGRAVITY_GOOGLE_WINDOW_ID } ?: usage.representative
+        } else {
+            usage.representative
+        }
+
+    // OpenRouter card view: amount = min(account balance, key remaining);
+    // bar percent only when the key has a limit (parsed back from the "키 한도 $N.NN" label).
+    data class OpenRouterView(val amountLeft: Double, val currency: String, val keyPercent: Int?)
+
+    fun keyLimitAmount(label: String): Double? =
+        Regex("""\d+(\.\d+)?""").find(label)?.value?.toDoubleOrNull()
+
+    fun openRouterView(usage: VendorUsage): OpenRouterView? {
+        if (usage.providerType != ProviderType.OPENROUTER) return null
+        val credit = usage.windows.firstOrNull { it.id == "credit" }?.remaining as? Remaining.Balance
+            ?: return null
+        val keyWindow = usage.windows.firstOrNull { it.id == "key" }
+        val key = keyWindow?.remaining as? Remaining.Balance
+        val amount = key?.let { minOf(credit.amountLeft, it.amountLeft) } ?: credit.amountLeft
+        val limit = keyWindow?.let { keyLimitAmount(it.label) }
+        val percent = if (key != null && limit != null && limit > 0) {
+            ((key.amountLeft / limit) * 100).roundToInt().coerceIn(0, 100)
+        } else {
+            null
+        }
+        return OpenRouterView(amount, credit.currency, percent)
+    }
+
+    private fun openRouterLevel(percent: Int?): Level =
+        percent?.let { Remaining.Percent(it.toDouble()).level } ?: Level.OK
+
+    // User order as given; errored vendors stay in place ("확인 필요").
     fun collapsedItems(usages: List<VendorUsage>, maxItems: Int): List<CollapsedItem> =
-        usages.sortedByRemaining().take(maxItems.coerceAtLeast(0)).map { usage ->
+        usages.take(maxItems.coerceAtLeast(0)).map { usage ->
             val p = usage.providerType
-            when (val remaining = usage.representative?.remaining) {
+            openRouterView(usage)?.let { or ->
+                return@map CollapsedItem(
+                    p,
+                    mark(p),
+                    formatBalance(or.amountLeft, or.currency),
+                    or.keyPercent,
+                    false,
+                    openRouterLevel(or.keyPercent)
+                )
+            }
+            when (val remaining = notificationWindow(usage)?.remaining) {
                 null ->
                     CollapsedItem(p, mark(p), "${shortName(p)} 확인 필요", null, true, Level.OK)
                 is Remaining.Balance ->
@@ -111,7 +156,7 @@ object NotificationContent {
             }
         }
 
-    // One line per registered vendor, registration order.
+    // One line per registered vendor, user order.
     fun expandedItems(usages: List<VendorUsage>, now: Instant = Instant.now()): List<ExpandedItem> =
         usages.map { usage ->
             val p = usage.providerType
@@ -120,13 +165,24 @@ object NotificationContent {
             if (usage.error != null) {
                 return@map ExpandedItem(p, itemMark, name, "확인 필요", null, true, Level.OK)
             }
-            val representative = usage.representative
+            val representative = notificationWindow(usage)
                 ?: return@map ExpandedItem(p, itemMark, name, "확인 필요", null, true, Level.OK)
+            openRouterView(usage)?.let { or ->
+                return@map ExpandedItem(
+                    p,
+                    itemMark,
+                    name,
+                    "${formatBalance(or.amountLeft, or.currency)} 남음",
+                    or.keyPercent,
+                    false,
+                    openRouterLevel(or.keyPercent)
+                )
+            }
             when (val remaining = representative.remaining) {
                 is Remaining.Balance ->
                     ExpandedItem(p, itemMark, name, "${formatBalance(remaining.amountLeft, remaining.currency)} 남음", null, false, Level.OK)
                 is Remaining.Percent -> {
-                    // Representative window only: the one with the least remaining, plus its reset.
+                    // Representative window only (5-hour when present, else least remaining), plus its reset.
                     val text = "${windowLabel(representative)}${formatPercent(remaining)} 남음"
                     val reset = representative.resetsAt
                         ?.let { formatReset(it, now) }
@@ -146,13 +202,17 @@ object NotificationContent {
             }
         }
 
-    // Text-only fallback (option C): "Claude 62% · GLM 98% · OpenRouter $12.40"
+    // Text-only fallback (option C): user order, e.g. "Claude 62% · GLM 98% · OpenRouter $12.40"
     fun textFallback(usages: List<VendorUsage>): String =
-        usages.sortedByRemaining().joinToString(" · ") { usage ->
-            val label = when (val remaining = usage.representative?.remaining) {
-                is Remaining.Balance -> formatBalance(remaining.amountLeft, remaining.currency)
-                is Remaining.Percent -> formatPercent(remaining)
-                null -> "확인 필요"
+        usages.joinToString(" · ") { usage ->
+            val openRouter = openRouterView(usage)
+            val label = when {
+                openRouter != null -> formatBalance(openRouter.amountLeft, openRouter.currency)
+                else -> when (val remaining = notificationWindow(usage)?.remaining) {
+                    is Remaining.Balance -> formatBalance(remaining.amountLeft, remaining.currency)
+                    is Remaining.Percent -> formatPercent(remaining)
+                    null -> "확인 필요"
+                }
             }
             "${shortName(usage.providerType)} $label"
         }

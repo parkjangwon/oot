@@ -8,9 +8,8 @@ import okhttp3.Request
 import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.TokenStatus
-import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.Locale
-import java.util.TimeZone
 
 class XaiApi(
     private val client: OkHttpClient,
@@ -44,63 +43,9 @@ class XaiApi(
 
             client.newCall(billingReq).execute().use { response ->
                 if (response.isSuccessful) {
-                    val body = response.body?.string().orEmpty()
-                    val root = try { json.parseToJsonElement(body).jsonObject } catch (e: Exception) { null }
-                    val config = root?.get("config")?.jsonObject ?: root
-
-                    if (config != null) {
-                        val currentPeriod = config["currentPeriod"]?.jsonObject
-                        val periodEndStr = currentPeriod?.get("end")?.jsonPrimitive?.content
-                        val resetFormatted = formatPeriodEnd(periodEndStr)
-
-                        // creditUsagePercent is typically 0.0 to 1.0 (e.g. 0.25 for 25% used)
-                        // Note: after a weekly reset (0% used), the field might be 0.0 or omitted
-                        val rawUsagePercent = config["creditUsagePercent"]?.jsonPrimitive?.doubleOrNull ?: 0.0
-                        val usedPercent = if (rawUsagePercent in 0.0..1.0) {
-                            rawUsagePercent * 100.0
-                        } else {
-                            rawUsagePercent
-                        }.coerceIn(0.0, 100.0)
-
-                        val remainingPercent = (100.0 - usedPercent).coerceIn(0.0, 100.0)
-
-                        // Parse product usage (e.g. GrokBuild, GrokChat)
-                        val productUsageArray = config["productUsage"]?.jsonArray
-                        val productBreakdown = productUsageArray?.mapNotNull { item ->
-                            val pObj = item.jsonObject
-                            val pName = pObj["product"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                            val pUsage = pObj["usagePercent"]?.jsonPrimitive?.doubleOrNull ?: 0.0
-                            val pPct = if (pUsage in 0.0..1.0) pUsage * 100.0 else pUsage
-                            val cleanName = pName.removePrefix("Grok")
-                            String.format(Locale.US, "%s: %.1f%%", cleanName, pPct)
-                        }?.takeIf { it.isNotEmpty() }?.joinToString(", ")
-
-                        // Unified billing check (if user has prepaid or on-demand balance)
-                        val isUnified = config["isUnifiedBillingUser"]?.jsonPrimitive?.booleanOrNull == true
-                        val prepaid = config["prepaidBalance"]?.jsonObject?.get("val")?.jsonPrimitive?.doubleOrNull
-
-                        val remainingText = String.format(Locale.US, "주간: %.1f%% 남음", remainingPercent)
-                        val limitText = buildString {
-                            append(String.format(Locale.US, "주간 사용: %.1f%%", usedPercent))
-                            if (resetFormatted.isNotBlank()) append(" (리셋: $resetFormatted)")
-                            if (!productBreakdown.isNullOrBlank()) append(" | $productBreakdown")
-                            if (isUnified && prepaid != null) append(" [잔액 $prepaid]")
-                        }
-
-                        val summaryText = String.format(Locale.US, "주간 %.0f%%", remainingPercent)
-
-                        return@withContext TokenStatus(
-                            accountId = account.id,
-                            provider = ProviderType.XAI,
-                            accountName = account.name,
-                            remainingFormatted = remainingText,
-                            totalLimitFormatted = limitText,
-                            usagePercent = usedPercent.toFloat(),
-                            resetTimeFormatted = if (resetFormatted.isNotBlank()) "리셋: $resetFormatted" else null,
-                            statusSummary = summaryText,
-                            isWarning = usedPercent > 80.0,
-                            isCritical = usedPercent > 95.0
-                        )
+                    val billing = parseXaiBilling(response.body?.string().orEmpty(), json)
+                    if (billing != null) {
+                        return@withContext billingStatus(account, billing)
                     }
                 }
             }
@@ -213,21 +158,40 @@ class XaiApi(
         }
     }
 
-    private fun formatPeriodEnd(dateStr: String?): String {
-        if (dateStr.isNullOrBlank()) return ""
-        return try {
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }
-            val date = sdf.parse(dateStr.substringBefore(".")) ?: return ""
-            val diffMs = date.time - System.currentTimeMillis()
-            if (diffMs <= 0) return "곧 리셋"
-            val hours = diffMs / (1000 * 60 * 60)
-            val days = hours / 24
-            val remHours = hours % 24
-            if (days > 0) "${days}일 ${remHours}시간 후" else "${hours}시간 후"
-        } catch (e: Exception) {
-            ""
+    private fun billingStatus(account: ProviderAccount, billing: XaiBilling): TokenStatus {
+        val resetFormatted = formatPeriodEnd(billing.periodEnd)
+        val productBreakdown = billing.productUsage.joinToString(", ") { (name, percent) ->
+            String.format(Locale.US, "%s: %.1f%%", name, percent)
         }
+        val limitText = buildString {
+            append(String.format(Locale.US, "주간 사용: %.1f%%", billing.usedPercent))
+            if (resetFormatted.isNotBlank()) append(" (리셋: $resetFormatted)")
+            if (productBreakdown.isNotBlank()) append(" | $productBreakdown")
+            if (billing.prepaidBalance != null) append(" [잔액 ${billing.prepaidBalance}]")
+        }
+
+        return TokenStatus(
+            accountId = account.id,
+            provider = ProviderType.XAI,
+            accountName = account.name,
+            remainingFormatted = String.format(Locale.US, "주간: %.1f%% 남음", billing.percentLeft),
+            totalLimitFormatted = limitText,
+            usagePercent = billing.usedPercent.toFloat(),
+            resetTimeFormatted = if (resetFormatted.isNotBlank()) "리셋: $resetFormatted" else null,
+            statusSummary = String.format(Locale.US, "주간 %.0f%%", billing.percentLeft),
+            isWarning = billing.usedPercent > 80.0,
+            isCritical = billing.usedPercent > 95.0,
+            windows = billing.toUsageWindows()
+        )
+    }
+
+    private fun formatPeriodEnd(periodEnd: Instant?): String {
+        if (periodEnd == null) return ""
+        val diffMs = periodEnd.toEpochMilli() - System.currentTimeMillis()
+        if (diffMs <= 0) return "곧 리셋"
+        val hours = diffMs / (1000 * 60 * 60)
+        val days = hours / 24
+        val remHours = hours % 24
+        return if (days > 0) "${days}일 ${remHours}시간 후" else "${hours}시간 후"
     }
 }

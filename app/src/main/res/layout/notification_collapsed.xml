@@ -41,7 +41,7 @@
             android:background="@color/notif_bar_track"
             android:src="@drawable/notif_bar_fill"
             android:scaleType="fitXY"
-            android:layout_marginEnd="16dp"
+            android:layout_marginEnd="12dp"
             android:importantForAccessibility="no" />
 
         <TextView
@@ -51,7 +51,7 @@
             android:textSize="12sp"
             android:textColor="@color/notif_text_primary"
             android:maxLines="1"
-            android:paddingStart="4dp" />
+            android:ellipsize="end" />
     </LinearLayout>
 
     <LinearLayout
@@ -90,7 +90,7 @@
             android:background="@color/notif_bar_track"
             android:src="@drawable/notif_bar_fill"
             android:scaleType="fitXY"
-            android:layout_marginEnd="16dp"
+            android:layout_marginEnd="12dp"
             android:importantForAccessibility="no" />
 
         <TextView
@@ -100,7 +100,7 @@
             android:textSize="12sp"
             android:textColor="@color/notif_text_primary"
             android:maxLines="1"
-            android:paddingStart="4dp" />
+            android:ellipsize="end" />
     </LinearLayout>
 
     <LinearLayout
@@ -138,7 +138,7 @@
             android:background="@color/notif_bar_track"
             android:src="@drawable/notif_bar_fill"
             android:scaleType="fitXY"
-            android:layout_marginEnd="16dp"
+            android:layout_marginEnd="12dp"
             android:importantForAccessibility="no" />
 
         <TextView
@@ -148,6 +148,6 @@
             android:textSize="12sp"
             android:textColor="@color/notif_text_primary"
             android:maxLines="1"
-            android:paddingStart="4dp" />
+            android:ellipsize="end" />
     </LinearLayout>
 </LinearLayout>

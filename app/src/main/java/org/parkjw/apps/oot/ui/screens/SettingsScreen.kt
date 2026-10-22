@@ -1,5 +1,6 @@
 package org.parkjw.apps.oot.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -72,6 +73,8 @@ fun SettingsScreen(
     onOpenSourceCode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    BackHandler(onBack = onBack)
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,

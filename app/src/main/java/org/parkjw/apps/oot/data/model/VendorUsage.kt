@@ -43,9 +43,11 @@ data class VendorUsage(
     val windows: List<UsageWindow>,
     val error: VendorError? = null
 ) {
+    // The notification shows the 5-hour window when the vendor has one, else the least-remaining window.
     val representative: UsageWindow?
-        get() = windows.filter { it.remaining is Remaining.Percent }
-            .minByOrNull { (it.remaining as Remaining.Percent).percentLeft }
+        get() = windows.firstOrNull { it.id == "five_hour" && it.remaining is Remaining.Percent }
+            ?: windows.filter { it.remaining is Remaining.Percent }
+                .minByOrNull { (it.remaining as Remaining.Percent).percentLeft }
             ?: windows.firstOrNull { it.remaining is Remaining.Balance }
 }
 
