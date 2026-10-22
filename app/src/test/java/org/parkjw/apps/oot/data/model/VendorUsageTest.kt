@@ -109,6 +109,27 @@ class VendorUsageTest {
     }
 
     @Test
+    fun `request count text is not shown as a balance`() {
+        val v = status(remainingFormatted = "Requests left: 4999").toVendorUsage()
+        val remaining = v.representative?.remaining
+        assertTrue("expected percent but was $remaining", remaining is Remaining.Percent)
+    }
+
+    @Test
+    fun `request count with thousands separator is not shown as a balance`() {
+        val v = status(remainingFormatted = "Requests left: 4,999").toVendorUsage()
+        val remaining = v.representative?.remaining
+        assertTrue("expected percent but was $remaining", remaining is Remaining.Percent)
+    }
+
+    @Test
+    fun `currency amount with thousands separator maps to the full balance`() {
+        val v = status(remainingFormatted = "$4,999.00 남음").toVendorUsage()
+        val remaining = v.representative?.remaining as Remaining.Balance
+        assertEquals(4999.0, remaining.amountLeft, 0.001)
+    }
+
+    @Test
     fun `error status maps to errored vendor without windows`() {
         val v = status(isError = true, errorMessage = "failed").toVendorUsage()
         assertEquals(VendorError.Unknown("failed"), v.error)
