@@ -60,7 +60,8 @@
 
     <string name="exit_prompt">Press back again to exit</string>
     <string name="secure_storage_unavailable">Secure storage could not be opened. Account changes may be lost when the app restarts.</string>
-    <string name="secure_storage_reset_action">Reset storage and sign in again</string>
+    <string name="secure_storage_reset_action">Reset storage and add accounts again</string>
+    <string name="secure_storage_resetting">Resetting…</string>
     <string name="secure_storage_reset_title">Reset secure storage?</string>
     <string name="secure_storage_reset_body">Saved accounts and keys on this device will be removed. You\'ll need to add your accounts again; other settings stay.</string>
     <string name="secure_storage_reset_confirm">Reset</string>

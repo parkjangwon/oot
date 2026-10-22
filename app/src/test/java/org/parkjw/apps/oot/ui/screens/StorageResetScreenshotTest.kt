@@ -1,9 +1,11 @@
 package org.parkjw.apps.oot.ui.screens
 
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -18,6 +20,7 @@ import java.time.Instant
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
@@ -105,27 +108,69 @@ class StorageResetScreenshotTest {
         english = true,
     )
 
-    private fun setDashboard(darkTheme: Boolean) {
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1300dp-night-xxhdpi")
+    fun resetDialogDark() = captureDialog(
+        darkTheme = true,
+        fileName = "storage-reset-confirm-dialog-dark.png",
+    )
+
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1300dp-notnight-xxhdpi")
+    fun resettingStateLight() = capture(
+        darkTheme = false,
+        fileName = "storage-reset-dashboard-resetting.png",
+        resetting = true,
+    )
+
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1300dp-notnight-xxhdpi")
+    fun failureSnackbarLight() {
+        setDashboard(darkTheme = false, showFailureSnackbar = true)
+        composeRule.onNodeWithText(
+            "저장된 계정은 지웠지만 보안 저장소를 아직 열 수 없어요. 앱 데이터를 지워 보세요.",
+        ).assertExists()
+        captureScreenRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "storage-reset-failure-snackbar.png"),
+        )
+    }
+
+    private fun setDashboard(
+        darkTheme: Boolean,
+        resetting: Boolean = false,
+        showFailureSnackbar: Boolean = false,
+    ) {
         composeRule.setContent {
             OotTheme(darkTheme = darkTheme) {
+                val snackbarHostState = remember { SnackbarHostState() }
+                if (showFailureSnackbar) {
+                    val message = stringResource(R.string.secure_storage_reset_failed)
+                    LaunchedEffect(message) { snackbarHostState.showSnackbar(message) }
+                }
                 DashboardScreen(
                     vendorUsages = demoUsages(),
                     now = fixedNow,
                     isSecureStorageAvailable = false,
-                    snackbarHostState = remember { SnackbarHostState() },
+                    isResettingSecureStorage = resetting,
+                    snackbarHostState = snackbarHostState,
                     modifier = Modifier.testTag("dashboard_root"),
                 )
             }
         }
     }
 
-    private fun capture(darkTheme: Boolean, fileName: String, english: Boolean = false) {
-        setDashboard(darkTheme)
+    private fun capture(
+        darkTheme: Boolean,
+        fileName: String,
+        english: Boolean = false,
+        resetting: Boolean = false,
+    ) {
+        setDashboard(darkTheme, resetting = resetting)
         composeRule.onNodeWithText("Claude").assertExists()
-        if (english) {
-            composeRule.onNodeWithText("Reset storage and sign in again").assertExists()
-        } else {
-            composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").assertExists()
+        when {
+            resetting -> composeRule.onNodeWithText("초기화하는 중…").assertExists()
+            english -> composeRule.onNodeWithText("Reset storage and add accounts again").assertExists()
+            else -> composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").assertExists()
         }
         composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
             File(roborazziSystemPropertyOutputDirectory(), fileName),
@@ -135,7 +180,7 @@ class StorageResetScreenshotTest {
     private fun captureDialog(darkTheme: Boolean, fileName: String, english: Boolean = false) {
         setDashboard(darkTheme)
         composeRule.onNodeWithText(
-            if (english) "Reset storage and sign in again" else "저장소 초기화하고 다시 로그인",
+            if (english) "Reset storage and add accounts again" else "저장소 초기화하고 다시 로그인",
         ).performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText(
