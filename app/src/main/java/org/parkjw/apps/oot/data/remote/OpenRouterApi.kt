@@ -88,7 +88,8 @@ class OpenRouterApi(
             )
         }
 
-        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.OPENROUTER.baseUrl
+        val baseUrl = resolveBaseUrl(account.customEndpoint, ProviderType.OPENROUTER.baseUrl)
+            ?: return@withContext customEndpointErrorStatus(account)
         val authHeader = "Bearer $credential"
 
         try {

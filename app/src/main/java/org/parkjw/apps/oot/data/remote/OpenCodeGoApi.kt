@@ -28,7 +28,8 @@ class OpenCodeGoApi(
             )
         }
 
-        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.OPENCODE_GO.baseUrl
+        val baseUrl = resolveBaseUrl(account.customEndpoint, ProviderType.OPENCODE_GO.baseUrl)
+            ?: return@withContext customEndpointErrorStatus(account)
         val request = Request.Builder()
             .url("$baseUrl/zen/go/v1/usage")
             .addHeader("Authorization", "Bearer $credential")

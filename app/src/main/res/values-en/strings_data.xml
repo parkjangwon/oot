@@ -8,6 +8,7 @@
     <string name="data_error_http">Couldn\'t load usage (HTTP %1$d)</string>
     <string name="data_error_generic">Error</string>
     <string name="data_error_code">Error (%1$d)</string>
+    <string name="error_custom_endpoint_not_https">The custom endpoint is not an https address. Please add the account again.</string>
 
     <!-- Shared status fragments -->
     <string name="data_no_token_key">No token or key</string>

@@ -28,7 +28,8 @@ class DeepSeekApi(
             )
         }
 
-        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.DEEPSEEK.baseUrl
+        val baseUrl = resolveBaseUrl(account.customEndpoint, ProviderType.DEEPSEEK.baseUrl)
+            ?: return@withContext customEndpointErrorStatus(account)
         val request = Request.Builder()
             .url("$baseUrl/user/balance")
             .addHeader("Authorization", "Bearer $credential")

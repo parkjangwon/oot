@@ -102,7 +102,8 @@ class OpenAiApi(
     }
 
     private fun fetchApiKeyStatus(account: ProviderAccount, credential: String): TokenStatus {
-        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.OPENAI.baseUrl
+        val baseUrl = resolveBaseUrl(account.customEndpoint, ProviderType.OPENAI.baseUrl)
+            ?: return customEndpointErrorStatus(account)
         val authHeader = "Bearer $credential"
 
         return try {

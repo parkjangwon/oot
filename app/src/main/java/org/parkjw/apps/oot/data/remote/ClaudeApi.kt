@@ -43,7 +43,8 @@ class ClaudeApi(
             )
         }
 
-        val baseUrl = account.customEndpoint?.takeIf { it.isNotBlank() } ?: ProviderType.CLAUDE.baseUrl
+        val baseUrl = resolveBaseUrl(account.customEndpoint, ProviderType.CLAUDE.baseUrl)
+            ?: return@withContext customEndpointErrorStatus(account)
         val isOAuth = account.authType == AuthType.OAUTH || credential.startsWith("Bearer ", ignoreCase = true) || credential.startsWith("sk-ant-oat", ignoreCase = true)
         val cleanToken = credential.removePrefix("Bearer ").trim()
 
