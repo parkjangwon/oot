@@ -15,6 +15,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.data.model.ProviderType
 import org.parkjw.apps.oot.data.model.Remaining
 import org.parkjw.apps.oot.data.model.UsageWindow
@@ -141,6 +142,77 @@ class NotificationScreenshotTest {
         captureCollapsed(360, "notif-collapsed-360-light-3x.png")
     }
 
+    // Claude, first in user order, is switched off in Settings: the collapsed line pulls the next vendor in.
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifCollapsed412Light3xClaudeHidden() {
+        captureCollapsed(412, "notif-collapsed-412-light-3x-claude-hidden.png", hidden = setOf("demo-claude"))
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifExpanded412Light3xClaudeHidden() {
+        captureExpanded(412, "notif-expanded-412-light-3x-claude-hidden.png", hidden = setOf("demo-claude"))
+    }
+
+    @Test
+    fun hiddenVendorsLeaveEveryNotificationForm() {
+        val hiddenClaude = buildNotification(hidden = setOf("demo-claude"))
+        assertEquals("GLM 98% · xAI 14% · OpenRouter $7.60 · Antigravity 62%", hiddenClaude.contentText())
+        val expanded = applyToNewActivity(hiddenClaude.bigContentView!!)
+        assertEquals(View.VISIBLE, expanded.findViewById<View>(R.id.row3).visibility)
+        assertEquals(View.GONE, expanded.findViewById<View>(R.id.row4).visibility)
+
+        // Every vendor off: says so and points to Settings, not "nothing registered".
+        val allHidden = buildNotification(hidden = allIds())
+        assertEquals("알림에 표시할 프로바이더를 모두 껐어요. 설정에서 켜 주세요.", allHidden.contentText())
+        assertEquals(null, allHidden.contentView)
+    }
+
+    @Test
+    fun noProvidersRegisteredAsksToAddOne() {
+        val empty = buildNotification(usages = emptyList())
+        assertEquals("등록된 프로바이더가 없어요. 앱에서 추가해 주세요.", empty.contentText())
+        // Tapping still opens the app, and the refresh action stays.
+        assertEquals(true, empty.contentIntent != null)
+        assertEquals("새로고침", empty.actions.single().title.toString())
+    }
+
+    @Test
+    fun allHiddenKeepsTheTapAndRefreshAction() {
+        val allHidden = buildNotification(hidden = allIds())
+        assertEquals(true, allHidden.contentIntent != null)
+        assertEquals("새로고침", allHidden.actions.single().title.toString())
+    }
+
+    // The empty states use the system template; render it the way the shade does.
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
+    fun notifEmptyStates412Light3x() = captureEmptyStates("light")
+
+    @Test
+    @Config(qualifiers = "w412dp-h800dp-night-xxhdpi")
+    fun notifEmptyStates412Dark3x() = captureEmptyStates("dark")
+
+    private fun captureEmptyStates(mode: String) {
+        val cases = mapOf(
+            "all-hidden" to buildNotification(hidden = allIds()),
+            "no-providers" to buildNotification(usages = emptyList()),
+        )
+        for ((name, notification) in cases) {
+            val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+            val builder = Notification.Builder.recoverBuilder(activity, notification)
+                // Robolectric's clock starts at 1970, so the shade's time would read "in 57y"; leave it out of the dummy.
+                .setShowWhen(false)
+            capture(builder.createContentView(), 412, "notif-collapsed-412-$mode-3x-$name.png")
+            capture(builder.createBigContentView() ?: builder.createContentView(), 412, "notif-expanded-412-$mode-3x-$name.png")
+        }
+    }
+
+    private fun allIds(): Set<String> = fakeUsages().map { it.accountId }.toSet()
+
+    private fun Notification.contentText(): String = extras.getCharSequence(Notification.EXTRA_TEXT).toString()
+
     // 14% used to pick the amber "warn" entry; that color no longer exists.
     @Test
     fun barHasNoWarningColorAt14Percent() {
@@ -148,19 +220,24 @@ class NotificationScreenshotTest {
         assertEquals(0, activity.resources.getIdentifier("notif_bar_warn", "color", activity.packageName))
     }
 
-    private fun captureCollapsed(widthDp: Int, fileName: String) {
-        val notification = buildNotification()
+    private fun captureCollapsed(widthDp: Int, fileName: String, hidden: Set<String> = emptySet()) {
+        val notification = buildNotification(hidden)
         capture(notification.contentView!!, widthDp, fileName)
     }
 
-    private fun captureExpanded(widthDp: Int, fileName: String) {
-        val notification = buildNotification()
+    private fun captureExpanded(widthDp: Int, fileName: String, hidden: Set<String> = emptySet()) {
+        val notification = buildNotification(hidden)
         capture(notification.bigContentView!!, widthDp, fileName)
     }
 
-    private fun buildNotification(): Notification =
-        TokenNotificationManager(Robolectric.buildActivity(Activity::class.java).setup().get())
-            .buildNotification(fakeUsages())
+    private fun buildNotification(hidden: Set<String> = emptySet(), usages: List<VendorUsage> = fakeUsages()): Notification =
+        TokenNotificationManager(Robolectric.buildActivity(Activity::class.java).setup().get()) { hidden }
+            .buildNotification(usages)
+
+    private fun applyToNewActivity(views: android.widget.RemoteViews): View {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        return views.apply(activity, FrameLayout(activity))
+    }
 
     private fun capture(views: android.widget.RemoteViews, widthDp: Int, fileName: String) {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()

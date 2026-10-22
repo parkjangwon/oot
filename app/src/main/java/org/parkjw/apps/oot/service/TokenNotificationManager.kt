@@ -17,7 +17,10 @@ import org.parkjw.apps.oot.notification.NotificationContent
 import org.parkjw.apps.oot.ui.MainActivity
 import org.parkjw.apps.oot.ui.VendorLogo
 
-class TokenNotificationManager(private val context: Context) {
+class TokenNotificationManager(
+    private val context: Context,
+    private val hiddenAccountIds: () -> Set<String> = { emptySet() },
+) {
 
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -53,7 +56,8 @@ class TokenNotificationManager(private val context: Context) {
         }
     }
 
-    fun buildNotification(usages: List<VendorUsage>): Notification {
+    fun buildNotification(allUsages: List<VendorUsage>): Notification {
+        val usages = NotificationContent.visibleUsages(allUsages, hiddenAccountIds())
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -78,7 +82,7 @@ class TokenNotificationManager(private val context: Context) {
             return NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_oot)
                 .setContentTitle("OOT: 토큰 모니터")
-                .setContentText("등록된 프로바이더가 없습니다. 앱에서 추가해주세요.")
+                .setContentText(NotificationContent.emptyStateText(registeredCount = allUsages.size))
                 .setContentIntent(openAppPendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)

@@ -348,4 +348,42 @@ class NotificationContentTest {
         assertEquals("2일 후", NotificationContent.formatNotificationReset(now.plusSeconds(2 * 24 * 3600L + 30), now))
         assertEquals("2시간 후", NotificationContent.formatNotificationReset(now.plusSeconds(2 * 3600L + 30), now))
     }
+
+    private fun account(id: String, percent: Double, provider: ProviderType) =
+        vendor(percent, provider).copy(accountId = id)
+
+    @Test
+    fun `hidden accounts leave every notification form and the rest keep their order`() {
+        val usages = listOf(
+            account("a", 90.0, ProviderType.CLAUDE),
+            account("b", 10.0, ProviderType.ZAI),
+            account("c", 50.0, ProviderType.XAI),
+            account("d", 70.0, ProviderType.OPENAI)
+        )
+        val visible = NotificationContent.visibleUsages(usages, hiddenAccountIds = setOf("b"))
+        assertEquals(listOf("a", "c", "d"), visible.map { it.accountId })
+        // The collapsed line fills up with the next account instead of leaving a gap.
+        assertEquals(listOf("Cl", "X", "O"), NotificationContent.collapsedItems(visible, maxItems = 3).map { it.mark })
+        assertEquals(listOf("Claude", "xAI", "OpenAI"), NotificationContent.expandedItems(visible).map { it.name })
+        assertEquals("Claude 90% · xAI 50% · OpenAI 70%", NotificationContent.textFallback(visible))
+    }
+
+    @Test
+    fun `nothing hidden keeps every account and ids of deleted accounts are ignored`() {
+        val usages = listOf(account("a", 90.0, ProviderType.CLAUDE), account("b", 10.0, ProviderType.ZAI))
+        assertEquals(usages, NotificationContent.visibleUsages(usages, emptySet()))
+        assertEquals(usages, NotificationContent.visibleUsages(usages, setOf("deleted-account")))
+    }
+
+    @Test
+    fun `hiding every account leaves nothing to show`() {
+        val usages = listOf(account("a", 90.0, ProviderType.CLAUDE), account("b", 10.0, ProviderType.ZAI))
+        assertEquals(emptyList<VendorUsage>(), NotificationContent.visibleUsages(usages, setOf("a", "b")))
+    }
+
+    @Test
+    fun `empty notification tells nothing registered apart from everything hidden`() {
+        assertEquals("등록된 프로바이더가 없어요. 앱에서 추가해 주세요.", NotificationContent.emptyStateText(registeredCount = 0))
+        assertEquals("알림에 표시할 프로바이더를 모두 껐어요. 설정에서 켜 주세요.", NotificationContent.emptyStateText(registeredCount = 3))
+    }
 }

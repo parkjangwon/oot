@@ -13,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.parkjw.apps.oot.OotApp
@@ -43,6 +44,13 @@ class TokenMonitorForegroundService : Service() {
         intervalWatchJob = serviceScope.launch {
             app.preferences.refreshIntervalMinutes.collectLatest { minutes ->
                 applySyncStrategy(minutes)
+            }
+        }
+
+        // A Settings toggle re-renders at once, no fetch. Tied to the service so it can't re-post a notification that is off.
+        serviceScope.launch {
+            app.preferences.notificationHiddenAccountIds.drop(1).collect {
+                app.notificationManager.updateNotification(app.repository.vendorUsages.value)
             }
         }
     }

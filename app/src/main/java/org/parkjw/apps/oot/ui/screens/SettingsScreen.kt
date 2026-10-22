@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.dp
 import org.parkjw.apps.oot.R
+import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.ui.theme.CardCorner
 import org.parkjw.apps.oot.ui.theme.OotNumeric
 import org.parkjw.apps.oot.ui.theme.OotSpacing
@@ -63,12 +64,15 @@ private val SHORT_REFRESH_INTERVALS = setOf(1, 5)
 fun SettingsScreen(
     isServiceEnabled: Boolean,
     refreshIntervalMinutes: Int,
+    accounts: List<ProviderAccount>,
+    notificationHiddenIds: Set<String>,
     autoUpdateCheckEnabled: Boolean,
     versionName: String,
     updateState: UpdateUiState,
     onBack: () -> Unit,
     onToggleService: (Boolean) -> Unit,
     onSetRefreshInterval: (Int) -> Unit,
+    onNotificationShownChange: (accountId: String, shown: Boolean) -> Unit,
     onAutoUpdateCheckChange: (Boolean) -> Unit,
     onUpdateAction: (UpdateAction) -> Unit,
     onOpenSourceCode: () -> Unit,
@@ -119,6 +123,21 @@ fun SettingsScreen(
                     selectedMinutes = refreshIntervalMinutes,
                     onSelect = onSetRefreshInterval,
                 )
+            }
+
+            if (accounts.isNotEmpty()) {
+                SectionHeader(stringResource(R.string.settings_section_notification_visibility))
+                SettingsGroup {
+                    accounts.forEachIndexed { index, account ->
+                        if (index > 0) GroupDivider()
+                        SwitchRow(
+                            title = account.name.ifBlank { account.provider.displayName },
+                            checked = account.id !in notificationHiddenIds,
+                            onCheckedChange = { onNotificationShownChange(account.id, it) },
+                            leading = { VendorMark(provider = account.provider) },
+                        )
+                    }
+                }
             }
 
             SectionHeader(stringResource(R.string.settings_section_update))
@@ -283,11 +302,13 @@ private fun SwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     supporting: String? = null,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     ListItem(
         headlineContent = {
             Text(title, style = MaterialTheme.typography.bodyLarge)
         },
+        leadingContent = leading,
         supportingContent = supporting?.let {
             {
                 Text(
