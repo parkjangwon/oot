@@ -15,7 +15,7 @@ class XaiBillingCodecTest {
     private val json = Json { ignoreUnknownKeys = true }
 
     private val weeklyOnly = """
-        {"config": {"currentPeriod": {"end": "2026-10-28T00:00:00Z"}, "creditUsagePercent": 0.25}}
+        {"config": {"currentPeriod": {"end": "2026-10-28T00:00:00Z"}, "creditUsagePercent": 25}}
     """.trimIndent()
 
     private fun windowsOf(body: String): List<UsageWindow> = parseXaiBilling(body, json)!!.toUsageWindows()
@@ -58,14 +58,14 @@ class XaiBillingCodecTest {
     @Test
     fun `missing or unusable end keeps the window but has no reset`() {
         listOf(
-            """{"config": {"creditUsagePercent": 0.5}}""",
-            """{"config": {"currentPeriod": {}, "creditUsagePercent": 0.5}}""",
-            """{"config": {"currentPeriod": {"end": ""}, "creditUsagePercent": 0.5}}""",
-            """{"config": {"currentPeriod": {"end": "next week"}, "creditUsagePercent": 0.5}}""",
-            """{"config": {"currentPeriod": {"end": null}, "creditUsagePercent": 0.5}}"""
+            """{"config": {"creditUsagePercent": 25}}""",
+            """{"config": {"currentPeriod": {}, "creditUsagePercent": 25}}""",
+            """{"config": {"currentPeriod": {"end": ""}, "creditUsagePercent": 25}}""",
+            """{"config": {"currentPeriod": {"end": "next week"}, "creditUsagePercent": 25}}""",
+            """{"config": {"currentPeriod": {"end": null}, "creditUsagePercent": 25}}"""
         ).forEach { body ->
             val weekly = windowsOf(body).single()
-            assertEquals(body, 50.0, (weekly.remaining as Remaining.Percent).percentLeft, 0.001)
+            assertEquals(body, 75.0, (weekly.remaining as Remaining.Percent).percentLeft, 0.001)
             assertComplete(weekly, expectReset = false)
         }
     }
@@ -78,7 +78,29 @@ class XaiBillingCodecTest {
     }
 
     @Test
-    fun `usage above 1 is already a percent and is clamped to 100`() {
+    fun `credit usage is a percentage, not a ratio`() {
+        // #105: right after a weekly reset xAI reports 1, meaning 1% used (99% left).
+        val afterReset = parseXaiBilling(
+            """{"config":{"currentPeriod":{"type":"USAGE_PERIOD_TYPE_WEEKLY","start":"2026-10-21T00:00:00Z","end":"2026-10-28T00:00:00Z"},"creditUsagePercent":1}}""",
+            json
+        )!!
+        assertEquals(1.0, afterReset.usedPercent, 0.001)
+        assertEquals(99.0, afterReset.percentLeft, 0.001)
+        assertEquals(99.0, (afterReset.toUsageWindows().single().remaining as Remaining.Percent).percentLeft, 0.001)
+
+        // A tenth of a percent stays a tenth of a percent.
+        val tiny = parseXaiBilling("""{"config": {"creditUsagePercent": 0.5}}""", json)!!
+        assertEquals(0.5, tiny.usedPercent, 0.001)
+        assertEquals(99.5, tiny.percentLeft, 0.001)
+
+        // Omitted right after a reset means nothing used.
+        val missing = parseXaiBilling("""{"config":{"currentPeriod":{"end":"2026-10-28T00:00:00Z"}}}""", json)!!
+        assertEquals(0.0, missing.usedPercent, 0.001)
+        assertEquals(100.0, missing.percentLeft, 0.001)
+    }
+
+    @Test
+    fun `usage is clamped to the 0 to 100 percent range`() {
         assertEquals(42.0, parseXaiBilling("""{"config": {"creditUsagePercent": 42}}""", json)!!.usedPercent, 0.001)
         assertEquals(100.0, parseXaiBilling("""{"config": {"creditUsagePercent": 250}}""", json)!!.usedPercent, 0.001)
         assertEquals(100.0, parseXaiBilling("""{"config": {"creditUsagePercent": -3}}""", json)!!.percentLeft, 0.001)
@@ -86,8 +108,8 @@ class XaiBillingCodecTest {
 
     @Test
     fun `fields at the root without a config wrapper still parse`() {
-        val billing = parseXaiBilling("""{"currentPeriod": {"end": "2026-10-28T00:00:00Z"}, "creditUsagePercent": 0.1}""", json)!!
-        assertEquals(10.0, billing.usedPercent, 0.001)
+        val billing = parseXaiBilling("""{"currentPeriod": {"end": "2026-10-28T00:00:00Z"}, "creditUsagePercent": 15}""", json)!!
+        assertEquals(15.0, billing.usedPercent, 0.001)
         assertNotNull(billing.periodEnd)
     }
 
@@ -95,13 +117,14 @@ class XaiBillingCodecTest {
     fun `product usage and prepaid balance are read`() {
         val billing = parseXaiBilling(
             """
-            {"config": {"creditUsagePercent": 0.25,
+            {"config": {"creditUsagePercent": 25,
               "productUsage": [{"product": "GrokBuild", "usagePercent": 0.5}, {"product": "GrokChat", "usagePercent": 12.5}, {"usagePercent": 1}, 7],
               "isUnifiedBillingUser": true, "prepaidBalance": {"val": 5.5}}}
             """.trimIndent(),
             json
         )!!
-        assertEquals(listOf("Build" to 50.0, "Chat" to 12.5), billing.productUsage)
+        assertEquals(listOf("Build" to 0.5, "Chat" to 12.5), billing.productUsage)
+        assertEquals(25.0, billing.usedPercent, 0.001)
         assertEquals(5.5, billing.prepaidBalance!!, 0.001)
         // product usage has no reset timestamp, so it never becomes a window
         assertEquals(1, billing.toUsageWindows().size)
