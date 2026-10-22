@@ -2,9 +2,7 @@ package org.parkjw.apps.oot.ui
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -26,8 +24,6 @@ import org.parkjw.apps.oot.OotApp
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.i18n.AppLanguage
 import org.parkjw.apps.oot.i18n.AppLocale
-import org.parkjw.apps.oot.data.model.AuthType
-import org.parkjw.apps.oot.data.model.ProviderAccount
 import org.parkjw.apps.oot.service.TokenMonitorForegroundService
 import org.parkjw.apps.oot.ui.screens.AddAccountDialog
 import org.parkjw.apps.oot.ui.screens.DashboardScreen
@@ -43,7 +39,6 @@ import org.parkjw.apps.oot.update.launchApkInstaller
 import org.parkjw.apps.oot.update.openBrowsableUrl
 import org.parkjw.apps.oot.update.openInstallPermissionSettings
 import org.parkjw.apps.oot.update.openReleasePage
-import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
@@ -75,7 +70,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkNotificationPermission()
-        handleIncomingIntent(intent)
         updateViewModel.autoCheckOnLaunch(app.preferences.isAutoUpdateCheckEnabled.value)
 
         setContent {
@@ -99,6 +93,7 @@ class MainActivity : ComponentActivity() {
                 var secureStorageAvailable by remember {
                     mutableStateOf(app.preferences.isSecureStorageAvailable)
                 }
+                var resetInProgress by remember { mutableStateOf(false) }
 
                 LaunchedEffect(updateState) {
                     val ready = updateState as? UpdateUiState.ReadyToInstall ?: return@LaunchedEffect
@@ -213,29 +208,37 @@ class MainActivity : ComponentActivity() {
                         },
                         onSettingsClick = { showSettings = true },
                         isSecureStorageAvailable = secureStorageAvailable,
+                        isResettingSecureStorage = resetInProgress,
                         snackbarHostState = snackbarHostState,
                         onResetSecureStorage = {
-                            lifecycleScope.launch {
-                                // Close the sign-in dialog: its pending callbacks are dropped by the reset.
-                                showAddDialog = false
-                                app.oauthManager.cancelPendingFlows()
-                                app.repository.onAccountsReset()
-                                val reset = withContext(Dispatchers.IO) {
-                                    app.preferences.resetSecureStorage()
+                            if (!resetInProgress) {
+                                resetInProgress = true
+                                lifecycleScope.launch {
+                                    try {
+                                        // Close the sign-in dialog: its pending callbacks are dropped by the reset.
+                                        showAddDialog = false
+                                        app.oauthManager.cancelPendingFlows()
+                                        app.repository.onAccountsReset()
+                                        val reset = withContext(Dispatchers.IO) {
+                                            app.preferences.resetSecureStorage()
+                                        }
+                                        // Again after the reset: a refresh started in the gap read the old accounts.
+                                        app.repository.onAccountsReset()
+                                        secureStorageAvailable = app.preferences.isSecureStorageAvailable
+                                        resetCount++
+                                        if (reset) showAddDialog = true
+                                        app.repository.refreshAll()
+                                        app.notificationManager.updateNotification(app.repository.vendorUsages.value)
+                                        snackbarHostState.showSnackbar(
+                                            getString(
+                                                if (reset) R.string.secure_storage_reset_done
+                                                else R.string.secure_storage_reset_failed,
+                                            ),
+                                        )
+                                    } finally {
+                                        resetInProgress = false
+                                    }
                                 }
-                                // Again after the reset: a refresh started in the gap read the old accounts.
-                                app.repository.onAccountsReset()
-                                secureStorageAvailable = app.preferences.isSecureStorageAvailable
-                                resetCount++
-                                if (reset) showAddDialog = true
-                                app.repository.refreshAll()
-                                app.notificationManager.updateNotification(app.repository.vendorUsages.value)
-                                snackbarHostState.showSnackbar(
-                                    getString(
-                                        if (reset) R.string.secure_storage_reset_done
-                                        else R.string.secure_storage_reset_failed,
-                                    ),
-                                )
                             }
                         },
                     )
@@ -302,48 +305,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         updateViewModel.onResumed()
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleIncomingIntent(intent)
-    }
-
-    private fun handleIncomingIntent(intent: Intent?) {
-        val uri: Uri = intent?.data ?: return
-        if (uri.scheme == "oot" && uri.host == "oauth") {
-            lifecycleScope.launch {
-                val generation = app.preferences.resetGeneration()
-                val result = app.oauthManager.handleOAuthCallback(uri)
-                result.onSuccess { tokenResult ->
-                    val newAccount = ProviderAccount(
-                        id = UUID.randomUUID().toString(),
-                        provider = tokenResult.provider,
-                        name = getString(R.string.account_name_subscription, tokenResult.provider.displayName),
-                        authType = AuthType.OAUTH,
-                        accessToken = tokenResult.accessToken,
-                        refreshToken = tokenResult.refreshToken,
-                        tokenExpiresAt = tokenResult.expiresAt
-                    )
-                    // A reset while the callback was in flight cleared the accounts: do not put this one back.
-                    if (!app.preferences.saveAccountIfCurrent(newAccount, generation)) return@onSuccess
-                    app.repository.refreshAll()
-                    app.notificationManager.updateNotification(app.repository.vendorUsages.value)
-                    Toast.makeText(
-                        this@MainActivity,
-                        getString(R.string.toast_oauth_connected, tokenResult.provider.displayName),
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }.onFailure { error ->
-                    Toast.makeText(
-                        this@MainActivity,
-                        getString(R.string.toast_auth_error, error.message.orEmpty()),
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
-            }
-        }
     }
 
     private fun checkNotificationPermission() {

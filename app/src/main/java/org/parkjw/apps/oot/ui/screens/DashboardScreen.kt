@@ -145,6 +145,7 @@ fun DashboardScreen(
     onToggleService: (Boolean) -> Unit = {},
     onSetRefreshInterval: (Int) -> Unit = {},
     isSecureStorageAvailable: Boolean = true,
+    isResettingSecureStorage: Boolean = false,
     onResetSecureStorage: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
@@ -275,7 +276,10 @@ fun DashboardScreen(
 
                 if (!isSecureStorageAvailable) {
                     item(key = "secure_storage_notice") {
-                        SecureStorageNoticeCard(onResetClick = { showStorageResetDialog = true })
+                        SecureStorageNoticeCard(
+                            onResetClick = { showStorageResetDialog = true },
+                            enabled = !isResettingSecureStorage,
+                        )
                     }
                 }
                 val leastItem = findLeastRemainingItem(renderedUsages)
@@ -1360,6 +1364,7 @@ fun formatTimeToReset(res: Resources, resetsAt: Instant?, now: Instant): String?
 fun SecureStorageNoticeCard(
     onResetClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -1383,6 +1388,7 @@ fun SecureStorageNoticeCard(
             )
             TextButton(
                 onClick = onResetClick,
+                enabled = enabled,
                 colors = ootTextButtonColors(),
                 contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
             ) {

@@ -40,12 +40,8 @@
     <string name="data_window_used">%1$s 사용: %2$d%%</string>
     <string name="data_window_left">%1$s: %2$d%% 남음</string>
 
-    <!-- Claude / OpenAI usage lines -->
-    <string name="data_claude_usage_left">5시간: %1$s%% 남음 | 주간: %2$s%% 남음</string>
-    <string name="data_used_5h">5h 사용: %1$s%%</string>
+    <!-- Remaining usage lines -->
     <string name="data_used_weekly">주간 사용: %1$s%%</string>
-    <string name="data_usage_detail_no_reset">5h 사용: %1$s%% | 주간 사용: %2$s%%</string>
-    <string name="data_claude_summary">5h %1$s%% | 주 %2$s%%</string>
 
     <!-- Per-provider copy -->
     <string name="data_claude_key_required">Claude API 키나 OAuth 인증이 필요해요.</string>

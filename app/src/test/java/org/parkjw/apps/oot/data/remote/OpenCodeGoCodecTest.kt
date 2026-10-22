@@ -70,6 +70,37 @@ class OpenCodeGoCodecTest {
     }
 
     @Test
+    fun `null usage is treated as missing`() {
+        assertNull(OpenCodeGoCodec.parse("""{"usage": null}""", json))
+        assertNull(OpenCodeGoCodec.parse("""{"usage": "oops"}""", json))
+    }
+
+    @Test
+    fun `null or non-object windows are skipped`() {
+        assertEquals(
+            emptyList<Nothing>(),
+            OpenCodeGoCodec.parse(
+                """{"usage": {"rolling": null, "weekly": "oops", "monthly": []}}""",
+                json
+            )
+        )
+        val windows = OpenCodeGoCodec.parse(
+            """{"usage": {"rolling": {"percent": null}, "weekly": {"percent": 10}}}""",
+            json
+        )!!
+        assertEquals(1, windows.size)
+        assertEquals("weekly", windows.single().id)
+    }
+
+    @Test
+    fun `non-primitive percent is treated as missing`() {
+        assertEquals(
+            emptyList<Nothing>(),
+            OpenCodeGoCodec.parse("""{"usage": {"rolling": {"percent": {}}}}""", json)
+        )
+    }
+
+    @Test
     fun `malformed body fails to parse`() {
         assertNull(OpenCodeGoCodec.parse("not json", json))
         assertNull(OpenCodeGoCodec.parse("""{"error": "boom"}""", json))

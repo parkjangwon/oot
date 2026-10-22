@@ -5,13 +5,21 @@ on:
     tags: ["v*.*.*"]
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: gradle/actions/wrapper-validation@v4
       - name: Check tag matches app version
         run: bash scripts/check-release-tag.sh "$GITHUB_REF_NAME"
       - uses: actions/setup-java@v4
@@ -19,6 +27,12 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: gradle
+      - name: Test, lint, and check release version
+        run: |
+          ./gradlew testDebugUnitTest lintDebug --console=plain
+          bash scripts/test-release-version.sh
+          # Stop the daemon so no Gradle process from the check step outlives it into the signing steps.
+          ./gradlew --stop
       - name: Require signing secrets
         env:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
