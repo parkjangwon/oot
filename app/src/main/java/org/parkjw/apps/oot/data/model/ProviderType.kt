@@ -16,7 +16,9 @@ enum class ProviderType(
     val oauthTokenEndpoint: String? = null,
     val defaultScopes: List<String> = emptyList(),
     // issue #4: false = hidden from the add-account dialog and skipped in sync (existing accounts kept)
-    val isSelectable: Boolean = true
+    val isSelectable: Boolean = true,
+    // RFC 7009 endpoint; null = no publicly documented revocation, so nothing is called on delete
+    val oauthRevocationEndpoint: String? = null
 ) {
     OPENROUTER(
         displayName = "OpenRouter",

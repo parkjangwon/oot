@@ -191,7 +191,9 @@ class MainActivity : ComponentActivity() {
                             showAddDialog = true
                         },
                         onDeleteAccount = { accountId ->
+                            val removed = app.preferences.accounts.value.firstOrNull { it.id == accountId }
                             app.preferences.deleteAccount(accountId)
+                            removed?.let { app.appScope.launch { app.tokenRevoker.revoke(it) } }
                             lifecycleScope.launch {
                                 app.repository.refreshAll()
                                 app.notificationManager.updateNotification(app.repository.vendorUsages.value)
