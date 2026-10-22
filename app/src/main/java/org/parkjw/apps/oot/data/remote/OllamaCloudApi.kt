@@ -54,6 +54,11 @@ class OllamaCloudApi(
                             else -> successStatus(account, windows)
                         }
                     }
+                    response.code == 429 -> rateLimitedTokenStatus(
+                        account,
+                        ProviderType.OLLAMA_CLOUD,
+                        response.header("Retry-After")
+                    )
                     response.code == 401 -> errorStatus(
                         account,
                         remainingFormatted = "인증 실패 (401)",

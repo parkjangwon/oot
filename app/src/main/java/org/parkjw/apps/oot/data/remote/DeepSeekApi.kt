@@ -53,6 +53,11 @@ class DeepSeekApi(
                             else -> successStatus(account, windows)
                         }
                     }
+                    response.code == 429 -> rateLimitedTokenStatus(
+                        account,
+                        ProviderType.DEEPSEEK,
+                        response.header("Retry-After")
+                    )
                     response.code == 401 -> errorStatus(
                         account,
                         remainingFormatted = "인증 실패 (401)",
