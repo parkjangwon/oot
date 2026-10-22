@@ -12,18 +12,26 @@ class ExportedEntryPointsTest {
 
     @Test
     fun manifestDeclaresNoOauthDeepLink() {
-        val manifest = File(projectRoot(), "app/src/main/AndroidManifest.xml").readText()
+        listOf("app/src/main/AndroidManifest.xml", "app/src/debug/AndroidManifest.xml")
+            .map { File(projectRoot(), it) }
+            .filter { it.isFile }
+            .forEach { file ->
+                val manifest = file.readText().replace('\'', '"')
 
-        assertFalse("no <data> scheme filter allowed", manifest.contains("<data"))
-        assertFalse("no oot:// scheme allowed", manifest.contains("android:scheme=\"oot\""))
-        assertFalse("no BROWSABLE category allowed", manifest.contains("category.BROWSABLE"))
+                assertFalse("no <data> scheme filter allowed in $file", manifest.contains("<data"))
+                assertFalse("no oot:// scheme allowed in $file", manifest.contains("android:scheme=\"oot\""))
+                assertFalse("no BROWSABLE category allowed in $file", manifest.contains("category.BROWSABLE"))
+            }
     }
 
     @Test
     fun sourcesDoNotReferenceOotRedirect() {
         val sources = File(projectRoot(), "app/src/main/java").walkTopDown().filter { it.extension == "kt" }
-        sources.forEach {
-            assertFalse("oot:// redirect found in $it", it.readText().contains("oot://"))
+        sources.forEach { file ->
+            val text = file.readText()
+            listOf("oot://", "handleOAuthCallback", "onNewIntent(").forEach {
+                assertFalse("$it found in $file", text.contains(it))
+            }
         }
     }
 
