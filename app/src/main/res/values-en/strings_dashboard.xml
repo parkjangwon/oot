@@ -17,7 +17,7 @@
     <string name="dashboard_move_down">Move down</string>
     <string name="dashboard_legacy_unsupported_desc">Not supported · This provider is no longer supported. You can delete it.</string>
     <string name="dashboard_empty_title">No providers yet</string>
-    <string name="dashboard_empty_subtitle">Add a provider like Claude, GLM, xAI, OpenRouter, or OpenAI to track what\'s left.</string>
+    <string name="dashboard_empty_subtitle">Add a provider like Claude, GLM, xAI, OpenRouter, or OpenAI to check your limits and balance.</string>
     <string name="dashboard_error_unauthorized">Sign in again</string>
     <string name="dashboard_error_scope_missing">Missing permissions</string>
     <string name="dashboard_error_rate_limited">Rate limited (429)</string>

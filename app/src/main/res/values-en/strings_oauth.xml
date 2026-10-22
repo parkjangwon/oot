@@ -1,24 +1,24 @@
 <resources>
     <string name="oauth_xai_code_request_failed">Couldn\'t request the xAI device code (%1$d): %2$s</string>
-    <string name="oauth_xai_no_device_code">Didn\'t receive a valid xAI device code.</string>
+    <string name="oauth_xai_no_device_code">Couldn\'t get an xAI device code.</string>
     <string name="oauth_xai_request_error">xAI sign-in error: %1$s</string>
     <string name="oauth_auth_expired">Sign-in timed out. Please try again.</string>
     <string name="oauth_user_denied">Sign-in was cancelled or denied.</string>
     <string name="oauth_xai_wait_timeout">Timed out waiting for xAI sign-in.</string>
     <string name="oauth_openai_code_request_failed">Couldn\'t request the OpenAI device code (%1$d): %2$s</string>
-    <string name="oauth_openai_no_device_code">Didn\'t receive a valid OpenAI device code.</string>
+    <string name="oauth_openai_no_device_code">Couldn\'t get an OpenAI device code.</string>
     <string name="oauth_openai_request_error">OpenAI sign-in error: %1$s</string>
-    <string name="oauth_openai_token_response_incomplete">The OpenAI device token response was incomplete.</string>
+    <string name="oauth_openai_token_response_incomplete">The OpenAI sign-in response was incomplete.</string>
     <string name="oauth_openai_token_exchange_failed">OpenAI token exchange failed</string>
     <string name="oauth_openai_token_exchange_failed_code">OpenAI token exchange failed (%1$d): %2$s</string>
     <string name="oauth_openai_auth_failed">OpenAI device authentication failed (%1$d): %2$s</string>
     <string name="oauth_openai_wait_timeout">Timed out waiting for OpenAI sign-in (15 minutes).</string>
     <string name="oauth_missing_access_token">The response has no access_token.</string>
     <string name="oauth_callback_denied">OAuth authorization denied: %1$s</string>
-    <string name="oauth_invalid_callback">Invalid OAuth callback data.</string>
+    <string name="oauth_invalid_callback">The sign-in callback data isn\'t valid.</string>
     <string name="oauth_invalid_state">The session state is expired or doesn\'t match.</string>
-    <string name="oauth_token_endpoint_missing">No token endpoint is defined.</string>
+    <string name="oauth_token_endpoint_missing">No token endpoint is set.</string>
     <string name="oauth_token_exchange_failed_code">Token exchange failed (%1$d): %2$s</string>
-    <string name="oauth_claude_no_session">Couldn\'t find the Claude sign-in session. Please try browser sign-in again.</string>
+    <string name="oauth_claude_no_session">Couldn\'t find the Claude sign-in session. Sign in with your browser again.</string>
     <string name="oauth_claude_token_exchange_failed">Claude token exchange failed (%1$d): %2$s</string>
 </resources>

@@ -69,10 +69,10 @@
     <string name="data_no_subscription">No subscription</string>
     <string name="data_opencodego_server_error">OpenCode Go server error (%1$d)</string>
     <string name="data_openrouter_key_required">Add an OpenRouter API key.</string>
-    <string name="data_openrouter_key_invalid">Invalid OpenRouter API key.</string>
+    <string name="data_openrouter_key_invalid">This OpenRouter API key isn\'t valid.</string>
     <string name="data_openrouter_server_error">OpenRouter server error</string>
-    <string name="data_xai_key_required">Add an xAI API key or use xAI device sign-in.</string>
-    <string name="data_xai_token_invalid">Invalid xAI auth token or key.</string>
+    <string name="data_xai_key_required">Add an xAI API key or use device sign-in.</string>
+    <string name="data_xai_token_invalid">This xAI token or key isn\'t valid.</string>
     <string name="data_xai_subscription_active">Subscription active (%1$s)</string>
     <string name="data_xai_ok">xAI OK</string>
     <string name="data_grok_connected">Grok models connected</string>
