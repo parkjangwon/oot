@@ -437,24 +437,43 @@ class OAuthManager(
     }
 
     // Closing the socket is what ends a blocking accept(); cancelling the job alone cannot.
-    private fun stopLoopbackListener() {
-        loopbackServer?.close()
+    // Returns whether a listener was running: its port is released only once its thread leaves accept().
+    private fun stopLoopbackListener(): Boolean {
+        val previous = loopbackServer ?: return false
+        previous.close()
         loopbackJob?.cancel()
+        return true
+    }
+
+    // The JDK defers closing a ServerSocket while another thread is blocked in accept(), so right after taking
+    // over from a running listener the port can still be bound for a moment. Retry briefly in that case only.
+    private fun bindLoopback(server: ServerSocket, tookOver: Boolean) {
+        val address = InetSocketAddress(InetAddress.getLoopbackAddress(), ANTIGRAVITY_LOOPBACK_PORT)
+        var attempt = 0
+        while (true) {
+            try {
+                server.bind(address)
+                return
+            } catch (e: java.net.BindException) {
+                if (!tookOver || ++attempt >= REBIND_ATTEMPTS) throw e
+                Thread.sleep(REBIND_DELAY_MS)
+            }
+        }
     }
 
     // Binds the loopback port first, then opens the browser, so a busy port is reported instead of a dead redirect.
-    // Both happen on the caller's thread (binding does no network I/O), so a second tap always finds the first socket closed.
+    // Both happen on the caller's thread (binding does no network I/O); a second tap waits briefly for the first socket to let go.
     private fun startLoopbackListener(
         session: LoginSession,
         authUrl: String,
         onTokenReceived: (OAuthTokenResult) -> Unit,
         onError: (String) -> Unit
     ) {
-        stopLoopbackListener()
+        val tookOver = stopLoopbackListener()
         val server = ServerSocket()
         try {
             server.reuseAddress = true
-            server.bind(InetSocketAddress(InetAddress.getLoopbackAddress(), ANTIGRAVITY_LOOPBACK_PORT))
+            bindLoopback(server, tookOver)
             openExternalBrowser(authUrl)
         } catch (e: IOException) {
             server.close()
@@ -857,6 +876,8 @@ class OAuthManager(
         const val REDIRECT_URI = "oot://oauth"
         const val CLAUDE_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback"
         const val ANTIGRAVITY_LOOPBACK_PORT = 4000
+        private const val REBIND_ATTEMPTS = 20
+        private const val REBIND_DELAY_MS = 25L
 
         // The loopback IP literal (RFC 8252 §8.3) is the address the listener binds; CodexBar signs in to this client the same way.
         const val ANTIGRAVITY_REDIRECT_URI = "http://127.0.0.1:$ANTIGRAVITY_LOOPBACK_PORT"
