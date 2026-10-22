@@ -18,9 +18,9 @@
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/dashboard-light.png" alt="Dashboard, light theme" width="240"><br><sub>Dashboard (light)</sub></td>
-    <td align="center"><img src="docs/screenshots/dashboard-dark.png" alt="Dashboard, dark theme" width="240"><br><sub>Dashboard (dark)</sub></td>
-    <td align="center"><img src="docs/screenshots/settings/settings-new-version.png" alt="In-app update prompt in Settings" width="240"><br><sub>In-app update prompt</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/dashboard-light.png" alt="Dashboard, light theme" width="240"><br><sub>Dashboard (light)</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/dashboard-dark.png" alt="Dashboard, dark theme" width="240"><br><sub>Dashboard (dark)</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/settings/settings-new-version.png" alt="In-app update prompt in Settings" width="240"><br><sub>In-app update prompt</sub></td>
   </tr>
   <tr>
     <td align="center" colspan="3"><img src="docs/screenshots/notification/notif-collapsed-412-light-3x.png" alt="Collapsed notification" width="412"><br><sub>Collapsed notification — one line, in your custom order</sub></td>
