@@ -50,7 +50,7 @@
     <string name="notification_window_5h">5H</string>
     <string name="notification_window_7d">7D</string>
     <string name="notification_vendor_needs_check">%1$s needs attention</string>
-    <string name="notification_empty_title">OOT: token monitor</string>
+    <string name="notification_empty_title">oot · token monitor</string>
     <string name="notification_empty_no_providers">No providers yet. Add one in the app.</string>
     <string name="notification_empty_all_hidden">All providers are hidden from the notification. Turn them on in Settings.</string>
     <string name="notification_action_refresh">Refresh</string>

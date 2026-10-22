@@ -165,6 +165,8 @@ class NotificationScreenshotTest {
     fun noProvidersRegisteredAsksToAddOne() {
         val empty = buildNotification(usages = emptyList())
         assertEquals("등록된 프로바이더가 없어요. 앱에서 추가해 주세요.", empty.contentText())
+        // Lowercase "oot" wordmark, as in the app bar (#80).
+        assertEquals("oot · 토큰 모니터", empty.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString())
         // Tapping still opens the app, and the refresh action stays.
         assertEquals(true, empty.contentIntent != null)
         assertEquals("새로고침", empty.actions.single().title.toString())
@@ -219,6 +221,7 @@ class NotificationScreenshotTest {
         assertEquals(true, claude.startsWith("5H 62% left · in 1h 40m"))
         val empty = buildNotification(usages = emptyList(), language = AppLanguage.ENGLISH)
         assertEquals("No providers yet. Add one in the app.", empty.contentText())
+        assertEquals("oot · token monitor", empty.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString())
         assertEquals(
             "All providers are hidden from the notification. Turn them on in Settings.",
             buildNotification(hidden = allIds(), language = AppLanguage.ENGLISH).contentText(),
