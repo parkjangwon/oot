@@ -82,9 +82,10 @@ class StorageResetTest {
     }
 
     @Test
-    fun `reset button is disabled while reset is in progress`() {
+    fun `reset button shows the resetting label and is disabled while reset is in progress`() {
         setDashboard(available = false, isResettingSecureStorage = true)
 
-        composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").assertIsNotEnabled()
+        composeRule.onNodeWithText("초기화하는 중…").assertExists().assertIsNotEnabled()
+        composeRule.onNodeWithText("저장소 초기화하고 다시 로그인").assertDoesNotExist()
     }
 }

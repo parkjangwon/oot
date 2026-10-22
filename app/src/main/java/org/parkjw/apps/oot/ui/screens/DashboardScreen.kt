@@ -38,6 +38,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarData
@@ -63,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.PathEffect
@@ -77,6 +79,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -113,6 +116,7 @@ import org.parkjw.apps.oot.ui.theme.OotSpacing
 import org.parkjw.apps.oot.ui.theme.extendedColors
 import org.parkjw.apps.oot.ui.theme.ootIconButtonColors
 import org.parkjw.apps.oot.ui.theme.ootInkButtonColors
+import org.parkjw.apps.oot.ui.theme.ootOutlinedButtonColors
 import org.parkjw.apps.oot.ui.theme.ootTextButtonColors
 import org.parkjw.apps.oot.ui.theme.progressLevel
 import org.parkjw.apps.oot.ui.theme.withNumericSpans
@@ -278,7 +282,7 @@ fun DashboardScreen(
                     item(key = "secure_storage_notice") {
                         SecureStorageNoticeCard(
                             onResetClick = { showStorageResetDialog = true },
-                            enabled = !isResettingSecureStorage,
+                            resetting = isResettingSecureStorage,
                         )
                     }
                 }
@@ -1364,7 +1368,7 @@ fun formatTimeToReset(res: Resources, resetsAt: Instant?, now: Instant): String?
 fun SecureStorageNoticeCard(
     onResetClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    resetting: Boolean = false,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -1375,27 +1379,59 @@ fun SecureStorageNoticeCard(
         shadowElevation = 0.dp,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(OotSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(OotSpacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(OotSpacing.sm),
         ) {
-            Text(
-                text = stringResource(R.string.secure_storage_unavailable),
-                style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Icon(
+                painter = painterResource(R.drawable.ic_info_line),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            TextButton(
-                onClick = onResetClick,
-                enabled = enabled,
-                colors = ootTextButtonColors(),
-                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+            Column(
+                verticalArrangement = Arrangement.spacedBy(OotSpacing.xs),
             ) {
                 Text(
-                    text = stringResource(R.string.secure_storage_reset_action),
-                    style = MaterialTheme.typography.labelLarge,
+                    text = stringResource(R.string.secure_storage_unavailable),
+                    style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                OutlinedButton(
+                    onClick = onResetClick,
+                    enabled = !resetting,
+                    shape = ButtonCorner,
+                    // While resetting the label is the status, so keep it at secondary-text contrast, not the 38% disabled alpha.
+                    colors = ootOutlinedButtonColors(
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.extendedColors.hairlineStrong),
+                    modifier = Modifier.height(40.dp),
+                ) {
+                    if (resetting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clearAndSetSemantics { },
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = Color.Transparent,
+                        )
+                        Spacer(modifier = Modifier.width(OotSpacing.xs))
+                    }
+                    Text(
+                        text = stringResource(
+                            if (resetting) {
+                                R.string.secure_storage_resetting
+                            } else {
+                                R.string.secure_storage_reset_action
+                            },
+                        ),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
             }
         }
     }
