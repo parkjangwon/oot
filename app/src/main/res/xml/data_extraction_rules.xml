@@ -11,6 +11,12 @@
         <exclude
             domain="sharedpref"
             path="oot_secure_prefs.xml" />
+        <exclude
+            domain="sharedpref"
+            path="oot_tink_prefs.xml" />
+        <exclude
+            domain="sharedpref"
+            path="oot_tink_keyset.xml" />
         <!-- Credential file name used by older versions, kept out as well. -->
         <exclude
             domain="sharedpref"
@@ -25,6 +31,12 @@
         <exclude
             domain="sharedpref"
             path="oot_secure_prefs.xml" />
+        <exclude
+            domain="sharedpref"
+            path="oot_tink_prefs.xml" />
+        <exclude
+            domain="sharedpref"
+            path="oot_tink_keyset.xml" />
         <exclude
             domain="sharedpref"
             path="oot_fallback_prefs.xml" />

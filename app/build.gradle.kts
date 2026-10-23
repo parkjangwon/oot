@@ -155,7 +155,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
 
     implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.security.crypto) // read-only: one-time migration of the old store
+    implementation(libs.tink.android)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.datastore.preferences)
 

@@ -89,7 +89,7 @@ Release builds are signed in CI and cut from tags: a tag `vX.Y.Z` must match `ve
 
 ## Privacy & security
 
-Credentials (tokens and API keys) stay in Keystore-backed encrypted storage on the device. That store is excluded from Android backup and device transfer, so after restoring a backup or moving to a new phone you sign in to your providers again. Network traffic is https only, including custom endpoints. The add-account dialog is marked secure, so it stays out of screenshots and the recent-apps preview. There are no analytics or telemetry — the app only talks to the vendors you add and to GitHub Releases for update checks.
+Credentials (tokens and API keys) stay in encrypted storage on the device (Tink AEAD with AES-256-GCM, keyset wrapped by the Android Keystore). That store is excluded from Android backup and device transfer, so after restoring a backup or moving to a new phone you sign in to your providers again. Network traffic is https only, including custom endpoints. The add-account dialog is marked secure, so it stays out of screenshots and the recent-apps preview. There are no analytics or telemetry — the app only talks to the vendors you add and to GitHub Releases for update checks.
 
 ## License
 

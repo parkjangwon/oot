@@ -16,6 +16,8 @@ class BackupRulesTest {
     private val credentialFiles = setOf(
         "sharedpref/oot_secure_prefs.xml",
         "sharedpref/oot_fallback_prefs.xml",
+        "sharedpref/oot_tink_prefs.xml",
+        "sharedpref/oot_tink_keyset.xml",
     )
     private val updateStateFile = "file/datastore/update.preferences_pb"
     private val languageFile = "file/datastore/language.preferences_pb"

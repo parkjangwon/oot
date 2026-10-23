@@ -1,4 +1,4 @@
-# Tink (via androidx.security-crypto) references errorprone annotations that are compile-only
+# Tink references errorprone annotations that are compile-only
 -dontwarn com.google.errorprone.annotations.CanIgnoreReturnValue
 -dontwarn com.google.errorprone.annotations.CheckReturnValue
 -dontwarn com.google.errorprone.annotations.Immutable
