@@ -3,6 +3,10 @@ package org.parkjw.apps.oot.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.test.core.app.ApplicationProvider
+import com.google.crypto.tink.Aead
+import com.google.crypto.tink.KeyTemplates
+import com.google.crypto.tink.KeysetHandle
+import com.google.crypto.tink.aead.AeadConfig
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
@@ -67,6 +71,32 @@ class SecureStorageResetTest {
         assertTrue(legacyPrefs().all.isEmpty())
         assertEquals("1", context.getSharedPreferences(UNRELATED_STORE, Context.MODE_PRIVATE).getString("keep", null))
         assertTrue("DataStore files must stay", dataStoreFile.isFile)
+    }
+
+    @Test
+    fun `reset removes every Tink and legacy file and a fresh Tink store opens`() {
+        AeadConfig.register()
+        val aead = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM")).getPrimitive(Aead::class.java)
+        val names = listOf(TINK_PREFS_NAME, KEYSET_PREFS_NAME, LEGACY_ENCRYPTED_PREFS_NAME, LEGACY_STORE)
+        names.forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).edit().putString("k", "v").commit() }
+        val storage = SecureStorage(
+            context,
+            openEncrypted = { openTinkPreferences(it, openAead = { aead }, openLegacy = { null }, deleteLegacy = {}) },
+            deleteKeyAlias = { aliasDeleted = true },
+        )
+        storage.putStringNow("oot_accounts", "sk-test-000")
+
+        assertTrue(storage.reset())
+
+        assertTrue("the key alias must be deleted with the keyset file", aliasDeleted)
+        listOf(KEYSET_PREFS_NAME, LEGACY_ENCRYPTED_PREFS_NAME, LEGACY_STORE).forEach {
+            assertFalse("$it must be removed", File(context.dataDir, "shared_prefs/$it.xml").exists())
+        }
+        assertNull(storage.getString("oot_accounts"))
+        assertTrue(context.getSharedPreferences(TINK_PREFS_NAME, Context.MODE_PRIVATE).all.isEmpty())
+        storage.putStringNow("oot_accounts", "sk-test-000")
+        assertEquals("sk-test-000", storage.getString("oot_accounts"))
+        assertEquals(StorageStatus.ENCRYPTED, storage.status)
     }
 
     @Test

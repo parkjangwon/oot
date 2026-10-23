@@ -3,7 +3,6 @@ package org.parkjw.apps.oot.data.local
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import java.security.KeyStore
 
@@ -11,9 +10,11 @@ enum class StorageStatus { ENCRYPTED, UNAVAILABLE }
 
 class SecureStorage internal constructor(
     private val context: Context,
-    private val openEncrypted: (Context) -> SharedPreferences = ::openEncryptedPreferences,
+    private val openEncrypted: (Context) -> SharedPreferences = { openTinkPreferences(it) },
     private val legacyPrefsName: String = LEGACY_PREFS_NAME,
-    private val encryptedPrefsName: String = ENCRYPTED_PREFS_NAME,
+    private val encryptedPrefsName: String = TINK_PREFS_NAME,
+    // The keyset file must go together with the Tink master key alias: a keyset without its key cannot reopen.
+    private val extraStoreNames: List<String> = listOf(KEYSET_PREFS_NAME, LEGACY_ENCRYPTED_PREFS_NAME),
     private val deleteStoreFile: (Context, String) -> Unit = { ctx, name -> ctx.deleteSharedPreferences(name) },
     private val deleteKeyAlias: () -> Unit = ::deleteMasterKeyAlias,
     // A legacy plaintext file can be an orphan left by v1.3.1 after a transient failure, older than the
@@ -47,15 +48,12 @@ class SecureStorage internal constructor(
     fun reset(): Boolean {
         memory.clear()
         prefs = null
-        try {
-            deleteStoreFile(context, encryptedPrefsName)
-        } catch (e: Exception) {
-            // The reopen below decides whether the store is usable.
-        }
-        try {
-            deleteStoreFile(context, legacyPrefsName)
-        } catch (e: Exception) {
-            // The reopen below decides whether the store is usable.
+        for (name in listOf(encryptedPrefsName, legacyPrefsName) + extraStoreNames) {
+            try {
+                deleteStoreFile(context, name)
+            } catch (e: Exception) {
+                // The reopen below decides whether the store is usable.
+            }
         }
         try {
             deleteKeyAlias()
@@ -223,28 +221,14 @@ class SecureStorage internal constructor(
 }
 
 private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-private const val ENCRYPTED_PREFS_NAME = "oot_secure_prefs"
 private const val LEGACY_PREFS_NAME = "oot_fallback_prefs"
 private const val MARKER_KEY = "oot_legacy_migrated"
 private const val MARKER_VALUE = "1"
 
+// Removes the Tink master key and the old androidx default key; a missing alias is already the desired state.
 private fun deleteMasterKeyAlias() {
     val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
-    if (keyStore.containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS)) {
-        keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+    for (alias in listOf(TINK_MASTER_KEY_ALIAS, MasterKey.DEFAULT_MASTER_KEY_ALIAS)) {
+        if (keyStore.containsAlias(alias)) keyStore.deleteEntry(alias)
     }
-}
-
-private fun openEncryptedPreferences(context: Context): SharedPreferences {
-    val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-
-    return EncryptedSharedPreferences.create(
-        context,
-        ENCRYPTED_PREFS_NAME,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
 }
