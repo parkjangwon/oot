@@ -2,6 +2,7 @@ package org.parkjw.apps.oot.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -38,6 +38,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.dp
 import org.parkjw.apps.oot.R
@@ -92,7 +95,7 @@ fun SettingsScreen(
                     IconButton(onClick = onBack, colors = ootIconButtonColors()) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_title),
+                            contentDescription = stringResource(R.string.settings_back),
                         )
                     }
                 },
@@ -142,7 +145,7 @@ fun SettingsScreen(
                             title = account.name.ifBlank { account.provider.displayName },
                             checked = account.id !in notificationHiddenIds,
                             onCheckedChange = { onNotificationShownChange(account.id, it) },
-                            leading = { VendorMark(provider = account.provider) },
+                            leading = { VendorMark(provider = account.provider, modifier = Modifier.clearAndSetSemantics {}) },
                         )
                     }
                 }
@@ -201,7 +204,7 @@ fun SettingsScreen(
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .selectable(selected = false, onClick = onOpenSourceCode),
+                        .clickable(onClick = onOpenSourceCode),
                 )
             }
         }
@@ -313,12 +316,14 @@ private fun SectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(
-            start = OotSpacing.screenHorizontal,
-            end = OotSpacing.screenHorizontal,
-            top = OotSpacing.lg,
-            bottom = OotSpacing.xs,
-        ),
+        modifier = Modifier
+            .padding(
+                start = OotSpacing.screenHorizontal,
+                end = OotSpacing.screenHorizontal,
+                top = OotSpacing.lg,
+                bottom = OotSpacing.xs,
+            )
+            .semantics { heading() },
     )
 }
 
