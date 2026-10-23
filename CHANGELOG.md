@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-23
+
+Deleting an account now also signs it out at the provider where that is possible, your saved keys move to newer encryption without signing in again, and usage cards cope better with incomplete replies.
+
+### Added
+- Deleting an account that was added by signing in to OpenAI or xAI also asks the provider to revoke that sign-in. For Claude, and for OpenAI, xAI, OpenRouter and DeepSeek API keys, the key is removed from this device only, and the account dialog says to revoke it in the service itself. Deleting always finishes on the device, even when the provider cannot be reached (#118).
+
+### Changed
+- Saved keys and sign-ins move to a newer encryption method on the first launch after the update. This happens once and you stay signed in (#117).
+- If the encrypted store cannot be opened, the dashboard shows a card that offers to reset it and add accounts again, after a confirmation. The reset keeps your language and other settings (#115).
+- Settings works better with a screen reader: the back button is read as 'Back' and section titles are headings. Texts use a real ellipsis (…) (#128).
+- An unused sign-in link was removed. Signing in works as before (#116).
+
+### Fixed
+- OpenRouter keys that cannot read account credits show the key's remaining limit instead of an error (#131).
+- Claude and OpenAI cards show only the usage windows the provider reports. A missing window no longer shows as 0% or 100%, and one bad reply no longer stops other accounts from refreshing (#132).
+- DeepSeek, OpenCode Go and Ollama Cloud replies with empty fields no longer break the card (#137).
+- A request count such as 'Requests left: 4999' is no longer shown as a $4999.00 balance (#136).
+
 ## [1.3.2] - 2026-10-22
 
 ### Changed
