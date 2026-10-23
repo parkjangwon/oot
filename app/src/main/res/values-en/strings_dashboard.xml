@@ -11,6 +11,7 @@
     <string name="dashboard_kind_api_credit">API credit</string>
     <string name="dashboard_kind_subscription">Subscription</string>
     <string name="dashboard_add_provider">Add provider</string>
+    <string name="dashboard_delete_device_only_note">Deleting removes the key from this device only. Revoke it on the server in the service itself.</string>
     <string name="dashboard_delete_provider">Delete provider</string>
     <string name="dashboard_close">Close</string>
     <string name="dashboard_move_up">Move up</string>

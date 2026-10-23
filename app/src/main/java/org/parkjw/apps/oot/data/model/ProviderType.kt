@@ -16,7 +16,9 @@ enum class ProviderType(
     val oauthTokenEndpoint: String? = null,
     val defaultScopes: List<String> = emptyList(),
     // issue #4: false = hidden from the add-account dialog and skipped in sync (existing accounts kept)
-    val isSelectable: Boolean = true
+    val isSelectable: Boolean = true,
+    // RFC 7009 endpoint from the provider's published OIDC metadata; null = none documented, so nothing is called on delete
+    val oauthRevocationEndpoint: String? = null
 ) {
     OPENROUTER(
         displayName = "OpenRouter",
@@ -46,7 +48,8 @@ enum class ProviderType(
         dashboardUrl = "https://platform.openai.com/api-keys",
         oauthAuthEndpoint = "https://auth.openai.com/authorize",
         oauthTokenEndpoint = "https://auth.openai.com/oauth/token",
-        defaultScopes = listOf("openid", "profile", "model.request")
+        defaultScopes = listOf("openid", "profile", "model.request"),
+        oauthRevocationEndpoint = "https://auth.openai.com/api/accounts/oauth/revoke"
     ),
     XAI(
         displayName = "xAI (Grok)",
@@ -57,7 +60,8 @@ enum class ProviderType(
         dashboardUrl = "https://console.x.ai",
         oauthAuthEndpoint = "https://accounts.x.ai/oauth2/device",
         oauthTokenEndpoint = "https://auth.x.ai/oauth2/token",
-        defaultScopes = listOf("openid", "profile", "email", "offline_access", "grok-cli:access", "api:access")
+        defaultScopes = listOf("openid", "profile", "email", "offline_access", "grok-cli:access", "api:access"),
+        oauthRevocationEndpoint = "https://auth.x.ai/oauth2/revoke"
     ),
     ZAI(
         displayName = "Z.ai (GLM)",

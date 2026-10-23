@@ -11,6 +11,7 @@
     <string name="dashboard_kind_api_credit">API 크레딧</string>
     <string name="dashboard_kind_subscription">구독</string>
     <string name="dashboard_add_provider">프로바이더 추가</string>
+    <string name="dashboard_delete_device_only_note">삭제하면 이 기기에 저장된 키만 지워져요. 서버 쪽 철회는 해당 서비스에서 직접 해 주세요.</string>
     <string name="dashboard_delete_provider">프로바이더 삭제</string>
     <string name="dashboard_close">닫기</string>
     <string name="dashboard_move_up">위로 이동</string>
