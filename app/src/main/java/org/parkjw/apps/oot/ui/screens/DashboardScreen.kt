@@ -122,6 +122,7 @@ import org.parkjw.apps.oot.ui.theme.ootIconButtonColors
 import org.parkjw.apps.oot.ui.theme.ootInkButtonColors
 import org.parkjw.apps.oot.ui.theme.ootOutlinedButtonColors
 import org.parkjw.apps.oot.ui.theme.ootTextButtonColors
+import org.parkjw.apps.oot.ui.theme.ootWordBreak
 import org.parkjw.apps.oot.ui.theme.progressLevel
 import org.parkjw.apps.oot.ui.theme.withNumericSpans
 import org.parkjw.apps.oot.notification.NotificationContent
