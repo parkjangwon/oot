@@ -1,10 +1,10 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="ko">
     <string name="app_name" translatable="false">OOT</string>
-    <string name="app_full_name" translatable="false">OOT: Out of Tokens</string>
     <string name="notification_channel_name">AI 토큰·한도 모니터</string>
     <string name="notification_channel_desc">등록한 AI 프로바이더의 남은 한도와 잔액을 상태 표시줄에 계속 보여 줘요.</string>
     <string name="settings_section_update">업데이트</string>
     <string name="settings_title">설정</string>
+    <string name="settings_back">뒤로 가기</string>
     <string name="settings_section_notifications">알림</string>
     <string name="settings_section_notification_visibility">알림에 표시</string>
     <string name="settings_section_info">정보</string>
@@ -68,11 +68,16 @@
     <!-- Main activity -->
     <string name="exit_prompt">한 번 더 누르면 종료돼요</string>
     <string name="secure_storage_unavailable">보안 저장소를 열지 못했어요. 지금 바꾼 계정 정보는 앱을 다시 열면 사라질 수 있어요.</string>
+    <string name="secure_storage_reset_action">저장소 초기화하고 계정 다시 추가</string>
+    <string name="secure_storage_resetting">초기화하는 중…</string>
+    <string name="secure_storage_reset_title">저장소를 초기화할까요?</string>
+    <string name="secure_storage_reset_body">이 기기에 저장된 계정과 키를 지워요. 초기화한 뒤에는 계정을 다시 추가해야 하고, 나머지 설정은 그대로 남아요.</string>
+    <string name="secure_storage_reset_confirm">초기화</string>
+    <string name="secure_storage_reset_cancel">취소</string>
+    <string name="secure_storage_reset_done">저장소를 초기화했어요. 계정을 다시 추가해 주세요.</string>
+    <string name="secure_storage_reset_failed">저장된 계정은 지웠지만 보안 저장소를 아직 열 수 없어요. 앱 데이터를 지워 보세요.</string>
     <string name="toast_provider_added">%1$s 프로바이더를 등록했어요.</string>
-    <string name="toast_oauth_connected">%1$s 연동을 마쳤어요.</string>
-    <string name="toast_auth_error">인증 오류: %1$s</string>
     <string name="token_exchange_failed">토큰 교환 실패</string>
-    <string name="account_name_subscription">%1$s (구독)</string>
 
     <!-- Provider descriptions and auth types -->
     <string name="provider_desc_openrouter">OpenRouter 크레딧 및 잔액 실시간 모니터링</string>

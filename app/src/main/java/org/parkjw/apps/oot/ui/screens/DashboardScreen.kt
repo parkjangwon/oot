@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,7 +39,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarData
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.PathEffect
@@ -73,12 +80,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -109,6 +120,7 @@ import org.parkjw.apps.oot.ui.theme.OotSpacing
 import org.parkjw.apps.oot.ui.theme.extendedColors
 import org.parkjw.apps.oot.ui.theme.ootIconButtonColors
 import org.parkjw.apps.oot.ui.theme.ootInkButtonColors
+import org.parkjw.apps.oot.ui.theme.ootOutlinedButtonColors
 import org.parkjw.apps.oot.ui.theme.ootTextButtonColors
 import org.parkjw.apps.oot.ui.theme.progressLevel
 import org.parkjw.apps.oot.ui.theme.withNumericSpans
@@ -117,6 +129,13 @@ import java.time.Instant
 import kotlin.math.roundToInt
 
 private val WordWrapFriendly = LineBreak.Paragraph
+
+// Wraps Korean at phrase boundaries (no "있/어요" splits) and balances lines on narrow screens.
+private val PhraseWrap = LineBreak(
+    strategy = LineBreak.Strategy.Balanced,
+    strictness = LineBreak.Strictness.Strict,
+    wordBreak = LineBreak.WordBreak.Phrase,
+)
 private val ReorderPlacementSpec = tween<IntOffset>(150)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -140,12 +159,17 @@ fun DashboardScreen(
     refreshIntervalMinutes: Int = 15,
     onToggleService: (Boolean) -> Unit = {},
     onSetRefreshInterval: (Int) -> Unit = {},
+    isSecureStorageAvailable: Boolean = true,
+    isResettingSecureStorage: Boolean = false,
+    onResetSecureStorage: (() -> Unit)? = null,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     var selectedVendorForDetail by remember { mutableStateOf<VendorUsage?>(null) }
     var selectedLegacyForDetail by remember { mutableStateOf<ProviderAccount?>(null) }
     var orderedUsages by remember { mutableStateOf(vendorUsages) }
     var draggingId by remember { mutableStateOf<String?>(null) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    var showStorageResetDialog by remember { mutableStateOf(false) }
     LaunchedEffect(vendorUsages) {
         if (previewDraggingAccountId != null) return@LaunchedEffect
         // A refresh landing mid-drag still carries the saved order: keep the dragged one, take only the new numbers.
@@ -189,6 +213,9 @@ fun DashboardScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data -> OotSnackbar(data) }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -261,6 +288,15 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(OotSpacing.sm),
             ) {
                 val renderedUsages = orderedUsages.map { it.withStaleRollover(now) }
+
+                if (!isSecureStorageAvailable) {
+                    item(key = "secure_storage_notice") {
+                        SecureStorageNoticeCard(
+                            onResetClick = { showStorageResetDialog = true },
+                            resetting = isResettingSecureStorage,
+                        )
+                    }
+                }
                 val leastItem = findLeastRemainingItem(renderedUsages)
                 if (leastItem != null) {
                     item(key = "summary_line") {
@@ -382,6 +418,16 @@ fun DashboardScreen(
                 }
             }
         }
+    }
+
+    if (showStorageResetDialog) {
+        SecureStorageResetDialog(
+            onDismiss = { showStorageResetDialog = false },
+            onConfirm = {
+                showStorageResetDialog = false
+                onResetSecureStorage?.invoke()
+            },
+        )
     }
 
     selectedVendorForDetail?.let { vendor ->
@@ -1327,4 +1373,133 @@ fun formatTimeToReset(res: Resources, resetsAt: Instant?, now: Instant): String?
         minutes >= 1 -> res.getString(R.string.time_in_minutes, minutes)
         else -> null // under a minute: callers show "resets soon"
     }
+}
+
+@Composable
+fun SecureStorageNoticeCard(
+    onResetClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    resetting: Boolean = false,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = CardCorner,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(OotSpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(OotSpacing.sm),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_info_line),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(OotSpacing.xs),
+            ) {
+                Text(
+                    text = stringResource(R.string.secure_storage_unavailable),
+                    style = MaterialTheme.typography.bodyMedium.copy(lineBreak = PhraseWrap),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedButton(
+                    onClick = onResetClick,
+                    enabled = !resetting,
+                    shape = ButtonCorner,
+                    // While resetting the label is the status, so keep it at secondary-text contrast, not the 38% disabled alpha.
+                    colors = ootOutlinedButtonColors(
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.extendedColors.hairlineStrong),
+                    modifier = Modifier
+                        .heightIn(min = 40.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                ) {
+                    if (resetting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clearAndSetSemantics { },
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = Color.Transparent,
+                        )
+                        Spacer(modifier = Modifier.width(OotSpacing.xs))
+                    }
+                    Text(
+                        text = stringResource(
+                            if (resetting) {
+                                R.string.secure_storage_resetting
+                            } else {
+                                R.string.secure_storage_reset_action
+                            },
+                        ),
+                        style = MaterialTheme.typography.labelLarge.copy(lineBreak = PhraseWrap),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SecureStorageResetDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = DialogCorner,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = {
+            Text(
+                text = stringResource(R.string.secure_storage_reset_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.secure_storage_reset_body),
+                style = MaterialTheme.typography.bodyMedium.copy(lineBreak = WordWrapFriendly),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ootTextButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text(stringResource(R.string.secure_storage_reset_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ootTextButtonColors(),
+            ) {
+                Text(stringResource(R.string.secure_storage_reset_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun OotSnackbar(data: SnackbarData) {
+    Snackbar(
+        snackbarData = data,
+        shape = ButtonCorner,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        actionColor = MaterialTheme.colorScheme.onSurface,
+        dismissActionContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }

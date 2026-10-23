@@ -86,6 +86,45 @@ class OllamaCloudCodecTest {
         assertEquals(25.0, (windows[1].remaining as Remaining.Balance).amountLeft, 0.001)
     }
 
+    // -- null or wrong-typed nested values --
+
+    @Test
+    fun `null included is treated as missing`() {
+        assertNull(OllamaCloudCodec.parse("""{"included": null}""", json))
+        assertNull(OllamaCloudCodec.parse("""{"included": "oops"}""", json))
+    }
+
+    @Test
+    fun `null session and weekly are skipped`() {
+        val windows = OllamaCloudCodec.parse(
+            """
+            {"included": {"session": null, "weekly": {"remaining_percent": 30}, "period": null},
+             "purchased": null}
+            """.trimIndent(),
+            json
+        )!!
+        assertEquals(1, windows.size)
+        assertEquals("weekly", windows.single().id)
+    }
+
+    @Test
+    fun `wrong-typed nested values are treated as missing`() {
+        assertEquals(
+            emptyList<Nothing>(),
+            OllamaCloudCodec.parse(
+                """{"included": {"session": "oops", "weekly": []}, "purchased": "oops"}""",
+                json
+            )
+        )
+        val windows = OllamaCloudCodec.parse(
+            """{"included": {"balance_usd": 50, "allowance_usd": 100, "period": {"until": null}}}""",
+            json
+        )!!
+        assertEquals(1, windows.size)
+        assertEquals("monthly", windows.single().id)
+        assertNull(windows.single().resetsAt)
+    }
+
     // -- empty fixture --
 
     @Test

@@ -40,12 +40,8 @@
     <string name="data_window_used">%1$s used: %2$d%%</string>
     <string name="data_window_left">%1$s: %2$d%% left</string>
 
-    <!-- Claude / OpenAI usage lines -->
-    <string name="data_claude_usage_left">5h: %1$s%% left | Weekly: %2$s%% left</string>
-    <string name="data_used_5h">5h used: %1$s%%</string>
+    <!-- Remaining usage lines -->
     <string name="data_used_weekly">Weekly used: %1$s%%</string>
-    <string name="data_usage_detail_no_reset">5h used: %1$s%% | Weekly used: %2$s%%</string>
-    <string name="data_claude_summary">5h %1$s%% | Week %2$s%%</string>
 
     <!-- Per-provider copy -->
     <string name="data_claude_key_required">Add a Claude API key or sign in with OAuth.</string>
