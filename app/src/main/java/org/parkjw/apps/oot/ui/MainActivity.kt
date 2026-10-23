@@ -21,6 +21,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.parkjw.apps.oot.OotApp
+import org.parkjw.apps.oot.data.oauth.AccountDeletion
+import org.parkjw.apps.oot.data.oauth.RevocationMode
+import org.parkjw.apps.oot.data.oauth.revocationMode
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.i18n.AppLanguage
 import org.parkjw.apps.oot.i18n.AppLocale
@@ -165,6 +168,9 @@ class MainActivity : ComponentActivity() {
                     DashboardScreen(
                         vendorUsages = displayUsages,
                         legacyAccounts = legacyAccounts,
+                        deviceOnlyRevocationIds = accounts
+                            .filter { it.revocationMode() == RevocationMode.DEVICE_ONLY }
+                            .mapTo(HashSet()) { it.id },
                         isRefreshing = isRefreshing,
                         isServiceEnabled = isServiceEnabled,
                         refreshIntervalMinutes = refreshInterval,
@@ -190,8 +196,11 @@ class MainActivity : ComponentActivity() {
                         },
                         onDeleteAccount = { accountId ->
                             val removed = app.preferences.accounts.value.firstOrNull { it.id == accountId }
-                            app.preferences.deleteAccount(accountId)
-                            removed?.let { app.appScope.launch { app.tokenRevoker.revoke(it) } }
+                            if (removed != null) {
+                                AccountDeletion(app.preferences::deleteAccount, app.tokenRevoker::revoke, app.appScope).delete(removed)
+                            } else {
+                                app.preferences.deleteAccount(accountId)
+                            }
                             lifecycleScope.launch {
                                 app.repository.refreshAll()
                                 app.notificationManager.updateNotification(app.repository.vendorUsages.value)

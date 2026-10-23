@@ -144,6 +144,8 @@ fun DashboardScreen(
     vendorUsages: List<VendorUsage>,
     modifier: Modifier = Modifier,
     legacyAccounts: List<ProviderAccount> = emptyList(),
+    /** Accounts whose delete only removes the credential on this device (no documented server revoke). */
+    deviceOnlyRevocationIds: Set<String> = emptySet(),
     isRefreshing: Boolean = false,
     now: Instant = Instant.now(),
     onRefresh: () -> Unit = {},
@@ -433,6 +435,7 @@ fun DashboardScreen(
     selectedVendorForDetail?.let { vendor ->
         VendorDetailDialog(
             usage = vendor,
+            deviceOnlyRevocation = vendor.accountId in deviceOnlyRevocationIds,
             onDismiss = { selectedVendorForDetail = null },
             onDelete = {
                 val id = vendor.accountId
@@ -1246,6 +1249,7 @@ fun EmptyAccountsBanner(
 @Composable
 private fun VendorDetailDialog(
     usage: VendorUsage,
+    deviceOnlyRevocation: Boolean,
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -1274,6 +1278,13 @@ private fun VendorDetailDialog(
                 )
                 if (usage.error != null) {
                     ProblemBox(error = usage.error)
+                }
+                if (deviceOnlyRevocation) {
+                    Text(
+                        text = stringResource(R.string.dashboard_delete_device_only_note),
+                        style = MaterialTheme.typography.bodySmall.ootWordBreak(),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         },

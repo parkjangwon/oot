@@ -17,7 +17,7 @@ enum class ProviderType(
     val defaultScopes: List<String> = emptyList(),
     // issue #4: false = hidden from the add-account dialog and skipped in sync (existing accounts kept)
     val isSelectable: Boolean = true,
-    // RFC 7009 endpoint; null = no publicly documented revocation, so nothing is called on delete
+    // RFC 7009 endpoint from the provider's published OIDC metadata; null = none documented, so nothing is called on delete
     val oauthRevocationEndpoint: String? = null
 ) {
     OPENROUTER(
@@ -49,7 +49,7 @@ enum class ProviderType(
         oauthAuthEndpoint = "https://auth.openai.com/authorize",
         oauthTokenEndpoint = "https://auth.openai.com/oauth/token",
         defaultScopes = listOf("openid", "profile", "model.request"),
-        oauthRevocationEndpoint = "https://auth.openai.com/oauth/revoke"
+        oauthRevocationEndpoint = "https://auth.openai.com/api/accounts/oauth/revoke"
     ),
     XAI(
         displayName = "xAI (Grok)",
