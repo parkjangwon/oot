@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import org.parkjw.apps.oot.data.local.AccountPreferences
 import org.parkjw.apps.oot.data.oauth.OAuthManager
+import org.parkjw.apps.oot.data.oauth.TokenRevoker
 import org.parkjw.apps.oot.data.remote.TokenSyncRepository
 import org.parkjw.apps.oot.i18n.AppLanguage
 import org.parkjw.apps.oot.i18n.AppLocale
@@ -24,6 +25,9 @@ class OotApp : Application() {
         private set
 
     lateinit var oauthManager: OAuthManager
+        private set
+
+    lateinit var tokenRevoker: TokenRevoker
         private set
 
     lateinit var repository: TokenSyncRepository
@@ -54,6 +58,7 @@ class OotApp : Application() {
 
         preferences = AccountPreferences(this)
         oauthManager = OAuthManager(this, client, json)
+        tokenRevoker = TokenRevoker(TokenRevoker.http(client), clientIdFor = oauthManager::getClientIdForProvider)
         repository = TokenSyncRepository(preferences, oauthManager, client, json)
         notificationManager = TokenNotificationManager(this, hiddenAccountIds = { preferences.notificationHiddenAccountIds.value })
 
