@@ -337,6 +337,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Foreground-only (re)start: from the background Android refuses it; the helper then uses WorkManager.
+        if (app.preferences.isServiceEnabled.value) {
+            TokenMonitorForegroundService.startService(this)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         updateViewModel.onResumed()

@@ -30,15 +30,17 @@ object TokenRefreshWork {
 
     fun usesShortInterval(minutes: Int): Boolean = minutes < MIN_PERIODIC_MINUTES
 
-    fun enqueue(context: Context, intervalMinutes: Int) {
+    fun enqueue(
+        context: Context,
+        intervalMinutes: Int,
+        // KEEP when this only backs up a service start that Android refused: an already scheduled
+        // refresh must not have its next run pushed back by every background start attempt.
+        policy: ExistingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+    ) {
         val minutes = intervalMinutes.coerceAtLeast(MIN_PERIODIC_MINUTES).toLong()
         val request = PeriodicWorkRequestBuilder<TokenRefreshWorker>(minutes, TimeUnit.MINUTES)
             .build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            UNIQUE_NAME,
-            ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
-            request,
-        )
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(UNIQUE_NAME, policy, request)
     }
 
     fun cancel(context: Context) {

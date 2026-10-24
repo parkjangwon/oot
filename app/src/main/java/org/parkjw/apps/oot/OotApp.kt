@@ -20,7 +20,6 @@ import org.parkjw.apps.oot.diagnostics.HistoricalExits
 import org.parkjw.apps.oot.i18n.AppLanguage
 import org.parkjw.apps.oot.i18n.AppLocale
 import org.parkjw.apps.oot.i18n.LanguageStore
-import org.parkjw.apps.oot.service.TokenMonitorForegroundService
 import org.parkjw.apps.oot.service.TokenNotificationManager
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -81,9 +80,8 @@ class OotApp : Application() {
         repository = TokenSyncRepository(preferences, oauthManager, client, json)
         notificationManager = TokenNotificationManager(this, hiddenAccountIds = { preferences.notificationHiddenAccountIds.value })
 
-        if (preferences.isServiceEnabled.value) {
-            TokenMonitorForegroundService.startService(this)
-        }
+        // The monitor is started from the foreground (MainActivity) only: Android rejects a foreground
+        // service start from the background, and a process restart or widget/boot start lands here first.
     }
 
     // The stored choice (Korean when unset), unless a language was picked in the system's per-app language
