@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-10-24
+
+The app no longer force-closes when Android stops the monitor's foreground service, and Settings > 정보 > 오류 기록 keeps crash details on the device so they can be inspected and shared.
+
+### Added
+- Settings > 정보 > 오류 기록 / Error log lists crashes and system exit records with time, app version, Android version, device, thread and stack trace. A record exports as a redacted text file through the share sheet, or opens a GitHub issue after a preview of the public title and body (#144, #145).
+- The error log keeps the newest 20 records, caps the folder at about 1 MB, is excluded from backup and device transfer, and makes no network calls (#144).
+
+### Fixed
+- The app no longer force-closes when Android ends the monitor's dataSync foreground service after the 6-hour daily limit on Android 15 and later. The service stops cleanly and refresh continues through the periodic background worker (#142, #143).
+- Starting the monitor from a background process start (boot, widget, worker, restart) no longer force-closes. The service starts only while the app is in the foreground, and a refused start falls back to the periodic background refresh (#142, #143).
+
 ## [1.4.0] - 2026-10-23
 
 Deleting an account now also signs it out at the provider where that is possible, your saved keys move to newer encryption without signing in again, and usage cards cope better with incomplete replies.
