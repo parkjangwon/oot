@@ -13,6 +13,8 @@
     <string name="settings_refresh_interval_minutes">%1$d min</string>
     <string name="settings_refresh_interval_battery_note">Shorter intervals use more battery</string>
     <string name="settings_version">Version</string>
+    <string name="settings_error_log">Error log</string>
+    <string name="settings_error_log_desc">See and share what went wrong in the app</string>
     <string name="update_check">Check for updates</string>
     <string name="update_auto">Check for updates automatically</string>
     <string name="update_auto_desc">Checks once a day when you open the app</string>
@@ -82,4 +84,36 @@
     <string name="provider_desc_opencode_go">OpenCode Go subscription usage</string>
     <string name="auth_type_oauth">OAuth 2.0 (subscription sign-in)</string>
     <string name="auth_type_api_key">API key / token</string>
+
+    <string name="error_log_title">Error log</string>
+    <string name="error_log_detail_title">Error details</string>
+    <string name="error_log_back">Back</string>
+    <string name="error_log_empty_title">No errors recorded</string>
+    <string name="error_log_empty_body">If the app crashes or stops responding, it will be recorded here.</string>
+    <string name="error_log_kind_crash">App crash</string>
+    <string name="error_log_kind_anr">Not responding</string>
+    <string name="error_log_kind_native_crash">Native crash</string>
+    <string name="error_log_kind_excessive_resource_usage">Excessive resource use</string>
+    <string name="error_log_kind_signaled">System kill</string>
+    <string name="error_log_kind_low_memory">Low memory</string>
+    <string name="error_log_kind_initialization_failure">Startup failure</string>
+    <string name="error_log_kind_other">Other</string>
+    <string name="error_log_time">Time</string>
+    <string name="error_log_kind">Kind</string>
+    <string name="error_log_app_version">App version</string>
+    <string name="error_log_android_version">Android version</string>
+    <string name="error_log_device">Device</string>
+    <string name="error_log_thread">Thread</string>
+    <string name="error_log_detail">Details</string>
+    <string name="error_log_export">Export log file</string>
+    <string name="error_log_report">Report on GitHub</string>
+    <string name="error_log_clear">Clear records</string>
+    <string name="error_log_clear_title">Clear the records?</string>
+    <string name="error_log_clear_body">This removes every error record stored on this device. It can\'t be undone.</string>
+    <string name="error_log_clear_confirm">Clear</string>
+    <string name="error_log_clear_cancel">Cancel</string>
+    <string name="error_log_share_subject">oot error log</string>
+    <string name="error_log_export_failed">Couldn\'t export the log</string>
+    <string name="error_log_report_failed">Couldn\'t open the browser</string>
+    <string name="error_log_cleared">Records cleared</string>
 </resources>

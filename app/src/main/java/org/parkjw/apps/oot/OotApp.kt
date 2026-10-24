@@ -12,11 +12,17 @@ import org.parkjw.apps.oot.data.local.AccountPreferences
 import org.parkjw.apps.oot.data.oauth.OAuthManager
 import org.parkjw.apps.oot.data.oauth.TokenRevoker
 import org.parkjw.apps.oot.data.remote.TokenSyncRepository
+import org.parkjw.apps.oot.diagnostics.CrashHandler
+import org.parkjw.apps.oot.diagnostics.CrashLogStore
+import org.parkjw.apps.oot.diagnostics.DeviceInfo
+import org.parkjw.apps.oot.diagnostics.ExitReasonCollector
+import org.parkjw.apps.oot.diagnostics.HistoricalExits
 import org.parkjw.apps.oot.i18n.AppLanguage
 import org.parkjw.apps.oot.i18n.AppLocale
 import org.parkjw.apps.oot.i18n.LanguageStore
 import org.parkjw.apps.oot.service.TokenMonitorForegroundService
 import org.parkjw.apps.oot.service.TokenNotificationManager
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 class OotApp : Application() {
@@ -39,11 +45,24 @@ class OotApp : Application() {
     lateinit var languageStore: LanguageStore
         private set
 
+    lateinit var crashLogStore: CrashLogStore
+        private set
+
     /** Work that must outlive an Activity (e.g. the refresh after a language change recreates it). */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onCreate() {
         super.onCreate()
+
+        // Before anything else, so a crash during startup still leaves a record.
+        val device = DeviceInfo.from(this)
+        crashLogStore = CrashLogStore(File(filesDir, CrashLogStore.DIR_NAME))
+        CrashHandler.install(crashLogStore, device)
+        appScope.launch(Dispatchers.IO) {
+            runCatching {
+                ExitReasonCollector(crashLogStore, device).collect(HistoricalExits.read(this@OotApp))
+            }
+        }
 
         // Language first: everything below (notification channel, data-layer messages) reads strings.
         languageStore = LanguageStore(this)
