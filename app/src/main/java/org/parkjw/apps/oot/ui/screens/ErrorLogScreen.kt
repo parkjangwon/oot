@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -56,6 +58,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.time.Instant
@@ -65,6 +70,8 @@ import kotlinx.coroutines.launch
 import org.parkjw.apps.oot.R
 import org.parkjw.apps.oot.diagnostics.CrashKind
 import org.parkjw.apps.oot.diagnostics.CrashRecord
+import org.parkjw.apps.oot.diagnostics.ErrorReport
+import org.parkjw.apps.oot.diagnostics.IssuePreview
 import org.parkjw.apps.oot.diagnostics.Redactor
 import org.parkjw.apps.oot.ui.theme.ButtonCorner
 import org.parkjw.apps.oot.ui.theme.CardCorner
@@ -101,6 +108,7 @@ fun ErrorLogScreen(
     onBack: () -> Unit,
     onExport: (List<CrashRecord>) -> Boolean,
     onReport: (CrashRecord) -> Boolean,
+    onDeleteRecord: (CrashRecord) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -109,6 +117,8 @@ fun ErrorLogScreen(
     val scope = rememberCoroutineScope()
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var showClearDialog by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<CrashRecord?>(null) }
+    var reportRecord by remember { mutableStateOf<CrashRecord?>(null) }
     val ordered = remember(records) { records.sortedByDescending { it.timestamp } }
     val selected = ordered.firstOrNull { it.id == selectedId }
 
@@ -163,8 +173,8 @@ fun ErrorLogScreen(
             RecordDetail(
                 record = selected,
                 onExport = { export(listOf(selected)) },
-                onReport = { report(selected) },
-                onClear = { showClearDialog = true },
+                onReport = { reportRecord = selected },
+                onDelete = { pendingDelete = selected },
                 modifier = Modifier.padding(padding),
             )
         } else if (ordered.isEmpty()) {
@@ -185,8 +195,8 @@ fun ErrorLogScreen(
                 }
                 Actions(
                     onExport = { export(ordered) },
-                    onReport = { ordered.firstOrNull()?.let(::report) },
-                    onClear = { showClearDialog = true },
+                    onDelete = { showClearDialog = true },
+                    deleteLabel = R.string.error_log_clear,
                     modifier = Modifier.padding(
                         start = OotSpacing.screenHorizontal,
                         end = OotSpacing.screenHorizontal,
@@ -236,6 +246,56 @@ fun ErrorLogScreen(
             },
         )
     }
+
+    pendingDelete?.let { record ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            shape = DialogCorner,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            title = {
+                Text(
+                    text = stringResource(R.string.error_log_delete_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.error_log_delete_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDelete = null
+                        selectedId = null
+                        onDeleteRecord(record)
+                        scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.error_log_deleted)) }
+                    },
+                    colors = ootTextButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text(stringResource(R.string.error_log_delete_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }, colors = ootTextButtonColors()) {
+                    Text(stringResource(R.string.error_log_clear_cancel))
+                }
+            },
+        )
+    }
+
+    reportRecord?.let { record ->
+        IssuePreviewDialog(
+            preview = remember(record) { ErrorReport.issuePreview(record) },
+            onDismiss = { reportRecord = null },
+            onOpen = {
+                reportRecord = null
+                report(record)
+            },
+        )
+    }
 }
 
 @Composable
@@ -279,7 +339,11 @@ private fun RecordRow(record: CrashRecord, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag("error_log_row_${record.id}")
-            .clickable(onClick = onClick),
+            .clickable(
+                onClickLabel = stringResource(R.string.error_log_open_record),
+                role = Role.Button,
+                onClick = onClick,
+            ),
     ) {
         ListItem(
             headlineContent = {
@@ -321,12 +385,13 @@ private fun RecordDetail(
     record: CrashRecord,
     onExport: () -> Unit,
     onReport: () -> Unit,
-    onClear: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .testTag("error_log_detail")
             .verticalScroll(rememberScrollState())
             .padding(horizontal = OotSpacing.screenHorizontal, vertical = OotSpacing.sm),
     ) {
@@ -340,6 +405,7 @@ private fun RecordDetail(
                 DetailRow(
                     label = stringResource(R.string.error_log_time),
                     value = formatRecordTime(record.timestamp),
+                    numeric = true,
                 )
                 GroupDivider()
                 DetailRow(
@@ -350,6 +416,7 @@ private fun RecordDetail(
                 DetailRow(
                     label = stringResource(R.string.error_log_app_version),
                     value = "${record.appVersion} (${record.appVersionCode})",
+                    numeric = true,
                 )
                 GroupDivider()
                 DetailRow(
@@ -377,24 +444,27 @@ private fun RecordDetail(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = OotSpacing.lg, bottom = OotSpacing.xs),
         )
-        Text(
-            text = Redactor.redact(record.detail),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        SelectionContainer {
+            Text(
+                text = Redactor.redact(record.detail),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         Spacer(modifier = Modifier.height(OotSpacing.lg))
         Actions(
             onExport = onExport,
             onReport = onReport,
-            onClear = onClear,
+            onDelete = onDelete,
+            deleteLabel = R.string.error_log_delete_record,
         )
     }
 }
 
 @Composable
-private fun DetailRow(label: String, value: String) {
+private fun DetailRow(label: String, value: String, numeric: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = OotSpacing.xs),
         verticalAlignment = Alignment.Top,
@@ -406,7 +476,7 @@ private fun DetailRow(label: String, value: String) {
             modifier = Modifier.width(110.dp),
         )
         Text(
-            text = value,
+            text = if (numeric) withNumericSpans(value, OotNumeric.toSpanStyle()) else AnnotatedString(value),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
@@ -422,21 +492,26 @@ private fun GroupDivider() {
 @Composable
 private fun Actions(
     onExport: () -> Unit,
-    onReport: () -> Unit,
-    onClear: () -> Unit,
+    onDelete: () -> Unit,
+    deleteLabel: Int,
     modifier: Modifier = Modifier,
+    onReport: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(OotSpacing.xs)) {
-        Button(
-            onClick = onReport,
-            shape = ButtonCorner,
-            colors = ootInkButtonColors(),
-            elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Outlined.BugReport, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(stringResource(R.string.error_log_report))
+        if (onReport != null) {
+            Button(
+                onClick = onReport,
+                shape = ButtonCorner,
+                colors = ootInkButtonColors(),
+                elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("error_log_report_action"),
+            ) {
+                Icon(Icons.Outlined.BugReport, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(stringResource(R.string.error_log_report))
+            }
         }
         OutlinedButton(
             onClick = onExport,
@@ -451,13 +526,94 @@ private fun Actions(
             Text(stringResource(R.string.error_log_export))
         }
         TextButton(
-            onClick = onClear,
+            onClick = onDelete,
             colors = ootTextButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("error_log_delete_action"),
         ) {
             Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text(stringResource(R.string.error_log_clear))
+            Text(stringResource(deleteLabel))
         }
     }
+}
+
+@Composable
+private fun IssuePreviewDialog(
+    preview: IssuePreview,
+    onDismiss: () -> Unit,
+    onOpen: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = DialogCorner,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = {
+            Text(
+                text = stringResource(R.string.error_log_report),
+                style = MaterialTheme.typography.titleLarge,
+            )
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.error_log_report_notice),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(OotSpacing.md))
+                Surface(
+                    shape = CardCorner,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, MaterialTheme.extendedColors.hairline),
+                    shadowElevation = 0.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 260.dp)
+                        .testTag("error_log_report_preview"),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .verticalScroll(rememberScrollState())
+                            .padding(OotSpacing.sm),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.error_log_report_title_label),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = preview.title,
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.testTag("error_log_report_title"),
+                        )
+                        Spacer(modifier = Modifier.height(OotSpacing.sm))
+                        Text(
+                            text = stringResource(R.string.error_log_report_body_label),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = preview.body,
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.testTag("error_log_report_body"),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onOpen, colors = ootTextButtonColors()) {
+                Text(stringResource(R.string.error_log_report_open))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, colors = ootTextButtonColors()) {
+                Text(stringResource(R.string.error_log_report_cancel))
+            }
+        },
+    )
 }

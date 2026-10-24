@@ -121,6 +121,10 @@ class MainActivity : ComponentActivity() {
                         onBack = { showErrorLog = false },
                         onExport = { records -> context.shareErrorLog(records) },
                         onReport = { record -> context.openCrashIssue(record) },
+                        onDeleteRecord = { record ->
+                            app.crashLogStore.delete(record.id)
+                            crashRecords = crashRecords.filterNot { it.id == record.id }
+                        },
                         onClear = {
                             app.crashLogStore.clear()
                             crashRecords = emptyList()

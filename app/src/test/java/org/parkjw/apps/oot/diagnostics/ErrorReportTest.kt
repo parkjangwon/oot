@@ -49,6 +49,30 @@ class ErrorReportTest {
     }
 
     @Test
+    fun previewShowsTheExactRedactedIssueThatTheUrlCarries() {
+        val preview = ErrorReport.issuePreview(record)
+
+        assertFalse(preview.title.contains("sk-abcdefgh12345678"))
+        assertFalse(preview.body.contains("sk-abcdefgh12345678"))
+        assertFalse(preview.body.contains("demo@example.com"))
+        assertTrue(preview.body.contains("[REDACTED]"))
+        assertTrue(preview.body.contains("[EMAIL]"))
+
+        val url = ErrorReport.issueUrl(record)
+        val decoded = URLDecoder.decode(url.substringAfter("?"), Charsets.UTF_8.name())
+        assertTrue(decoded.contains(preview.title))
+        assertTrue(decoded.contains(preview.body))
+        assertTrue(url.length <= ErrorReport.MAX_ISSUE_URL_LENGTH)
+    }
+
+    @Test
+    fun previewAlsoFitsForAHugeStackTrace() {
+        val huge = record.copy(detail = "x".repeat(100_000))
+        assertTrue(ErrorReport.issuePreview(huge).body.length < 2_000)
+        assertTrue(ErrorReport.issueUrl(huge).length <= ErrorReport.MAX_ISSUE_URL_LENGTH)
+    }
+
+    @Test
     fun issueUrlAlsoFitsForAHugeStackTrace() {
         val huge = record.copy(detail = "x".repeat(100_000))
         assertTrue(ErrorReport.issueUrl(huge).length <= ErrorReport.MAX_ISSUE_URL_LENGTH)

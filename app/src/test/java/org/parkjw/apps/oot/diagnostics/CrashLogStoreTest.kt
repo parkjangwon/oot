@@ -103,6 +103,20 @@ class CrashLogStoreTest {
     }
 
     @Test
+    fun deleteRemovesOnlyThatRecord() {
+        val store = store()
+        val first = store.add(record(1L))
+        val second = store.add(record(2L))
+
+        assertTrue(store.delete(first.id))
+        assertEquals(listOf(2L), store.list().map { it.timestamp })
+        assertFalse(store.delete(first.id))
+
+        store.delete(second.id)
+        assertTrue(store.list().isEmpty())
+    }
+
+    @Test
     fun hasTimestampSeesStoredRecords() {
         val store = store()
         store.add(record(123L))

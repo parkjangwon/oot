@@ -5,6 +5,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+data class IssuePreview(val title: String, val body: String)
+
 object ErrorReport {
 
     const val ISSUE_NEW_URL = "https://github.com/parkjangwon/oot/issues/new"
@@ -28,7 +30,7 @@ object ErrorReport {
         }
     }
 
-    fun issueUrl(record: CrashRecord): String {
+    fun issuePreview(record: CrashRecord): IssuePreview {
         val title = Redactor.redact(
             "[${record.kind}] " + record.summary.ifBlank { "oot error" },
         ).take(120)
@@ -51,12 +53,16 @@ object ErrorReport {
 
         var limit = MAX_STACK_CHARS
         while (true) {
-            val body = header + stack.take(limit) + footer
-            val url = "$ISSUE_NEW_URL?title=${encode(title)}&body=${encode(body)}"
-            if (url.length <= MAX_ISSUE_URL_LENGTH || limit == 0) return url
+            val preview = IssuePreview(title, header + stack.take(limit) + footer)
+            if (issueUrl(preview).length <= MAX_ISSUE_URL_LENGTH || limit == 0) return preview
             limit = (limit / 2).coerceAtMost(MAX_STACK_CHARS)
         }
     }
+
+    fun issueUrl(record: CrashRecord): String = issueUrl(issuePreview(record))
+
+    private fun issueUrl(preview: IssuePreview): String =
+        "$ISSUE_NEW_URL?title=${encode(preview.title)}&body=${encode(preview.body)}"
 
     private fun encode(value: String): String =
         URLEncoder.encode(value, Charsets.UTF_8.name()).replace("+", "%20")

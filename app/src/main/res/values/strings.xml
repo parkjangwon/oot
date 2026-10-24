@@ -125,4 +125,15 @@
     <string name="error_log_export_failed">로그를 내보내지 못했어요</string>
     <string name="error_log_report_failed">브라우저를 열지 못했어요</string>
     <string name="error_log_cleared">기록을 지웠어요</string>
+    <string name="error_log_open_record">기록 열기</string>
+    <string name="error_log_delete_record">이 기록 지우기</string>
+    <string name="error_log_delete_title">이 기록을 지울까요?</string>
+    <string name="error_log_delete_body">이 오류 기록을 이 기기에서 지워요. 되돌릴 수 없어요.</string>
+    <string name="error_log_delete_confirm">지우기</string>
+    <string name="error_log_deleted">기록을 지웠어요</string>
+    <string name="error_log_report_notice">공개 이슈로 올라가요</string>
+    <string name="error_log_report_title_label">제목</string>
+    <string name="error_log_report_body_label">본문</string>
+    <string name="error_log_report_open">브라우저에서 열기</string>
+    <string name="error_log_report_cancel">취소</string>
 </resources>

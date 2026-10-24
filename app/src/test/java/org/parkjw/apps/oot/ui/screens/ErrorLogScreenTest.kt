@@ -1,10 +1,12 @@
 package org.parkjw.apps.oot.ui.screens
 
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import java.time.Instant
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -35,24 +37,42 @@ class ErrorLogScreenTest {
         thread = "main",
     )
 
-    private fun setContent(onClear: () -> Unit = {}) {
+    private val older = record.copy(
+        id = "2",
+        timestamp = Instant.parse("2026-10-23T08:12:00Z").toEpochMilli(),
+        kind = CrashKind.ANR,
+        summary = "ANR in org.parkjw.apps.oot",
+        detail = "reason: ANR",
+    )
+
+    private fun setContent(
+        records: List<CrashRecord> = listOf(record),
+        onReport: (CrashRecord) -> Boolean = { true },
+        onDeleteRecord: (CrashRecord) -> Unit = {},
+        onClear: () -> Unit = {},
+    ) {
         composeRule.setContent {
             OotTheme {
                 ErrorLogScreen(
-                    records = listOf(record),
+                    records = records,
                     onBack = {},
                     onExport = { true },
-                    onReport = { true },
+                    onReport = onReport,
+                    onDeleteRecord = onDeleteRecord,
                     onClear = onClear,
                 )
             }
         }
     }
 
+    private fun openDetail(id: String = "1") {
+        composeRule.onNodeWithTag("error_log_row_$id").performClick()
+    }
+
     @Test
     fun detailShowsRedactedTextAndNoSecrets() {
         setContent()
-        composeRule.onNodeWithTag("error_log_row_1").performClick()
+        openDetail()
 
         composeRule.onNodeWithText("오류 상세").assertExists()
         composeRule.onNodeWithText("상세 내용").assertExists()
@@ -60,6 +80,69 @@ class ErrorLogScreenTest {
         composeRule.onNodeWithText("[EMAIL]", substring = true).assertExists()
         composeRule.onNodeWithText("sk-demo-abcdefgh12345678", substring = true).assertDoesNotExist()
         composeRule.onNodeWithText("demo@example.com", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun listScreenHasNoReportAction() {
+        setContent()
+
+        composeRule.onNodeWithTag("error_log_report_action").assertDoesNotExist()
+        composeRule.onNodeWithText("GitHub 이슈로 신고").assertDoesNotExist()
+        composeRule.onNodeWithText("기록 지우기").assertExists()
+        composeRule.onNodeWithTag("error_log_delete_action").assertExists()
+    }
+
+    @Test
+    fun reportShowsPreviewBeforeOpeningTheBrowser() {
+        val reported = mutableListOf<CrashRecord>()
+        setContent(onReport = { reported += it; true })
+        openDetail()
+
+        composeRule.onNodeWithTag("error_log_report_action").performClick()
+
+        composeRule.onNodeWithText("공개 이슈로 올라가요").assertExists()
+        composeRule.onNodeWithTag("error_log_report_preview").assertExists()
+        composeRule.onNodeWithText("제목").assertExists()
+        composeRule.onNodeWithText("본문").assertExists()
+        composeRule.onNodeWithTag("error_log_report_title")
+            .assertTextContains("[REDACTED]", substring = true)
+        composeRule.onNodeWithTag("error_log_report_body")
+            .assertTextContains("[REDACTED]", substring = true)
+        composeRule.onNodeWithTag("error_log_report_body")
+            .assertTextContains("[EMAIL]", substring = true)
+        composeRule.onNodeWithText("sk-demo-abcdefgh12345678", substring = true).assertDoesNotExist()
+        composeRule.onNodeWithText("demo@example.com", substring = true).assertDoesNotExist()
+        assertTrue(reported.isEmpty())
+
+        composeRule.onNodeWithText("브라우저에서 열기").performClick()
+        assertEquals(listOf(record.id), reported.map { it.id })
+    }
+
+    @Test
+    fun reportCancelDoesNotOpenTheBrowser() {
+        val reported = mutableListOf<CrashRecord>()
+        setContent(onReport = { reported += it; true })
+        openDetail()
+
+        composeRule.onNodeWithTag("error_log_report_action").performClick()
+        composeRule.onNodeWithText("취소").performClick()
+
+        composeRule.onNodeWithTag("error_log_report_preview").assertDoesNotExist()
+        assertTrue(reported.isEmpty())
+    }
+
+    @Test
+    fun deleteRecordAsksForConfirmationAndDeletesOnlyThatRecord() {
+        val deleted = mutableListOf<CrashRecord>()
+        setContent(records = listOf(record, older), onDeleteRecord = { deleted += it })
+        openDetail("1")
+
+        composeRule.onNodeWithTag("error_log_delete_action").performClick()
+        composeRule.onNodeWithText("이 기록을 지울까요?").assertExists()
+        assertTrue(deleted.isEmpty())
+
+        composeRule.onNodeWithText("지우기").performClick()
+        assertEquals(listOf("1"), deleted.map { it.id })
     }
 
     @Test

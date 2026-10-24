@@ -46,6 +46,10 @@ class CrashLogStore(
         }
 
     @Synchronized
+    fun delete(id: String): Boolean =
+        files().firstOrNull { it.nameWithoutExtension == id }?.delete() ?: false
+
+    @Synchronized
     fun clear() {
         files().forEach { it.delete() }
         directory.listFiles { file -> file.name.endsWith(TEMP_SUFFIX) }?.forEach { it.delete() }

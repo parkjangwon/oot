@@ -116,4 +116,15 @@
     <string name="error_log_export_failed">Couldn\'t export the log</string>
     <string name="error_log_report_failed">Couldn\'t open the browser</string>
     <string name="error_log_cleared">Records cleared</string>
+    <string name="error_log_open_record">Open record</string>
+    <string name="error_log_delete_record">Delete this record</string>
+    <string name="error_log_delete_title">Delete this record?</string>
+    <string name="error_log_delete_body">Removes this error record from this device. It can\'t be undone.</string>
+    <string name="error_log_delete_confirm">Delete</string>
+    <string name="error_log_deleted">Record deleted</string>
+    <string name="error_log_report_notice">This will be posted as a public issue</string>
+    <string name="error_log_report_title_label">Title</string>
+    <string name="error_log_report_body_label">Body</string>
+    <string name="error_log_report_open">Open in browser</string>
+    <string name="error_log_report_cancel">Cancel</string>
 </resources>
