@@ -126,8 +126,6 @@ class TokenMonitorForegroundServiceTest {
 
     @Test
     fun startHelperTargetsThisService() {
-        // OotApp.onCreate already queues a start; drop it so this asserts the helper's own intent.
-        Shadows.shadowOf(app).clearStartedServices()
         TokenMonitorForegroundService.startService(app)
         val started = Shadows.shadowOf(app).nextStartedService
         assertNotNull(started)

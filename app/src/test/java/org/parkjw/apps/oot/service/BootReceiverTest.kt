@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.parkjw.apps.oot.OotApp
@@ -18,11 +17,6 @@ import org.robolectric.annotation.Config
 class BootReceiverTest {
 
     private val app: OotApp = ApplicationProvider.getApplicationContext()
-
-    @Before
-    fun drainServicesStartedByAppCreation() {
-        Shadows.shadowOf(app).clearStartedServices()
-    }
 
     private fun receive(action: String?) {
         val intent = Intent(app, BootReceiver::class.java).apply { this.action = action }
