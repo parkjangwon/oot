@@ -23,4 +23,8 @@
     <exclude
         domain="file"
         path="datastore/update.preferences_pb" />
+    <!-- Error records may contain personal data; they stay on this device. -->
+    <exclude
+        domain="file"
+        path="crash-logs/" />
 </full-backup-content>

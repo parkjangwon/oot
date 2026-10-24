@@ -81,6 +81,7 @@ fun SettingsScreen(
     onLanguageChange: (AppLanguage) -> Unit,
     onUpdateAction: (UpdateAction) -> Unit,
     onOpenSourceCode: () -> Unit,
+    onOpenErrorLog: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
@@ -169,6 +170,33 @@ fun SettingsScreen(
 
             SectionHeader(stringResource(R.string.settings_section_info))
             SettingsGroup {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = stringResource(R.string.settings_error_log),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = stringResource(R.string.settings_error_log_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_chevron_right),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onOpenErrorLog),
+                )
+                GroupDivider()
                 ListItem(
                     headlineContent = {
                         Text(

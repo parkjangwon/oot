@@ -60,6 +60,16 @@
                 android:resource="@xml/update_files" />
         </provider>
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.crashlogs"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/crash_log_files" />
+        </provider>
+
     </application>
 
 </manifest>

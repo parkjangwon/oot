@@ -25,11 +25,15 @@ import org.parkjw.apps.oot.data.oauth.AccountDeletion
 import org.parkjw.apps.oot.data.oauth.RevocationMode
 import org.parkjw.apps.oot.data.oauth.revocationMode
 import org.parkjw.apps.oot.R
+import org.parkjw.apps.oot.diagnostics.CrashRecord
+import org.parkjw.apps.oot.diagnostics.openCrashIssue
+import org.parkjw.apps.oot.diagnostics.shareErrorLog
 import org.parkjw.apps.oot.i18n.AppLanguage
 import org.parkjw.apps.oot.i18n.AppLocale
 import org.parkjw.apps.oot.service.TokenMonitorForegroundService
 import org.parkjw.apps.oot.ui.screens.AddAccountDialog
 import org.parkjw.apps.oot.ui.screens.DashboardScreen
+import org.parkjw.apps.oot.ui.screens.ErrorLogScreen
 import org.parkjw.apps.oot.ui.screens.SettingsScreen
 import org.parkjw.apps.oot.ui.screens.SOURCE_CODE_URL
 import org.parkjw.apps.oot.ui.theme.OotTheme
@@ -89,6 +93,8 @@ class MainActivity : ComponentActivity() {
                 var resetCount by remember { mutableStateOf(0) }
                 // Saveable so a language change (which recreates the activity) stays on Settings.
                 var showSettings by rememberSaveable { mutableStateOf(false) }
+                var showErrorLog by rememberSaveable { mutableStateOf(false) }
+                var crashRecords by remember { mutableStateOf<List<CrashRecord>>(emptyList()) }
                 val context = LocalContext.current
                 val versionName = remember { context.installedVersionName() }
                 val updateState by updateViewModel.state.collectAsState()
@@ -103,7 +109,28 @@ class MainActivity : ComponentActivity() {
                     updateViewModel.installerLaunched(context.launchApkInstaller(ready.apk))
                 }
 
-                if (showSettings) {
+                LaunchedEffect(showErrorLog) {
+                    if (showErrorLog) {
+                        crashRecords = withContext(Dispatchers.IO) { app.crashLogStore.list() }
+                    }
+                }
+
+                if (showErrorLog) {
+                    ErrorLogScreen(
+                        records = crashRecords,
+                        onBack = { showErrorLog = false },
+                        onExport = { records -> context.shareErrorLog(records) },
+                        onReport = { record -> context.openCrashIssue(record) },
+                        onDeleteRecord = { record ->
+                            app.crashLogStore.delete(record.id)
+                            crashRecords = crashRecords.filterNot { it.id == record.id }
+                        },
+                        onClear = {
+                            app.crashLogStore.clear()
+                            crashRecords = emptyList()
+                        },
+                    )
+                } else if (showSettings) {
                     SettingsScreen(
                         isServiceEnabled = isServiceEnabled,
                         refreshIntervalMinutes = refreshInterval,
@@ -140,6 +167,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onOpenSourceCode = { context.openBrowsableUrl(SOURCE_CODE_URL) },
+                        onOpenErrorLog = { showErrorLog = true },
                     )
                 } else {
                     BackHandler {
