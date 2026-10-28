@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.0] - 2026-10-28
+
+Settings > 화면 > 화면 켜둠 keeps the screen awake while the app is open, so a spare phone can stay on as a usage dashboard.
 
 ### Added
 - Settings > 화면 > 화면 켜둠 / Display > Keep the screen on keeps the screen awake while the app is in the foreground, for a phone used as a usage dashboard. Off by default; no new permission (#148).
