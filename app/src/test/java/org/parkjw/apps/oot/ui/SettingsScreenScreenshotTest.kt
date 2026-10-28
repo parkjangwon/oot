@@ -247,10 +247,36 @@ class SettingsScreenScreenshotTest {
     }
 
     @Test
-    @Config(qualifiers = "ko-w412dp-h1040dp-notnight-xxhdpi", fontScale = 2.0f)
+    @Config(qualifiers = "ko-w320dp-h1800dp-notnight-xxhdpi", fontScale = 2.0f)
     fun settingsKeepScreenOnFontScale2x() {
         capture(
-            "settings-keep-screen-on-font200-light-3x",
+            "settings-keep-screen-on-320dp-font200-3x",
+            state = UpdateUiState.Idle,
+            accounts = demoAccounts,
+            keepScreenOn = true,
+        )
+        composeRule.onNodeWithText("화면 켜둠").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "en-w412dp-h1040dp-notnight-xxhdpi")
+    fun settingsKeepScreenOnEnglish() {
+        capture(
+            "settings-keep-screen-on-en-3x",
+            state = UpdateUiState.Idle,
+            accounts = demoAccounts,
+            language = AppLanguage.ENGLISH,
+            keepScreenOn = true,
+        )
+        composeRule.onNodeWithText("Display").assertExists()
+        composeRule.onNodeWithText("Keep the screen on").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "ko-w320dp-h1040dp-notnight-xxhdpi")
+    fun settingsKeepScreenOnNarrow() {
+        capture(
+            "settings-keep-screen-on-320dp-3x",
             state = UpdateUiState.Idle,
             accounts = demoAccounts,
             keepScreenOn = true,
