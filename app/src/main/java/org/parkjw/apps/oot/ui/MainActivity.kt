@@ -160,7 +160,7 @@ class MainActivity : ComponentActivity() {
                         onAutoUpdateCheckChange = { enabled -> app.preferences.setAutoUpdateCheckEnabled(enabled) },
                         onKeepScreenOnChange = { enabled ->
                             app.preferences.setKeepScreenOnEnabled(enabled)
-                            applyKeepScreenOn()
+                            applyKeepScreenOn(isForeground = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
                         },
                         onLanguageChange = ::changeLanguage,
                         onUpdateAction = { action ->
@@ -360,17 +360,16 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         updateViewModel.onResumed()
-        applyKeepScreenOn()
+        applyKeepScreenOn(isForeground = true)
     }
 
     override fun onPause() {
         super.onPause()
-        applyKeepScreenOn()
+        applyKeepScreenOn(isForeground = false)
     }
 
-    private fun applyKeepScreenOn() {
-        val inForeground = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-        if (shouldKeepScreenOn(app.preferences.isKeepScreenOnEnabled.value, inForeground)) {
+    private fun applyKeepScreenOn(isForeground: Boolean) {
+        if (shouldKeepScreenOn(app.preferences.isKeepScreenOnEnabled.value, isForeground)) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
