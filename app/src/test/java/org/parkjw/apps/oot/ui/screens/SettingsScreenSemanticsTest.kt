@@ -87,8 +87,8 @@ class SettingsScreenSemanticsTest {
         val expectedHeadings = listOf(
             getString(R.string.settings_section_language),
             getString(R.string.settings_section_notifications),
-            getString(R.string.settings_section_display),
             getString(R.string.settings_section_notification_visibility),
+            getString(R.string.settings_section_display),
             getString(R.string.settings_section_update),
             getString(R.string.settings_section_info),
         )
@@ -149,6 +149,12 @@ class SettingsScreenSemanticsTest {
         val title = getString(R.string.settings_keep_screen_on)
         composeRule.onAllNodes(hasRole(Role.Switch) and hasText(title))
             .assertCountEquals(1)
+        // Supporting text is merged into the same node, so TalkBack reads the row once.
+        composeRule.onAllNodes(
+            hasRole(Role.Switch) and
+                hasText(title) and
+                hasText(getString(R.string.settings_keep_screen_on_desc)),
+        ).assertCountEquals(1)
         composeRule.onNode(hasRole(Role.Switch) and hasText(title))
             .assertIsOff()
             .performClick()
@@ -172,8 +178,8 @@ class SettingsScreenSemanticsTest {
         val expectedHeadings = listOf(
             getString(R.string.settings_section_language),
             getString(R.string.settings_section_notifications),
-            getString(R.string.settings_section_display),
             getString(R.string.settings_section_notification_visibility),
+            getString(R.string.settings_section_display),
             getString(R.string.settings_section_update),
             getString(R.string.settings_section_info),
         )

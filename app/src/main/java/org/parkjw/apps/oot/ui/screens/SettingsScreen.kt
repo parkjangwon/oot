@@ -139,16 +139,6 @@ fun SettingsScreen(
                 )
             }
 
-            SectionHeader(stringResource(R.string.settings_section_display))
-            SettingsGroup {
-                SwitchRow(
-                    title = stringResource(R.string.settings_keep_screen_on),
-                    supporting = stringResource(R.string.settings_keep_screen_on_desc),
-                    checked = keepScreenOnEnabled,
-                    onCheckedChange = onKeepScreenOnChange,
-                )
-            }
-
             if (accounts.isNotEmpty()) {
                 SectionHeader(stringResource(R.string.settings_section_notification_visibility))
                 SettingsGroup {
@@ -162,6 +152,16 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+
+            SectionHeader(stringResource(R.string.settings_section_display))
+            SettingsGroup {
+                SwitchRow(
+                    title = stringResource(R.string.settings_keep_screen_on),
+                    supporting = stringResource(R.string.settings_keep_screen_on_desc),
+                    checked = keepScreenOnEnabled,
+                    onCheckedChange = onKeepScreenOnChange,
+                )
             }
 
             SectionHeader(stringResource(R.string.settings_section_update))
