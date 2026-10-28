@@ -44,11 +44,13 @@ class SettingsScreenSemanticsTest {
     private fun setSettingsContent(
         isServiceEnabled: Boolean = true,
         autoUpdateCheckEnabled: Boolean = false,
+        keepScreenOnEnabled: Boolean = false,
         accounts: List<ProviderAccount> = demoAccounts,
         notificationHiddenIds: Set<String> = setOf("demo-xai"),
         language: AppLanguage = AppLanguage.KOREAN,
         onToggleService: (Boolean) -> Unit = {},
         onAutoUpdateCheckChange: (Boolean) -> Unit = {},
+        onKeepScreenOnChange: (Boolean) -> Unit = {},
         onNotificationShownChange: (String, Boolean) -> Unit = { _, _ -> },
     ) {
         composeRule.setContent {
@@ -59,6 +61,7 @@ class SettingsScreenSemanticsTest {
                     accounts = accounts,
                     notificationHiddenIds = notificationHiddenIds,
                     autoUpdateCheckEnabled = autoUpdateCheckEnabled,
+                    keepScreenOnEnabled = keepScreenOnEnabled,
                     language = language,
                     versionName = "1.0.0",
                     updateState = UpdateUiState.Idle,
@@ -67,6 +70,7 @@ class SettingsScreenSemanticsTest {
                     onSetRefreshInterval = {},
                     onNotificationShownChange = onNotificationShownChange,
                     onAutoUpdateCheckChange = onAutoUpdateCheckChange,
+                    onKeepScreenOnChange = onKeepScreenOnChange,
                     onLanguageChange = {},
                     onUpdateAction = {},
                     onOpenSourceCode = {},
@@ -83,6 +87,7 @@ class SettingsScreenSemanticsTest {
         val expectedHeadings = listOf(
             getString(R.string.settings_section_language),
             getString(R.string.settings_section_notifications),
+            getString(R.string.settings_section_display),
             getString(R.string.settings_section_notification_visibility),
             getString(R.string.settings_section_update),
             getString(R.string.settings_section_info),
@@ -137,6 +142,20 @@ class SettingsScreenSemanticsTest {
     }
 
     @Test
+    fun keepScreenOnRowIsAToggleWithSwitchRole() {
+        var toggled: Boolean? = null
+        setSettingsContent(keepScreenOnEnabled = false, onKeepScreenOnChange = { toggled = it })
+
+        val title = getString(R.string.settings_keep_screen_on)
+        composeRule.onAllNodes(hasRole(Role.Switch) and hasText(title))
+            .assertCountEquals(1)
+        composeRule.onNode(hasRole(Role.Switch) and hasText(title))
+            .assertIsOff()
+            .performClick()
+        assertEquals(true, toggled)
+    }
+
+    @Test
     fun backButtonHasAccessibleContentDescription() {
         setSettingsContent()
 
@@ -153,6 +172,7 @@ class SettingsScreenSemanticsTest {
         val expectedHeadings = listOf(
             getString(R.string.settings_section_language),
             getString(R.string.settings_section_notifications),
+            getString(R.string.settings_section_display),
             getString(R.string.settings_section_notification_visibility),
             getString(R.string.settings_section_update),
             getString(R.string.settings_section_info),

@@ -50,6 +50,7 @@ class SettingsScreenScreenshotTest {
         onNotificationShownChange: (String, Boolean) -> Unit = { _, _ -> },
         language: AppLanguage = AppLanguage.KOREAN,
         onLanguageChange: (AppLanguage) -> Unit = {},
+        keepScreenOn: Boolean = false,
     ) {
         composeRule.setContent {
             OotTheme(darkTheme = darkTheme) {
@@ -59,6 +60,7 @@ class SettingsScreenScreenshotTest {
                     accounts = accounts,
                     notificationHiddenIds = notificationHiddenIds,
                     autoUpdateCheckEnabled = true,
+                    keepScreenOnEnabled = keepScreenOn,
                     language = language,
                     versionName = "1.0.3",
                     updateState = state,
@@ -67,6 +69,7 @@ class SettingsScreenScreenshotTest {
                     onSetRefreshInterval = {},
                     onNotificationShownChange = onNotificationShownChange,
                     onAutoUpdateCheckChange = {},
+                    onKeepScreenOnChange = {},
                     onLanguageChange = onLanguageChange,
                     onUpdateAction = {},
                     onOpenSourceCode = {},
@@ -82,8 +85,16 @@ class SettingsScreenScreenshotTest {
         accounts: List<ProviderAccount> = emptyList(),
         notificationHiddenIds: Set<String> = emptySet(),
         language: AppLanguage = AppLanguage.KOREAN,
+        keepScreenOn: Boolean = false,
     ) {
-        setSettingsContent(darkTheme, state, accounts, notificationHiddenIds, language = language)
+        setSettingsContent(
+            darkTheme = darkTheme,
+            state = state,
+            accounts = accounts,
+            notificationHiddenIds = notificationHiddenIds,
+            language = language,
+            keepScreenOn = keepScreenOn,
+        )
         composeRule.onNodeWithText("GitHub").assertExists()
         composeRule.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
     }
@@ -197,6 +208,54 @@ class SettingsScreenScreenshotTest {
             accounts = demoAccounts,
             language = AppLanguage.ENGLISH,
         )
+    }
+
+    // Keep-screen-on (#148): light/dark with the switch on, off in light, and font scale 2.0.
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1040dp-notnight-xxhdpi")
+    fun settingsKeepScreenOnLight() {
+        capture(
+            "settings-keep-screen-on-light-3x",
+            state = UpdateUiState.Idle,
+            accounts = demoAccounts,
+            keepScreenOn = true,
+        )
+        composeRule.onNodeWithText("화면 켜둠").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1040dp-night-xxhdpi")
+    fun settingsKeepScreenOnDark() {
+        capture(
+            "settings-keep-screen-on-dark-3x",
+            darkTheme = true,
+            state = UpdateUiState.Idle,
+            accounts = demoAccounts,
+            keepScreenOn = true,
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1040dp-notnight-xxhdpi")
+    fun settingsKeepScreenOnOff() {
+        capture(
+            "settings-keep-screen-on-off-light-3x",
+            state = UpdateUiState.Idle,
+            accounts = demoAccounts,
+            keepScreenOn = false,
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1040dp-notnight-xxhdpi", fontScale = 2.0f)
+    fun settingsKeepScreenOnFontScale2x() {
+        capture(
+            "settings-keep-screen-on-font200-light-3x",
+            state = UpdateUiState.Idle,
+            accounts = demoAccounts,
+            keepScreenOn = true,
+        )
+        composeRule.onNodeWithText("화면 켜둠").assertExists()
     }
 
     @Test
