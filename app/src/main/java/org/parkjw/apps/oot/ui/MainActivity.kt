@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -85,6 +87,7 @@ class MainActivity : ComponentActivity() {
                 val isServiceEnabled by app.preferences.isServiceEnabled.collectAsState()
                 val refreshInterval by app.preferences.refreshIntervalMinutes.collectAsState()
                 val autoUpdateCheck by app.preferences.isAutoUpdateCheckEnabled.collectAsState()
+                val keepScreenOn by app.preferences.isKeepScreenOnEnabled.collectAsState()
                 val notificationHiddenIds by app.preferences.notificationHiddenAccountIds.collectAsState()
                 val vendorUsages by app.repository.vendorUsages.collectAsState(initial = emptyList())
                 val isRefreshing by app.repository.isRefreshing.collectAsState()
@@ -137,6 +140,7 @@ class MainActivity : ComponentActivity() {
                         accounts = accounts.filter { it.provider.isSelectable },
                         notificationHiddenIds = notificationHiddenIds,
                         autoUpdateCheckEnabled = autoUpdateCheck,
+                        keepScreenOnEnabled = keepScreenOn,
                         language = AppLocale.current,
                         versionName = versionName,
                         updateState = updateState,
@@ -154,6 +158,10 @@ class MainActivity : ComponentActivity() {
                             app.preferences.setShownInNotification(accountId, shown)
                         },
                         onAutoUpdateCheckChange = { enabled -> app.preferences.setAutoUpdateCheckEnabled(enabled) },
+                        onKeepScreenOnChange = { enabled ->
+                            app.preferences.setKeepScreenOnEnabled(enabled)
+                            applyKeepScreenOn()
+                        },
                         onLanguageChange = ::changeLanguage,
                         onUpdateAction = { action ->
                             when (action) {
@@ -352,6 +360,21 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         updateViewModel.onResumed()
+        applyKeepScreenOn()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        applyKeepScreenOn()
+    }
+
+    private fun applyKeepScreenOn() {
+        val inForeground = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        if (shouldKeepScreenOn(app.preferences.isKeepScreenOnEnabled.value, inForeground)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     private fun checkNotificationPermission() {

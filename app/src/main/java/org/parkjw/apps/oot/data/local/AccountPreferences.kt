@@ -33,6 +33,10 @@ class AccountPreferences(
     private val _isAutoUpdateCheckEnabled = MutableStateFlow(true)
     val isAutoUpdateCheckEnabled: StateFlow<Boolean> = _isAutoUpdateCheckEnabled.asStateFlow()
 
+    // Off by default: keeping the screen on costs battery.
+    private val _isKeepScreenOnEnabled = MutableStateFlow(false)
+    val isKeepScreenOnEnabled: StateFlow<Boolean> = _isKeepScreenOnEnabled.asStateFlow()
+
     // Accounts the user switched off in Settings; absent = shown, so upgrades keep everything in the notification.
     private val _notificationHiddenAccountIds = MutableStateFlow<Set<String>>(emptySet())
     val notificationHiddenAccountIds: StateFlow<Set<String>> = _notificationHiddenAccountIds.asStateFlow()
@@ -63,6 +67,7 @@ class AccountPreferences(
         _isServiceEnabled.value = secureStorage.getString(KEY_SERVICE_ENABLED, "true")?.toBooleanStrictOrNull() ?: true
         _refreshIntervalMinutes.value = secureStorage.getString(KEY_REFRESH_INTERVAL, "15")?.toIntOrNull() ?: 15
         _isAutoUpdateCheckEnabled.value = secureStorage.getString(KEY_AUTO_UPDATE_CHECK, "true")?.toBooleanStrictOrNull() ?: true
+        _isKeepScreenOnEnabled.value = secureStorage.getString(KEY_KEEP_SCREEN_ON, "false")?.toBooleanStrictOrNull() ?: false
     }
 
     @Synchronized
@@ -151,6 +156,12 @@ class AccountPreferences(
         secureStorage.putString(KEY_AUTO_UPDATE_CHECK, enabled.toString())
     }
 
+    @Synchronized
+    fun setKeepScreenOnEnabled(enabled: Boolean) {
+        _isKeepScreenOnEnabled.value = enabled
+        secureStorage.putString(KEY_KEEP_SCREEN_ON, enabled.toString())
+    }
+
     fun resetGeneration(): Int = resetGeneration
 
     /**
@@ -177,6 +188,7 @@ class AccountPreferences(
         val serviceEnabled = _isServiceEnabled.value
         val refreshInterval = _refreshIntervalMinutes.value
         val autoUpdateCheck = _isAutoUpdateCheckEnabled.value
+        val keepScreenOn = _isKeepScreenOnEnabled.value
 
         _accounts.value = emptyList()
         _notificationHiddenAccountIds.value = emptySet()
@@ -187,6 +199,7 @@ class AccountPreferences(
         secureStorage.putString(KEY_SERVICE_ENABLED, serviceEnabled.toString())
         secureStorage.putString(KEY_REFRESH_INTERVAL, refreshInterval.toString())
         secureStorage.putString(KEY_AUTO_UPDATE_CHECK, autoUpdateCheck.toString())
+        secureStorage.putString(KEY_KEEP_SCREEN_ON, keepScreenOn.toString())
         persistNotificationHidden(emptySet())
         persistAccounts(emptyList())
         persistOrder(emptyList())
@@ -313,5 +326,6 @@ class AccountPreferences(
         private const val KEY_SERVICE_ENABLED = "oot_service_enabled"
         private const val KEY_REFRESH_INTERVAL = "oot_refresh_interval"
         private const val KEY_AUTO_UPDATE_CHECK = "oot_auto_update_check"
+        private const val KEY_KEEP_SCREEN_ON = "oot_keep_screen_on"
     }
 }
