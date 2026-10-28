@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Settings > 화면 > 화면 켜둠 / Display > Keep the screen on keeps the screen awake while the app is in the foreground, for a phone used as a usage dashboard. Off by default; no new permission (#148).
+
 ## [1.4.1] - 2026-10-24
 
 The app no longer force-closes when Android stops the monitor's foreground service, and Settings > 정보 > 오류 기록 keeps crash details on the device so they can be inspected and shared.

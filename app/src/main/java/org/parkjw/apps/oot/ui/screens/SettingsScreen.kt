@@ -70,6 +70,7 @@ fun SettingsScreen(
     accounts: List<ProviderAccount>,
     notificationHiddenIds: Set<String>,
     autoUpdateCheckEnabled: Boolean,
+    keepScreenOnEnabled: Boolean,
     language: AppLanguage,
     versionName: String,
     updateState: UpdateUiState,
@@ -78,6 +79,7 @@ fun SettingsScreen(
     onSetRefreshInterval: (Int) -> Unit,
     onNotificationShownChange: (accountId: String, shown: Boolean) -> Unit,
     onAutoUpdateCheckChange: (Boolean) -> Unit,
+    onKeepScreenOnChange: (Boolean) -> Unit,
     onLanguageChange: (AppLanguage) -> Unit,
     onUpdateAction: (UpdateAction) -> Unit,
     onOpenSourceCode: () -> Unit,
@@ -150,6 +152,16 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+
+            SectionHeader(stringResource(R.string.settings_section_display))
+            SettingsGroup {
+                SwitchRow(
+                    title = stringResource(R.string.settings_keep_screen_on),
+                    supporting = stringResource(R.string.settings_keep_screen_on_desc),
+                    checked = keepScreenOnEnabled,
+                    onCheckedChange = onKeepScreenOnChange,
+                )
             }
 
             SectionHeader(stringResource(R.string.settings_section_update))

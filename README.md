@@ -45,6 +45,7 @@ Screenshots use sample data only.
   - Expanded: one line per vendor, showing its 5-hour window when it has one (otherwise its lowest window) and that window's reset time.
   - Every notification also carries a plain-text summary (for example `Claude 62% · OpenRouter $12.40`), so it stays readable on devices that render custom notification layouts poorly.
 - **Refresh interval** — 1, 5, 15, 30 or 60 minutes. Short intervals run inside the notification's foreground service and use more battery; vendors that answer HTTP 429 are backed off automatically.
+- **Keep the screen on** — optional and off by default. While the app is open in the foreground the screen stays awake, so a spare phone can sit on a desk as a usage dashboard.
 - **In-app update**
   - Checks GitHub Releases on launch, at most once a day (toggle in Settings).
   - Downloads the APK, verifies it is signed with the same key as the installed app, then opens the system installer.
