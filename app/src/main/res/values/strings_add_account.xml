@@ -33,11 +33,11 @@
     <string name="add_account_manual_key_hint">또는 직접 API Key / 토큰 등록:</string>
     <string name="add_account_api_key_label">API Key / 토큰</string>
     <string name="add_account_key_placeholder_zai">Z.ai 코딩 플랜 API Key</string>
-    <string name="add_account_key_placeholder_minimax">MiniMax Token Plan API Key</string>
+    <string name="add_account_key_placeholder_minimax">M Plan / Token Plan API Key</string>
     <string name="add_account_key_placeholder_claude">sk-ant-… 또는 세션 키</string>
     <string name="add_account_key_placeholder_openai">sk-proj-… 또는 API Key</string>
     <string name="add_account_helper_zai">공식 모니터링 엔드포인트(api.z.ai/api/monitor/usage/quota/limit)로 남은 5시간·주간 쿼터와 크레딧을 확인해요.</string>
-    <string name="add_account_helper_minimax">공식 엔드포인트(/v1/token_plan/remains)로 남은 5시간·주간 쿼터를 확인해요. Token Plan 키는 리전에 묶여 있어요.</string>
+    <string name="add_account_helper_minimax">Plan Details에서 M Plan / Token Plan API 키를 복사해 주세요. 사용량 기반(pay-as-you-go) 키로는 플랜 쿼터를 읽을 수 없어요. 글로벌·중국 리전은 자동으로 확인해요.</string>
     <string name="add_account_helper_openrouter">OpenRouter API 키를 등록하면 남은 달러($) 잔액과 키 한도를 바로 확인해요.</string>
     <string name="add_account_helper_claude">Anthropic Console API 키(sk-ant-…)나 OAuth 토큰을 입력해 주세요.</string>
     <string name="add_account_helper_openai">ChatGPT 로그인(5h/주간)이나 API 키(sk-…)로 레이트 리밋을 확인해요.</string>

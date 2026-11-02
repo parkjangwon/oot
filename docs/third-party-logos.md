@@ -12,5 +12,6 @@ Official marks used to identify AI providers in oot. Downloaded **2026-10-22**. 
 | OpenCode | Square logo light/dark SVG from brand assets | [opencode.ai/brand](https://opencode.ai/brand) / [anomalyco/opencode brand assets](https://github.com/anomalyco/opencode/tree/dev/packages/console/app/src/asset/brand) | Official brand pack; light/dark square symbols | Logo |
 | OpenAI | — | [openai.com/brand](https://openai.com/brand/) | Guidelines require permission before logo use; no obtainable official SVG from this environment (403) | **Letter tile (O)** |
 | Z.ai (GLM) | — | [z.ai terms](https://chat.z.ai/legal-agreement/terms-of-service) (logo URL exists at `z-cdn.chatglm.cn` but unused) | Terms forbid using Z.ai logos/marks without prior written consent | **Letter tile (G)** |
+| MiniMax | — | [minimax.io/brand-vi](https://www.minimax.io/brand-vi) | Logo use needs permission via partnercomms@minimaxai.com; no alteration or recolor allowed (oot needs a mono notification variant), and the gradient color must not appear in products | **Letter tile (M)** |
 
 Conversion: `scripts/svg_to_vectordrawable.py` (paths and fills preserved).
