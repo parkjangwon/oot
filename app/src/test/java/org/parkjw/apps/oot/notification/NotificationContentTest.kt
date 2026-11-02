@@ -200,6 +200,30 @@ class NotificationContentTest {
     }
 
     @Test
+    fun `minimax shows 5H and 7D with reset times like GLM`() {
+        val now = Instant.parse("2026-10-21T12:00:00Z")
+        val mini = VendorUsage(
+            "id", ProviderType.MINIMAX, "acc",
+            listOf(
+                UsageWindow("five_hour", "5시간", Remaining.Percent(43.0), now.plusSeconds((4 * 60 + 12) * 60)),
+                UsageWindow("seven_day", "주간", Remaining.Percent(77.0), now.plusSeconds(5 * 24 * 3600))
+            )
+        )
+        val expanded = NotificationContent.expandedItems(listOf(mini), now = now, strings = TestNotificationStrings.KO).single()
+        assertEquals("MiniMax", expanded.name)
+        assertEquals("M", expanded.mark)
+        assertEquals("5H 43% 남음 · 4시간 12분 후", expanded.text)
+        assertEquals(43, expanded.percent)
+
+        val weekly = NotificationContent.expandedItems(
+            listOf(mini.copy(windows = mini.windows.filter { it.id == "seven_day" })),
+            now = now,
+            strings = TestNotificationStrings.KO
+        ).single()
+        assertEquals("7D 77% 남음 · 5일 후", weekly.text)
+    }
+
+    @Test
     fun `expanded line has no reset suffix when the representative has no reset`() {
         val usage = vendor(62.0, ProviderType.ZAI)
         assertEquals("5H 62% 남음", NotificationContent.expandedItems(listOf(usage), now = now, strings = TestNotificationStrings.KO).single().text)

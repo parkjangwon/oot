@@ -26,6 +26,7 @@ class VendorLogoTest {
         )
         assertNull(VendorLogo.of(ProviderType.OPENAI))
         assertNull(VendorLogo.of(ProviderType.ZAI))
+        assertNull(VendorLogo.of(ProviderType.MINIMAX))
         assertNotNull(VendorLogo.of(ProviderType.CLAUDE)?.mono)
     }
 }
