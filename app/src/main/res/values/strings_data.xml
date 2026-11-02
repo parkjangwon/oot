@@ -82,6 +82,12 @@
     <string name="data_zai_ok">Z.ai 정상</string>
     <string name="data_zai_auth_failed">Z.ai 인증 실패</string>
     <string name="data_zai_server_error">Z.ai 서버 응답 오류 (%1$d)</string>
+    <string name="data_minimax_key_required">MiniMax Token Plan API 키를 등록해 주세요.</string>
+    <string name="data_minimax_key_invalid">MiniMax Token Plan API 키나 리전을 확인해 주세요.</string>
+    <string name="data_minimax_auth_failed">MiniMax 인증 실패</string>
+    <string name="data_minimax_parse_failed">MiniMax 응답을 해석하지 못했어요.</string>
+    <string name="data_minimax_no_usage">MiniMax 사용량 정보가 비어 있어요.</string>
+    <string name="data_minimax_server_error">MiniMax 서버 응답 오류 (%1$d)</string>
     <string name="data_reset_in_days_hours">%1$d일 %2$d시간 후 리셋</string>
     <string name="data_reset_in_hours_minutes">%1$d시간 %2$d분 후 리셋</string>
     <string name="data_reset_in_minutes">%1$d분 후 리셋</string>
