@@ -71,6 +71,14 @@ enum class ProviderType(
         baseUrl = "https://api.z.ai",
         dashboardUrl = "https://z.ai"
     ),
+    MINIMAX(
+        displayName = "MiniMax",
+        descriptionRes = R.string.provider_desc_minimax,
+        primaryAuthType = AuthType.API_KEY,
+        defaultIconName = "minimax",
+        baseUrl = "https://api.minimax.io",
+        dashboardUrl = "https://platform.minimax.io/"
+    ),
     DEEPSEEK(
         displayName = "DeepSeek",
         descriptionRes = R.string.provider_desc_deepseek,

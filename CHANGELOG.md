@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- MiniMax: M Plan / Token Plan 5-hour and weekly quota as % left, with reset times. Global and China keys are detected automatically; a pay-as-you-go key does not expose plan quota (#152).
+
 ## [1.5.0] - 2026-10-28
 
 Settings > 화면 > 화면 켜둠 keeps the screen awake while the app is open, so a spare phone can stay on as a usage dashboard.

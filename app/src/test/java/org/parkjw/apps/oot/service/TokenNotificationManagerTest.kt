@@ -62,6 +62,15 @@ class TokenNotificationManagerTest {
             windows = listOf(UsageWindow("five_hour", "5h", Remaining.Percent(98.0), resetIn(3 * 60 + 27))),
         ),
         VendorUsage(
+            accountId = "demo-minimax",
+            providerType = ProviderType.MINIMAX,
+            displayName = "minimax-demo@example.com",
+            windows = listOf(
+                UsageWindow("five_hour", "5h", Remaining.Percent(43.0), resetIn(4 * 60 + 12)),
+                UsageWindow("seven_day", "7d", Remaining.Percent(77.0), resetIn(5 * 24 * 60)),
+            ),
+        ),
+        VendorUsage(
             accountId = "demo-xai",
             providerType = ProviderType.XAI,
             displayName = "xai-demo@example.com",
@@ -128,7 +137,7 @@ class TokenNotificationManagerTest {
             .getNotification(TokenNotificationManager.NOTIFICATION_ID)
         assertNotNull(notification)
         assertEquals(
-            "Claude 62% · GLM 98% · xAI 14% · OpenRouter $7.60",
+            "Claude 62% · GLM 98% · MiniMax 43% · xAI 14% · OpenRouter $7.60",
             notification!!.extras.getCharSequence(Notification.EXTRA_TEXT).toString(),
         )
         assertNotNull(notification.contentView)
@@ -143,7 +152,7 @@ class TokenNotificationManagerTest {
         val shadow = Shadows.shadowOf(notificationManager(app))
         assertEquals(1, shadow.allNotifications.size)
         assertEquals(
-            "Claude 62% · GLM 98% · xAI 14% · OpenRouter $7.60",
+            "Claude 62% · GLM 98% · MiniMax 43% · xAI 14% · OpenRouter $7.60",
             shadow.getNotification(TokenNotificationManager.NOTIFICATION_ID)!!
                 .extras.getCharSequence(Notification.EXTRA_TEXT).toString(),
         )

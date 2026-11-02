@@ -59,12 +59,13 @@ Screenshots use sample data only.
 | <img src="docs/screenshots/vendors/vendor-openai.png" alt="" width="20" align="center"> **OpenAI** | ChatGPT sign-in (OAuth) or API key | ChatGPT plan 5-hour and weekly windows as % left, with reset times; with an API key, remaining rate-limit tokens |
 | <img src="docs/screenshots/vendors/vendor-xai.png" alt="" width="20" align="center"> **xAI (Grok)** | API key or device-code login | Weekly subscription quota as % left, with reset time, when the billing endpoint answers (device-code login); otherwise the account tier or remaining rate-limit tokens |
 | <img src="docs/screenshots/vendors/vendor-zai.png" alt="" width="20" align="center"> **Z.ai (GLM)** | API key | GLM coding plan 5-hour and weekly quota as % left, with reset times |
+| <img src="docs/screenshots/vendors/vendor-minimax.png" alt="" width="20" align="center"> **MiniMax** | M Plan API key | Token Plan 5-hour and weekly quota as % left, with reset times; global and China keys |
 | <img src="docs/screenshots/vendors/vendor-openrouter.png" alt="" width="20" align="center"> **OpenRouter** | API key | Account credits in $, plus the key's own limit and what is left of it, when the key has one |
 | <img src="docs/screenshots/vendors/vendor-deepseek.png" alt="" width="20" align="center"> **DeepSeek** | API key | Remaining balance (USD or CNY) |
 | <img src="docs/screenshots/vendors/vendor-ollama-cloud.png" alt="" width="20" align="center"> **Ollama Cloud** | API key | Session and weekly usage as % left, with reset times; credit plans show the monthly allowance instead, plus purchased credits when present |
 | <img src="docs/screenshots/vendors/vendor-opencode-go.png" alt="" width="20" align="center"> **OpenCode Go** | API key | Subscription usage windows as % left, with reset times |
 
-OpenAI and Z.ai are shown with a letter tile because their brand terms do not allow using the logo without permission.
+OpenAI, Z.ai and MiniMax are shown with a letter tile because their brand terms do not allow using the logo without permission.
 
 All trademarks and logos are the property of their respective owners and are used only to identify each vendor; this does not imply endorsement. Sources and license notes for every logo: [docs/third-party-logos.md](docs/third-party-logos.md).
 

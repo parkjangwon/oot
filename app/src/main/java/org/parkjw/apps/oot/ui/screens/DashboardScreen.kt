@@ -1099,6 +1099,7 @@ fun VendorMark(
             val monogram = when (provider) {
                 ProviderType.CLAUDE -> "C"
                 ProviderType.ZAI -> "Z"
+                ProviderType.MINIMAX -> "M"
                 ProviderType.XAI -> "X"
                 ProviderType.OPENROUTER -> "R"
                 ProviderType.OPENAI -> "O"
@@ -1311,6 +1312,7 @@ private fun VendorDetailDialog(
 private fun VendorUsage.shortVendorName(): String = when (providerType) {
     ProviderType.CLAUDE -> "Claude"
     ProviderType.ZAI -> "GLM"
+    ProviderType.MINIMAX -> "MiniMax"
     ProviderType.XAI -> "xAI"
     ProviderType.OPENROUTER -> "OpenRouter"
     ProviderType.OPENAI -> "OpenAI"

@@ -175,6 +175,7 @@ fun AddAccountDialog(
                     Text(
                         when (selectedProvider) {
                             ProviderType.ZAI -> stringResource(R.string.add_account_open_zai)
+                            ProviderType.MINIMAX -> stringResource(R.string.add_account_open_minimax)
                             ProviderType.OPENROUTER -> stringResource(R.string.add_account_open_openrouter)
                             ProviderType.CLAUDE -> stringResource(R.string.add_account_open_claude)
                             ProviderType.OPENAI -> stringResource(R.string.add_account_open_openai)
@@ -507,6 +508,7 @@ fun AddAccountDialog(
                             Text(
                                 when (selectedProvider) {
                                     ProviderType.ZAI -> stringResource(R.string.add_account_key_placeholder_zai)
+                                    ProviderType.MINIMAX -> stringResource(R.string.add_account_key_placeholder_minimax)
                                     ProviderType.OPENROUTER -> stringResource(R.string.add_account_key_placeholder_openrouter)
                                     ProviderType.CLAUDE -> stringResource(R.string.add_account_key_placeholder_claude)
                                     ProviderType.OPENAI -> stringResource(R.string.add_account_key_placeholder_openai)
@@ -549,6 +551,7 @@ fun AddAccountDialog(
                     Text(
                         text = when (selectedProvider) {
                             ProviderType.ZAI -> stringResource(R.string.add_account_helper_zai)
+                            ProviderType.MINIMAX -> stringResource(R.string.add_account_helper_minimax)
                             ProviderType.OPENROUTER -> stringResource(R.string.add_account_helper_openrouter)
                             ProviderType.CLAUDE -> stringResource(R.string.add_account_helper_claude)
                             ProviderType.OPENAI -> stringResource(R.string.add_account_helper_openai)

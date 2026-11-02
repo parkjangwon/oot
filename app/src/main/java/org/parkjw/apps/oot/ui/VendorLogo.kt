@@ -28,6 +28,6 @@ object VendorLogo {
         ProviderType.OLLAMA_CLOUD -> Spec(R.drawable.ic_vendor_ollama, R.drawable.ic_vendor_ollama_mono, tintWithOnSurface = true)
         ProviderType.OPENCODE_GO -> Spec(R.drawable.ic_vendor_opencode, R.drawable.ic_vendor_opencode_mono, tintWithOnSurface = false, night = R.drawable.ic_vendor_opencode_night)
         // OpenAI: brand guidelines require permission; Z.ai ToS forbids in-app logo use.
-        ProviderType.OPENAI, ProviderType.ZAI -> null
+        ProviderType.OPENAI, ProviderType.ZAI, ProviderType.MINIMAX -> null
     }
 }

@@ -103,6 +103,7 @@ class DashboardScreenshotTest {
                 ),
             ),
         ),
+        miniMaxUsage(),
         // xAI reports only its weekly credit period, with the period end as the reset.
         VendorUsage(
             accountId = "xai-1",
@@ -150,6 +151,26 @@ class DashboardScreenshotTest {
                     label = "credit",
                     remaining = Remaining.Balance(110.00, "CNY"),
                 ),
+            ),
+        ),
+    )
+
+    private fun miniMaxUsage() = VendorUsage(
+        accountId = "minimax-1",
+        providerType = ProviderType.MINIMAX,
+        displayName = "MiniMax",
+        windows = listOf(
+            UsageWindow(
+                id = "five_hour",
+                label = "5h",
+                remaining = Remaining.Percent(43.0),
+                resetsAt = fixedNow.plus(Duration.ofHours(4).plusMinutes(12)),
+            ),
+            UsageWindow(
+                id = "seven_day",
+                label = "7d",
+                remaining = Remaining.Percent(77.0),
+                resetsAt = fixedNow.plus(Duration.ofDays(5)),
             ),
         ),
     )
@@ -301,8 +322,29 @@ class DashboardScreenshotTest {
         )
     }
 
+    // 320dp and font scale 2.0: the MiniMax 5-hour and weekly rows keep their % and reset times.
     @Test
-    @Config(qualifiers = "ko-w412dp-h1300dp-notnight-xxhdpi")
+    @Config(qualifiers = "ko-w320dp-h2600dp-notnight-xxhdpi", fontScale = 2.0f)
+    fun dashboardMiniMaxNarrowFontScale2x() {
+        composeRule.setContent {
+            OotTheme(darkTheme = false) {
+                DashboardScreen(
+                    vendorUsages = listOf(miniMaxUsage()),
+                    now = fixedNow,
+                    modifier = Modifier.testTag("dashboard_root"),
+                )
+            }
+        }
+        composeRule.onNodeWithText("MiniMax").assertExists()
+        composeRule.onNodeWithText("43% 남음").assertExists()
+        composeRule.onNodeWithText("77% 남음").assertExists()
+        composeRule.onNodeWithTag("dashboard_root").captureRoboImage(
+            File(roborazziSystemPropertyOutputDirectory(), "dashboard-minimax-320dp-font200.png"),
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "ko-w412dp-h1700dp-notnight-xxhdpi")
     fun dashboardLight() {
         composeRule.setContent {
             OotTheme(darkTheme = false) {
@@ -323,7 +365,7 @@ class DashboardScreenshotTest {
     }
 
     @Test
-    @Config(qualifiers = "ko-w412dp-h1300dp-night-xxhdpi")
+    @Config(qualifiers = "ko-w412dp-h1700dp-night-xxhdpi")
     fun dashboardDark() {
         composeRule.setContent {
             OotTheme(darkTheme = true) {
@@ -417,11 +459,11 @@ class DashboardScreenshotTest {
 
     // English (#74): the same dashboards with English resources.
     @Test
-    @Config(qualifiers = "en-w412dp-h1300dp-notnight-xxhdpi")
+    @Config(qualifiers = "en-w412dp-h1700dp-notnight-xxhdpi")
     fun dashboardLightEnglish() = captureEnglish(darkTheme = false, fileName = "dashboard-light-en.png")
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1300dp-night-xxhdpi")
+    @Config(qualifiers = "en-w412dp-h1700dp-night-xxhdpi")
     fun dashboardDarkEnglish() = captureEnglish(darkTheme = true, fileName = "dashboard-dark-en.png")
 
     private fun captureEnglish(darkTheme: Boolean, fileName: String) {

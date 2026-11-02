@@ -30,6 +30,7 @@ class TokenSyncRepository(
     private val openRouterApi = OpenRouterApi(client, json)
     private val xaiApi = XaiApi(client, json)
     private val zaiApi = ZaiApi(client, json)
+    private val miniMaxApi = MiniMaxApi(client, json)
     private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.updateAccountIfPresent(it) }
     private val openAiApi = OpenAiApi(client, json, oauthManager) { preferences.updateAccountIfPresent(it) }
     private val deepSeekApi = DeepSeekApi(client, json)
@@ -142,6 +143,7 @@ class TokenSyncRepository(
             ProviderType.OPENROUTER -> openRouterApi.fetchStatus(account)
             ProviderType.XAI -> xaiApi.fetchStatus(account)
             ProviderType.ZAI -> zaiApi.fetchStatus(account)
+            ProviderType.MINIMAX -> miniMaxApi.fetchStatus(account)
             ProviderType.CLAUDE -> claudeApi.fetchStatus(account)
             ProviderType.OPENAI -> openAiApi.fetchStatus(account)
             ProviderType.DEEPSEEK -> deepSeekApi.fetchStatus(account)

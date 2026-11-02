@@ -36,6 +36,7 @@ class SettingsScreenSemanticsTest {
         ProviderAccount(id = "demo-claude", provider = ProviderType.CLAUDE, name = "Claude"),
         ProviderAccount(id = "demo-xai", provider = ProviderType.XAI, name = "xAI"),
         ProviderAccount(id = "demo-zai", provider = ProviderType.ZAI, name = "Z.ai"),
+        ProviderAccount(id = "demo-minimax", provider = ProviderType.MINIMAX, name = "MiniMax"),
     )
 
     private fun getString(resId: Int): String =
@@ -130,8 +131,14 @@ class SettingsScreenSemanticsTest {
         composeRule.onNode(hasRole(Role.Switch) and hasText("Z.ai"))
             .assertIsOn()
 
+        composeRule.onAllNodes(hasRole(Role.Switch) and hasText("MiniMax"))
+            .assertCountEquals(1)
+        composeRule.onNode(hasRole(Role.Switch) and hasText("MiniMax"))
+            .assertIsOn()
+
         // VendorMark fallback letter tile must not be exposed to accessibility
         composeRule.onAllNodes(hasText("Z")).assertCountEquals(0)
+        composeRule.onAllNodes(hasText("M")).assertCountEquals(0)
 
         // 3. Auto update check toggle
         val autoUpdateTitle = getString(R.string.update_auto)
@@ -139,6 +146,17 @@ class SettingsScreenSemanticsTest {
             .assertCountEquals(1)
         composeRule.onNode(hasRole(Role.Switch) and hasText(autoUpdateTitle))
             .assertIsOff()
+    }
+
+    @Test
+    fun minimaxNotificationVisibilityToggleReportsTheNewState() {
+        var changed: Pair<String, Boolean>? = null
+        setSettingsContent(
+            notificationHiddenIds = emptySet(),
+            onNotificationShownChange = { id, shown -> changed = id to shown },
+        )
+        composeRule.onNode(hasRole(Role.Switch) and hasText("MiniMax")).performClick()
+        assertEquals("demo-minimax" to false, changed)
     }
 
     @Test

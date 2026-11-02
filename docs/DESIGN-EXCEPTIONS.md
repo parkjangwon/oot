@@ -5,7 +5,7 @@ Project-specific rules on top of the team design system (`docs/DESIGN.md`). Anyt
 ## Vendor logos (approved exception)
 The general rule forbids copying other apps' icons. oot may show official AI vendor symbols to identify providers.
 - Symbols only, no wordmarks, used exactly as provided (no recolor or remix), except official mono variants tinted with `onSurface` or the notification text color.
-- Vendors whose guidelines need permission (currently OpenAI and Z.ai) use a letter tile instead of a logo.
+- Vendors whose guidelines need permission (currently OpenAI, Z.ai and MiniMax) use a letter tile instead of a logo.
 - Every logo's source, date and license note is listed in `docs/third-party-logos.md`. Add a row there before adding a logo.
 
 ## Quota levels

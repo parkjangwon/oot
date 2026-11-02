@@ -82,6 +82,12 @@
     <string name="data_zai_ok">Z.ai OK</string>
     <string name="data_zai_auth_failed">Z.ai authentication failed</string>
     <string name="data_zai_server_error">Z.ai server error (%1$d)</string>
+    <string name="data_minimax_key_required">Add a MiniMax Token Plan API key.</string>
+    <string name="data_minimax_key_invalid">Check your MiniMax Token Plan API key and region.</string>
+    <string name="data_minimax_auth_failed">MiniMax authentication failed</string>
+    <string name="data_minimax_parse_failed">Couldn\'t read the MiniMax response.</string>
+    <string name="data_minimax_no_usage">MiniMax usage info is empty.</string>
+    <string name="data_minimax_server_error">MiniMax server error (%1$d)</string>
     <string name="data_reset_in_days_hours">Resets in %1$dd %2$dh</string>
     <string name="data_reset_in_hours_minutes">Resets in %1$dh %2$dm</string>
     <string name="data_reset_in_minutes">Resets in %1$dm</string>

@@ -90,6 +90,7 @@
     <string name="provider_desc_openai">ChatGPT / OpenAI 사용량 및 토큰 레이트 리밋</string>
     <string name="provider_desc_xai">X 통합 요금제 / xAI Grok 구독 및 API 한도</string>
     <string name="provider_desc_zai">Z.ai GLM 코딩 플랜 쿼터 및 토큰 모니터링</string>
+    <string name="provider_desc_minimax">MiniMax Token Plan 5시간·주간 쿼터 모니터링</string>
     <string name="provider_desc_deepseek">DeepSeek API 크레딧 잔액 모니터링</string>
     <string name="provider_desc_ollama_cloud">Ollama Cloud 구독 사용량 및 크레딧 모니터링</string>
     <string name="provider_desc_opencode_go">OpenCode Go 구독 사용량 모니터링</string>

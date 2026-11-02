@@ -34,6 +34,24 @@ class AddAccountCopyScreenshotTest {
         composeRule.onNodeWithText("확인해요.", substring = true).assertExists()
     }
 
+    // MiniMax needs an M Plan / Token Plan key (not pay-as-you-go); region is auto-detected.
+    @Test
+    fun minimaxHelperLight() {
+        capture(ProviderType.MINIMAX, darkTheme = false, fileName = "add-account-minimax-light.png")
+        composeRule.onNodeWithText("Plan Details", substring = true).assertExists()
+        composeRule.onNodeWithText("pay-as-you-go", substring = true).assertExists()
+        composeRule.onNodeWithText("글로벌·중국 리전", substring = true).assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "en-w320dp-h760dp")
+    fun minimaxHelperEnglish() {
+        capture(ProviderType.MINIMAX, darkTheme = false, fileName = "add-account-minimax-light-en.png")
+        composeRule.onNodeWithText("Plan Details", substring = true).assertExists()
+        composeRule.onNodeWithText("pay-as-you-go", substring = true).assertExists()
+        composeRule.onNodeWithText("Global and China", substring = true).assertExists()
+    }
+
     @Test
     fun claudeSignInLight() {
         capture(ProviderType.CLAUDE, darkTheme = false, fileName = "add-account-claude-light.png")

@@ -54,6 +54,15 @@ class NotificationScreenshotTest {
             )
         ),
         VendorUsage(
+            accountId = "demo-minimax",
+            providerType = ProviderType.MINIMAX,
+            displayName = "minimax-demo@example.com",
+            windows = listOf(
+                UsageWindow("five_hour", "5h", Remaining.Percent(43.0), resetIn(4 * 60 + 12)),
+                UsageWindow("seven_day", "7d", Remaining.Percent(77.0), resetIn(5 * 24 * 60))
+            )
+        ),
+        VendorUsage(
             accountId = "demo-xai",
             providerType = ProviderType.XAI,
             displayName = "xai-demo@example.com",
@@ -134,6 +143,13 @@ class NotificationScreenshotTest {
         captureCollapsed(360, "notif-collapsed-360-light-3x.png")
     }
 
+    // 320dp at font scale 2.0: every vendor line, including MiniMax's 5H and 7D, still fits.
+    @Test
+    @Config(qualifiers = "ko-w320dp-h800dp-notnight-xxhdpi", fontScale = 2.0f)
+    fun notifExpanded320FontScale2x() {
+        captureExpanded(320, "notif-expanded-320-font200.png")
+    }
+
     // Claude, first in user order, is switched off in Settings: the collapsed line pulls the next vendor in.
     @Test
     @Config(qualifiers = "w412dp-h800dp-notnight-xxhdpi")
@@ -174,7 +190,7 @@ class NotificationScreenshotTest {
     fun staleRowsSayPreviousInTheExpandedFormAndText() {
         val notification = buildNotification(usages = staleUsages())
         assertEquals(
-            "Claude 62% (이전값) · GLM 98% · xAI 14% · OpenRouter $7.60",
+            "Claude 62% (이전값) · GLM 98% · MiniMax 43% · xAI 14% · OpenRouter $7.60",
             notification.contentText(),
         )
         val collapsed = applyToNewActivity(notification.contentView!!)
@@ -189,10 +205,10 @@ class NotificationScreenshotTest {
     @Test
     fun hiddenVendorsLeaveEveryNotificationForm() {
         val hiddenClaude = buildNotification(hidden = setOf("demo-claude"))
-        assertEquals("GLM 98% · xAI 14% · OpenRouter $7.60", hiddenClaude.contentText())
+        assertEquals("GLM 98% · MiniMax 43% · xAI 14% · OpenRouter $7.60", hiddenClaude.contentText())
         val expanded = applyToNewActivity(hiddenClaude.bigContentView!!)
-        assertEquals(View.VISIBLE, expanded.findViewById<View>(R.id.row2).visibility)
-        assertEquals(View.GONE, expanded.findViewById<View>(R.id.row3).visibility)
+        assertEquals(View.VISIBLE, expanded.findViewById<View>(R.id.row3).visibility)
+        assertEquals(View.GONE, expanded.findViewById<View>(R.id.row4).visibility)
 
         // Every vendor off: says so and points to Settings, not "nothing registered".
         val allHidden = buildNotification(hidden = allIds())
@@ -253,7 +269,7 @@ class NotificationScreenshotTest {
     @Test
     fun englishNotificationText() {
         val notification = buildNotification(language = AppLanguage.ENGLISH)
-        assertEquals("Claude 62% · GLM 98% · xAI 14% · OpenRouter $7.60", notification.contentText())
+        assertEquals("Claude 62% · GLM 98% · MiniMax 43% · xAI 14% · OpenRouter $7.60", notification.contentText())
         assertEquals("Refresh", notification.actions.single().title.toString())
         val expanded = applyToNewActivity(notification.bigContentView!!)
         val claude = expanded.findViewById<android.widget.TextView>(R.id.text0).text.toString()
