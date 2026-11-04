@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.6.0] - 2026-11-05
+
+MiniMax M Plan and Token Plan quotas show up next to the other providers.
 
 ### Added
 - MiniMax: M Plan / Token Plan 5-hour and weekly quota as % left, with reset times. Global and China keys are detected automatically; a pay-as-you-go key does not expose plan quota (#152).
