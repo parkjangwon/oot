@@ -28,6 +28,7 @@ class TokenMonitorForegroundServiceTest {
     @Before
     fun ensureWorkManager() {
         initWorkManager(app)
+        app.preferences.setRefreshInterval(15)
     }
 
     private fun buildService(action: String) = Robolectric.buildService(
@@ -45,8 +46,8 @@ class TokenMonitorForegroundServiceTest {
         assertEquals(TokenNotificationManager.CHANNEL_ID, notification!!.channelId)
 
         // The default 15-minute interval goes to WorkManager, not to an in-service loop.
-        awaitUntil { uniqueWorkInfos(app).size == 1 }
-        assertEquals(1, activeWorkInfos(app).size)
+        awaitUntil { activeWorkInfos(app).size == 1 }
+        assertEquals(1, uniqueWorkInfos(app).size)
 
         controller.destroy()
     }
@@ -68,7 +69,7 @@ class TokenMonitorForegroundServiceTest {
     @Test
     fun intervalChangesSwitchBetweenWorkManagerAndInServiceSync() {
         val controller = buildService(TokenMonitorForegroundService.ACTION_START)
-        awaitUntil { uniqueWorkInfos(app).isNotEmpty() }
+        awaitUntil { activeWorkInfos(app).isNotEmpty() }
 
         app.preferences.setRefreshInterval(5)
         awaitUntil { activeWorkInfos(app).isEmpty() }
@@ -85,7 +86,7 @@ class TokenMonitorForegroundServiceTest {
     @Test
     fun stopActionRemovesTheNotificationCancelsWorkAndStopsSelf() {
         val controller = buildService(TokenMonitorForegroundService.ACTION_START)
-        awaitUntil { uniqueWorkInfos(app).isNotEmpty() }
+        awaitUntil { activeWorkInfos(app).isNotEmpty() }
         val shadow = Shadows.shadowOf(controller.get())
 
         controller.get().onStartCommand(
