@@ -140,4 +140,18 @@
     <string name="error_log_report_body_label">본문</string>
     <string name="error_log_report_open">브라우저에서 열기</string>
     <string name="error_log_report_cancel">취소</string>
+    <!-- #157 Re-authentication -->
+    <string name="reauth_action">재인증</string>
+    <string name="reauth_title_claude">Claude 재인증</string>
+    <string name="reauth_title_openai">ChatGPT 재인증</string>
+    <string name="reauth_title_xai">xAI 재인증</string>
+    <string name="reauth_title_api_key">API 키 갱신</string>
+    <string name="reauth_body_claude">브라우저에서 Claude에 로그인한 뒤 표시되는 인증 코드를 붙여넣어 주세요. 계정 이름과 순서는 그대로예요.</string>
+    <string name="reauth_body_device">브라우저에서 아래 코드를 입력하고 승인해 주세요. 계정 이름과 순서는 그대로예요.</string>
+    <string name="reauth_body_api_key">지금 저장된 키는 표시하지 않아요. 새 키를 붙여넣으면 이 계정의 키만 바뀌어요.</string>
+    <string name="reauth_key_label">새 API 키 / 토큰</string>
+    <string name="reauth_failed_kept">재인증하지 못했어요. 지금 인증은 그대로예요.</string>
+    <string name="reauth_retry">다시 시도</string>
+    <string name="reauth_saving">저장 중…</string>
+    <string name="reauth_done_toast">%1$s 재인증을 마쳤어요. 이름과 순서는 그대로예요.</string>
 </resources>

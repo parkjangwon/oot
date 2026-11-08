@@ -203,6 +203,7 @@ class MainActivity : ComponentActivity() {
 
                     DashboardScreen(
                         vendorUsages = displayUsages,
+                        accounts = accounts,
                         legacyAccounts = legacyAccounts,
                         deviceOnlyRevocationIds = accounts
                             .filter { it.revocationMode() == RevocationMode.DEVICE_ONLY }
@@ -254,6 +255,89 @@ class MainActivity : ComponentActivity() {
                             app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                         },
                         onSettingsClick = { showSettings = true },
+                        onStartOAuth = { provider ->
+                            app.oauthManager.startOAuthFlow(provider)
+                        },
+                        onOpenExternalBrowser = { url ->
+                            app.oauthManager.openExternalBrowser(url)
+                        },
+                        onStartXaiDeviceFlow = { onCodeReceived, onTokenReceived, onError ->
+                            val generation = app.preferences.resetGeneration()
+                            app.oauthManager.startXaiDeviceFlow(
+                                onCodeReceived = onCodeReceived,
+                                onTokenReceived = { result ->
+                                    if (generation == app.preferences.resetGeneration()) onTokenReceived(result)
+                                },
+                                onError = onError,
+                            )
+                        },
+                        onStartOpenAiDeviceFlow = { onCodeReceived, onTokenReceived, onError ->
+                            val generation = app.preferences.resetGeneration()
+                            app.oauthManager.startOpenAiDeviceFlow(
+                                onCodeReceived = onCodeReceived,
+                                onTokenReceived = { result ->
+                                    if (generation == app.preferences.resetGeneration()) onTokenReceived(result)
+                                },
+                                onError = onError,
+                            )
+                        },
+                        onExchangeClaudeCode = { code, onTokenReceived, onError ->
+                            lifecycleScope.launch {
+                                val generation = app.preferences.resetGeneration()
+                                val result = app.oauthManager.exchangeClaudeAuthCode(code)
+                                if (generation == app.preferences.resetGeneration()) {
+                                    result.onSuccess(onTokenReceived).onFailure { onError(it.message ?: getString(R.string.token_exchange_failed)) }
+                                }
+                            }
+                        },
+                        onCancelPendingFlows = {
+                            app.oauthManager.cancelPendingFlows()
+                        },
+                        onSaveApiKey = { accountId, apiKey ->
+                            val account = app.preferences.accounts.value.firstOrNull { it.id == accountId }
+                            val updated = if (account != null) {
+                                app.preferences.bumpTokenGeneration(accountId)
+                                app.preferences.updateApiKeyIfPresent(accountId, apiKey)
+                            } else false
+                            if (updated && account != null) {
+                                lifecycleScope.launch {
+                                    app.repository.refreshAll()
+                                    app.notificationManager.updateNotification(app.repository.vendorUsages.value)
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        getString(R.string.reauth_done_toast, account.name),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            }
+                            updated
+                        },
+                        onSaveTokens = { accountId, tokenResult ->
+                            val account = app.preferences.accounts.value.firstOrNull { it.id == accountId }
+                            val updatedAccount = account?.copy(
+                                accessToken = tokenResult.accessToken,
+                                refreshToken = tokenResult.refreshToken ?: account.refreshToken,
+                                tokenExpiresAt = tokenResult.expiresAt,
+                                chatgptAccountId = tokenResult.chatgptAccountId ?: account.chatgptAccountId,
+                                accountEmail = tokenResult.accountEmail ?: account.accountEmail,
+                            )
+                            val updated = if (updatedAccount != null) {
+                                app.preferences.bumpTokenGeneration(accountId)
+                                app.preferences.updateAccountIfPresent(updatedAccount)
+                            } else false
+                            if (updated && account != null) {
+                                lifecycleScope.launch {
+                                    app.repository.refreshAll()
+                                    app.notificationManager.updateNotification(app.repository.vendorUsages.value)
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        getString(R.string.reauth_done_toast, account.name),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            }
+                            updated
+                        },
                         isSecureStorageAvailable = secureStorageAvailable,
                         isResettingSecureStorage = resetInProgress,
                         snackbarHostState = snackbarHostState,
