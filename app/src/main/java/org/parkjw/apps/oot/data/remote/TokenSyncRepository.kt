@@ -31,8 +31,15 @@ class TokenSyncRepository(
     private val xaiApi = XaiApi(client, json)
     private val zaiApi = ZaiApi(client, json)
     private val miniMaxApi = MiniMaxApi(client, json)
-    private val claudeApi = ClaudeApi(client, json, oauthManager) { preferences.updateAccountIfPresent(it) }
-    private val openAiApi = OpenAiApi(client, json, oauthManager) { preferences.updateAccountIfPresent(it) }
+    private val inFlightGenerations = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val claudeApi = ClaudeApi(client, json, oauthManager) { account ->
+        val expectedGen = inFlightGenerations[account.id]
+        preferences.updateAccountIfPresent(account, expectedGen)
+    }
+    private val openAiApi = OpenAiApi(client, json, oauthManager) { account ->
+        val expectedGen = inFlightGenerations[account.id]
+        preferences.updateAccountIfPresent(account, expectedGen)
+    }
     private val deepSeekApi = DeepSeekApi(client, json)
     private val ollamaCloudApi = OllamaCloudApi(client, json)
     private val openCodeGoApi = OpenCodeGoApi(client, json)
@@ -53,6 +60,7 @@ class TokenSyncRepository(
     @Synchronized
     fun onAccountsReset() {
         refreshScheduler.clear()
+        inFlightGenerations.clear()
         _statuses.value = emptyList()
         _vendorUsages.value = emptyList()
         _isRefreshing.value = false
@@ -84,24 +92,31 @@ class TokenSyncRepository(
             async {
                 // A reset after this refresh started removed every account: send no request and write nothing.
                 if (stale()) return@async null
+                val initialTokenGen = preferences.tokenGeneration(account.id)
+                fun tokenStale() = preferences.tokenGeneration(account.id) != initialTokenGen
                 if (!refreshScheduler.shouldFetch(account.id)) {
                     // Backoff: the previous values are shown again, so they must be marked stale.
                     return@async previous[account.id]?.asStale() ?: skippedBackoffStatus(account)
                 }
                 val updatedAccount = if (account.authType == AuthType.OAUTH && account.isTokenExpired) {
                     val refreshed = oauthManager.refreshTokenIfNeeded(account)
-                    if (stale()) return@async null
-                    // Removed while the token refresh was in flight: no usage call with the rotated token.
-                    if (refreshed != account && !preferences.updateAccountIfPresent(refreshed)) {
+                    if (stale() || tokenStale()) return@async null
+                    // Removed or re-authenticated while the token refresh was in flight: discard old refreshed token.
+                    if (refreshed != account && !preferences.updateAccountIfPresent(refreshed, initialTokenGen)) {
                         return@async null
                     }
                     refreshed
                 } else {
                     account
                 }
-                if (stale()) return@async null
-                val status = fetchAccountStatus(updatedAccount)
-                if (stale()) return@async null
+                if (stale() || tokenStale()) return@async null
+                inFlightGenerations[account.id] = initialTokenGen
+                val status = try {
+                    fetchAccountStatus(updatedAccount)
+                } finally {
+                    inFlightGenerations.remove(account.id)
+                }
+                if (stale() || tokenStale()) return@async null
                 if (status.isRateLimited) {
                     refreshScheduler.onRateLimited(
                         account.id,

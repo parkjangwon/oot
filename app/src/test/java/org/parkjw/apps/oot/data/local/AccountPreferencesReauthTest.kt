@@ -164,4 +164,65 @@ class AccountPreferencesReauthTest {
         assertEquals(listOf(accountA), prefs.accounts.value)
         assertEquals(listOf(accountA), preferences().accounts.value)
     }
+
+    @Test
+    fun reauthenticatingOAuthAccountWithNullRefreshTokenPreservesExistingRefreshToken() {
+        val prefs = preferences()
+        val accountA = account("a", refreshToken = "initial_refresh_token")
+        prefs.saveAccount(accountA)
+
+        // When token exchange response has null refresh_token, existing refresh_token must be preserved
+        val tokenResponseRefreshToken: String? = null
+        val updatedTokens = accountA.copy(
+            accessToken = "new_access_token",
+            refreshToken = tokenResponseRefreshToken ?: accountA.refreshToken,
+            tokenExpiresAt = 9999L,
+        )
+        val success = prefs.updateAccountIfPresent(updatedTokens)
+        assertTrue(success)
+
+        val updatedA = prefs.accounts.value.first { it.id == "a" }
+        assertEquals("new_access_token", updatedA.accessToken)
+        assertEquals("initial_refresh_token", updatedA.refreshToken)
+
+        // Also test defensive fallback in updateAccountIfPresent when account itself has null refreshToken
+        val accountWithNullRefresh = updatedA.copy(
+            accessToken = "brand_new_access_token",
+            refreshToken = null,
+        )
+        val successDefensive = prefs.updateAccountIfPresent(accountWithNullRefresh)
+        assertTrue(successDefensive)
+
+        val updatedADefensive = prefs.accounts.value.first { it.id == "a" }
+        assertEquals("brand_new_access_token", updatedADefensive.accessToken)
+        assertEquals("initial_refresh_token", updatedADefensive.refreshToken)
+    }
+
+    @Test
+    fun delayedPeriodicRefreshWithOutdatedGenerationIsRejected() {
+        val prefs = preferences()
+        val accountA = account("a", accessToken = "token_v0", refreshToken = "refresh_v0")
+        prefs.saveAccount(accountA)
+
+        val initialGeneration = prefs.tokenGeneration("a")
+        assertEquals(0, initialGeneration)
+
+        // User reauthenticates, bumping generation and saving new tokens
+        prefs.bumpTokenGeneration("a")
+        val reauthTokens = accountA.copy(accessToken = "token_v1_reauth", refreshToken = "refresh_v1_reauth")
+        assertTrue(prefs.updateAccountIfPresent(reauthTokens))
+
+        assertEquals("token_v1_reauth", prefs.accounts.value.first { it.id == "a" }.accessToken)
+        assertEquals("refresh_v1_reauth", prefs.accounts.value.first { it.id == "a" }.refreshToken)
+
+        // Delayed periodic refresh completes with old expectedGeneration
+        val delayedRefreshed = accountA.copy(accessToken = "token_v0_late_refreshed", refreshToken = "refresh_v0_late")
+        val lateUpdateSuccess = prefs.updateAccountIfPresent(delayedRefreshed, expectedGeneration = initialGeneration)
+        assertFalse(lateUpdateSuccess)
+
+        // Accounts still retain reauthenticated tokens, not the late refresh tokens
+        val currentA = prefs.accounts.value.first { it.id == "a" }
+        assertEquals("token_v1_reauth", currentA.accessToken)
+        assertEquals("refresh_v1_reauth", currentA.refreshToken)
+    }
 }

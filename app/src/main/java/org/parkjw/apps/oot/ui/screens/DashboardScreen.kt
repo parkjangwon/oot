@@ -485,9 +485,7 @@ fun DashboardScreen(
                     onDeleteAccount(id)
                 },
                 onReauth = {
-                    val target = accounts.firstOrNull { it.id == vendor.accountId }
-                        ?: ProviderAccount(id = vendor.accountId, provider = vendor.providerType, name = vendor.displayName)
-                    reauthAccount = target
+                    accounts.firstOrNull { it.id == vendor.accountId }?.let { reauthAccount = it }
                 },
             )
         }

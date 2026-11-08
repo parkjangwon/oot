@@ -295,7 +295,10 @@ class MainActivity : ComponentActivity() {
                         },
                         onSaveApiKey = { accountId, apiKey ->
                             val account = app.preferences.accounts.value.firstOrNull { it.id == accountId }
-                            val updated = app.preferences.updateApiKeyIfPresent(accountId, apiKey)
+                            val updated = if (account != null) {
+                                app.preferences.bumpTokenGeneration(accountId)
+                                app.preferences.updateApiKeyIfPresent(accountId, apiKey)
+                            } else false
                             if (updated && account != null) {
                                 lifecycleScope.launch {
                                     app.repository.refreshAll()
@@ -313,12 +316,13 @@ class MainActivity : ComponentActivity() {
                             val account = app.preferences.accounts.value.firstOrNull { it.id == accountId }
                             val updatedAccount = account?.copy(
                                 accessToken = tokenResult.accessToken,
-                                refreshToken = tokenResult.refreshToken,
+                                refreshToken = tokenResult.refreshToken ?: account.refreshToken,
                                 tokenExpiresAt = tokenResult.expiresAt,
                                 chatgptAccountId = tokenResult.chatgptAccountId ?: account.chatgptAccountId,
                                 accountEmail = tokenResult.accountEmail ?: account.accountEmail,
                             )
                             val updated = if (updatedAccount != null) {
+                                app.preferences.bumpTokenGeneration(accountId)
                                 app.preferences.updateAccountIfPresent(updatedAccount)
                             } else false
                             if (updated && account != null) {

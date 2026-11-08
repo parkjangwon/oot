@@ -45,6 +45,20 @@ class AccountPreferences(
     @Volatile
     private var resetGeneration = 0
 
+    // Tracks token generations per account. Reauthentication bumps this so delayed periodic token
+    // refreshes cannot overwrite freshly re-authenticated credentials (#157).
+    private val tokenGenerations = mutableMapOf<String, Int>()
+
+    @Synchronized
+    fun tokenGeneration(accountId: String): Int = tokenGenerations[accountId] ?: 0
+
+    @Synchronized
+    fun bumpTokenGeneration(accountId: String): Int {
+        val next = (tokenGenerations[accountId] ?: 0) + 1
+        tokenGenerations[accountId] = next
+        return next
+    }
+
     init {
         loadSettings()
     }
@@ -85,17 +99,21 @@ class AccountPreferences(
     }
 
     /**
-     * Persist a token refresh only for an account that is still stored (#96). Keeps the position, the user's
+     * Persist a token refresh only for an account that is still stored (#96, #157). Keeps the position, the user's
      * name and enable toggle, and writes nothing when the user removed the account while the refresh was in flight.
+     * When [expectedGeneration] is provided, discards delayed refreshes if the account was reauthenticated in between.
      */
     @Synchronized
-    fun updateAccountIfPresent(account: ProviderAccount): Boolean {
+    fun updateAccountIfPresent(account: ProviderAccount, expectedGeneration: Int? = null): Boolean {
+        if (expectedGeneration != null && (tokenGenerations[account.id] ?: 0) != expectedGeneration) {
+            return false
+        }
         val current = _accounts.value.toMutableList()
         val index = current.indexOfFirst { it.id == account.id }
         if (index < 0) return false
         current[index] = current[index].copy(
             accessToken = account.accessToken,
-            refreshToken = account.refreshToken,
+            refreshToken = account.refreshToken ?: current[index].refreshToken,
             tokenExpiresAt = account.tokenExpiresAt,
             accountEmail = account.accountEmail,
             chatgptAccountId = account.chatgptAccountId,
@@ -114,6 +132,7 @@ class AccountPreferences(
         val current = _accounts.value.toMutableList()
         val index = current.indexOfFirst { it.id == accountId }
         if (index < 0) return false
+        bumpTokenGeneration(accountId)
         current[index] = current[index].copy(apiKey = apiKey)
         _accounts.value = current
         persistAccountsNow(current)
@@ -122,6 +141,7 @@ class AccountPreferences(
 
     @Synchronized
     fun deleteAccount(accountId: String) {
+        tokenGenerations.remove(accountId)
         val current = _accounts.value.filter { it.id != accountId }
         _accounts.value = current
         persistAccounts(current)
@@ -200,6 +220,7 @@ class AccountPreferences(
     @Synchronized
     fun resetSecureStorage(): Boolean {
         resetGeneration++
+        tokenGenerations.clear()
         val serviceEnabled = _isServiceEnabled.value
         val refreshInterval = _refreshIntervalMinutes.value
         val autoUpdateCheck = _isAutoUpdateCheckEnabled.value
