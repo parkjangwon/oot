@@ -61,9 +61,24 @@ class TokenSyncRepository(
     fun onAccountsReset() {
         refreshScheduler.clear()
         inFlightGenerations.clear()
+        claudeApi.clearAllCachedUsages()
         _statuses.value = emptyList()
         _vendorUsages.value = emptyList()
         _isRefreshing.value = false
+    }
+
+    /** Clear rate-limit backoff and cached status for an account (e.g. after re-authentication or manual refresh). */
+    @Synchronized
+    fun clearAccountBackoff(accountId: String) {
+        refreshScheduler.clear(accountId)
+        claudeApi.clearCachedUsage(accountId)
+    }
+
+    /** Clear all rate-limit backoffs (e.g. user manual swipe refresh). */
+    @Synchronized
+    fun clearAllBackoffs() {
+        refreshScheduler.clear()
+        claudeApi.clearAllCachedUsages()
     }
 
     /** Save the user's drag order and reorder cached usages to match (no network). */
@@ -79,7 +94,10 @@ class TokenSyncRepository(
         _statuses.value = orderedIds.mapNotNull { statusById[it] }
     }
 
-    suspend fun refreshAll(): List<TokenStatus> = coroutineScope {
+    suspend fun refreshAll(force: Boolean = false): List<TokenStatus> = coroutineScope {
+        if (force) {
+            clearAllBackoffs()
+        }
         // Read before the accounts: a reset after this point makes every check below fail.
         val startGeneration = preferences.resetGeneration()
         fun stale() = startGeneration != preferences.resetGeneration()
@@ -94,7 +112,7 @@ class TokenSyncRepository(
                 if (stale()) return@async null
                 val initialTokenGen = preferences.tokenGeneration(account.id)
                 fun tokenStale() = preferences.tokenGeneration(account.id) != initialTokenGen
-                if (!refreshScheduler.shouldFetch(account.id)) {
+                if (!force && !refreshScheduler.shouldFetch(account.id)) {
                     // Backoff: the previous values are shown again, so they must be marked stale.
                     return@async previous[account.id]?.asStale() ?: skippedBackoffStatus(account)
                 }
