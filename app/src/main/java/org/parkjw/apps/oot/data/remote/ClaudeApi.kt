@@ -30,6 +30,14 @@ class ClaudeApi(
     // accountId -> last successful usage status, reused when /api/oauth/usage returns 429
     private val lastGoodUsage = HashMap<String, TokenStatus>()
 
+    fun clearCachedUsage(accountId: String) {
+        lastGoodUsage.remove(accountId)
+    }
+
+    fun clearAllCachedUsages() {
+        lastGoodUsage.clear()
+    }
+
     suspend fun fetchStatus(account: ProviderAccount): TokenStatus = withContext(Dispatchers.IO) {
         val credential = account.activeCredential().trim()
         if (credential.isBlank()) {

@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         refreshIntervalMinutes = refreshInterval,
                         onRefresh = {
                             lifecycleScope.launch {
-                                app.repository.refreshAll()
+                                app.repository.refreshAll(force = true)
                                 app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                             }
                         },
@@ -301,6 +301,7 @@ class MainActivity : ComponentActivity() {
                             } else false
                             if (updated && account != null) {
                                 lifecycleScope.launch {
+                                    app.repository.clearAccountBackoff(accountId)
                                     app.repository.refreshAll()
                                     app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                                     Toast.makeText(
@@ -327,6 +328,7 @@ class MainActivity : ComponentActivity() {
                             } else false
                             if (updated && account != null) {
                                 lifecycleScope.launch {
+                                    app.repository.clearAccountBackoff(accountId)
                                     app.repository.refreshAll()
                                     app.notificationManager.updateNotification(app.repository.vendorUsages.value)
                                     Toast.makeText(

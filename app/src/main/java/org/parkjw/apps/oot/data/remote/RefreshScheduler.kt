@@ -28,6 +28,10 @@ class RefreshScheduler(
         entries.clear()
     }
 
+    fun clear(key: String) {
+        entries.remove(key)
+    }
+
     fun onSuccess(key: String) {
         entries.remove(key)
     }
