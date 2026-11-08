@@ -131,4 +131,18 @@
     <string name="error_log_report_body_label">Body</string>
     <string name="error_log_report_open">Open in browser</string>
     <string name="error_log_report_cancel">Cancel</string>
+    <!-- #157 Re-authentication -->
+    <string name="reauth_action">Sign in again</string>
+    <string name="reauth_title_claude">Claude sign-in</string>
+    <string name="reauth_title_openai">ChatGPT sign-in</string>
+    <string name="reauth_title_xai">xAI sign-in</string>
+    <string name="reauth_title_api_key">Update API key</string>
+    <string name="reauth_body_claude">Sign in to Claude in your browser, then paste the code it shows. Your account name and order stay the same.</string>
+    <string name="reauth_body_device">Enter the code below in your browser and approve it. Your account name and order stay the same.</string>
+    <string name="reauth_body_api_key">Your saved key is not shown. A new key replaces the key for this account only.</string>
+    <string name="reauth_key_label">New API key / token</string>
+    <string name="reauth_failed_kept">Could not re-authenticate. Your current sign-in is unchanged.</string>
+    <string name="reauth_retry">Try again</string>
+    <string name="reauth_saving">Saving…</string>
+    <string name="reauth_done_toast">%1$s re-authenticated. Name and order are unchanged.</string>
 </resources>

@@ -106,6 +106,7 @@ import org.parkjw.apps.oot.data.model.TokenStatus
 import org.parkjw.apps.oot.data.model.UsageWindow
 import org.parkjw.apps.oot.data.model.VendorError
 import org.parkjw.apps.oot.data.model.VendorUsage
+import org.parkjw.apps.oot.data.oauth.OAuthTokenResult
 import org.parkjw.apps.oot.data.model.level
 import org.parkjw.apps.oot.data.model.toVendorUsage
 import org.parkjw.apps.oot.data.model.withStaleRollover
@@ -144,6 +145,7 @@ private val ReorderPlacementSpec = tween<IntOffset>(150)
 fun DashboardScreen(
     vendorUsages: List<VendorUsage>,
     modifier: Modifier = Modifier,
+    accounts: List<ProviderAccount> = emptyList(),
     legacyAccounts: List<ProviderAccount> = emptyList(),
     /** Accounts whose delete only removes the credential on this device (no documented server revoke). */
     deviceOnlyRevocationIds: Set<String> = emptySet(),
@@ -166,8 +168,29 @@ fun DashboardScreen(
     isResettingSecureStorage: Boolean = false,
     onResetSecureStorage: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    onStartOAuth: (ProviderType) -> Unit = {},
+    onOpenExternalBrowser: (String) -> Unit = {},
+    onStartXaiDeviceFlow: (
+        onCodeReceived: (userCode: String, verificationUrl: String) -> Unit,
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit = { _, _, _ -> },
+    onStartOpenAiDeviceFlow: (
+        onCodeReceived: (userCode: String, verificationUrl: String) -> Unit,
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit = { _, _, _ -> },
+    onExchangeClaudeCode: (
+        code: String,
+        onTokenReceived: (OAuthTokenResult) -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit = { _, _, _ -> },
+    onCancelPendingFlows: () -> Unit = {},
+    onSaveApiKey: (accountId: String, apiKey: String) -> Boolean = { _, _ -> false },
+    onSaveTokens: (accountId: String, tokenResult: OAuthTokenResult) -> Boolean = { _, _ -> false },
 ) {
     var selectedVendorForDetail by remember { mutableStateOf<VendorUsage?>(null) }
+    var reauthAccount by remember { mutableStateOf<ProviderAccount?>(null) }
     var selectedLegacyForDetail by remember { mutableStateOf<ProviderAccount?>(null) }
     var orderedUsages by remember { mutableStateOf(vendorUsages) }
     var draggingId by remember { mutableStateOf<String?>(null) }
@@ -433,17 +456,41 @@ fun DashboardScreen(
         )
     }
 
-    selectedVendorForDetail?.let { vendor ->
-        VendorDetailDialog(
-            usage = vendor,
-            deviceOnlyRevocation = vendor.accountId in deviceOnlyRevocationIds,
-            onDismiss = { selectedVendorForDetail = null },
-            onDelete = {
-                val id = vendor.accountId
+    if (reauthAccount != null) {
+        ReauthDialog(
+            account = reauthAccount!!,
+            onDismiss = { reauthAccount = null },
+            onOpenExternalBrowser = onOpenExternalBrowser,
+            onStartOAuth = onStartOAuth,
+            onStartXaiDeviceFlow = onStartXaiDeviceFlow,
+            onStartOpenAiDeviceFlow = onStartOpenAiDeviceFlow,
+            onExchangeClaudeCode = onExchangeClaudeCode,
+            onCancelPendingFlows = onCancelPendingFlows,
+            onSaveApiKey = onSaveApiKey,
+            onSaveTokens = onSaveTokens,
+            onSuccess = {
+                reauthAccount = null
                 selectedVendorForDetail = null
-                onDeleteAccount(id)
             },
         )
+    } else {
+        selectedVendorForDetail?.let { vendor ->
+            VendorDetailDialog(
+                usage = vendor,
+                deviceOnlyRevocation = vendor.accountId in deviceOnlyRevocationIds,
+                onDismiss = { selectedVendorForDetail = null },
+                onDelete = {
+                    val id = vendor.accountId
+                    selectedVendorForDetail = null
+                    onDeleteAccount(id)
+                },
+                onReauth = {
+                    val target = accounts.firstOrNull { it.id == vendor.accountId }
+                        ?: ProviderAccount(id = vendor.accountId, provider = vendor.providerType, name = vendor.displayName)
+                    reauthAccount = target
+                },
+            )
+        }
     }
 
     selectedLegacyForDetail?.let { legacy ->
@@ -520,6 +567,7 @@ fun DashboardScreen(
     DashboardScreen(
         vendorUsages = usages,
         modifier = modifier,
+        accounts = selectableAccounts,
         legacyAccounts = legacyAccounts,
         isRefreshing = isRefreshing,
         now = now,
@@ -1254,6 +1302,7 @@ private fun VendorDetailDialog(
     deviceOnlyRevocation: Boolean,
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
+    onReauth: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1280,6 +1329,14 @@ private fun VendorDetailDialog(
                 )
                 if (usage.error != null) {
                     ProblemBox(error = usage.error)
+                }
+                OutlinedButton(
+                    onClick = onReauth,
+                    shape = ButtonCorner,
+                    colors = ootOutlinedButtonColors(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.reauth_action))
                 }
                 if (deviceOnlyRevocation) {
                     Text(

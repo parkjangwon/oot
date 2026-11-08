@@ -105,6 +105,21 @@ class AccountPreferences(
         return true
     }
 
+    /**
+     * Persist an API key update only for an account that is still stored (#157). Keeps the position,
+     * the user's name, enable toggle, and notification settings.
+     */
+    @Synchronized
+    fun updateApiKeyIfPresent(accountId: String, apiKey: String): Boolean {
+        val current = _accounts.value.toMutableList()
+        val index = current.indexOfFirst { it.id == accountId }
+        if (index < 0) return false
+        current[index] = current[index].copy(apiKey = apiKey)
+        _accounts.value = current
+        persistAccountsNow(current)
+        return true
+    }
+
     @Synchronized
     fun deleteAccount(accountId: String) {
         val current = _accounts.value.filter { it.id != accountId }
