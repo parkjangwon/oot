@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-11-09
+
+Clear 429 rate-limit backoff and cached status on provider re-authentication and manual refresh.
+
+### Fixed
+- Auth: Clear rate-limit backoff and cached 429 error upon successful re-authentication or user manual refresh, ensuring fresh API credentials trigger an immediate usage fetch (#161, #162).
+
 ## [1.7.0] - 2026-11-08
 
 In-place re-authentication for provider accounts without deleting and re-registering them, and active periodic work synchronization fix.
