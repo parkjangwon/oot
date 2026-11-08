@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-11-08
+
+In-place re-authentication for provider accounts without deleting and re-registering them, and active periodic work synchronization fix.
+
+### Added
+- Auth: In-place re-authentication in vendor detail dialog for Claude OAuth, OpenAI / xAI Device Flow, and API key credentials. Preserves account ID, display name, enable toggle, custom endpoint, drag order, and notification hidden preferences across re-authentication (#157, #158).
+
+### Fixed
+- Service: Await active periodic work completion before verifying service stop to prevent flaky test assertions (#156).
+
 ## [1.6.0] - 2026-11-05
 
 MiniMax M Plan and Token Plan quotas show up next to the other providers.
